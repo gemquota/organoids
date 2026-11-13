@@ -51,7 +51,7 @@ export class EnergyEngine{
   harvest(name,e,n){const p=e.properties||{},v=this.fields.take(name,p.x,p.y,n);e.energy+=v;this.ledger.transferred+=v;return v}
   source(e,n){n=Math.max(0,num(n));e.energy+=n;this.ledger.input+=n;return n}
   transfer(a,b,n){n=clamp(n,0,Math.max(0,a.energy));a.energy-=n;b.energy+=n;this.ledger.transferred+=n;return n}
-  convert(e,n,efficiency=1){n=clamp(n,0,Math.max(0,e.energy));const out=n*clamp(efficiency);e.energy+=out-n;this.ledger.converted+=n-out;this.heat(e,n-out);return out}
+  convert(e,n,efficiency=1){n=clamp(n,0,Math.max(0,e.energy));const out=n*clamp(efficiency);e.energy+=out-n;this.ledger.converted+=out;this.heat(e,n-out);return out}
   dissipate(e,n){n=clamp(n,0,Math.max(0,e.energy));e.energy-=n;this.heat(e,n);return n}
 }
 export class GraphEngine{
