@@ -33,46 +33,46 @@ export class FieldGrid{
   index(x,y){return clamp(Math.floor(y/this.height*this.rows),0,this.rows-1)*this.cols+clamp(Math.floor(x/this.width*this.cols),0,this.cols-1)}
   add(name,x,y,value){this.fields.get(name)[this.index(x,y)]+=value;return this}
   sample(name,x,y){return this.fields.get(name)[this.index(x,y)]}
+  take(name,x,y,value){const a=this.fields.get(name),i=this.index(x,y),n=Math.min(Math.max(0,value),Math.max(0,a[i]));a[i]-=n;return n}
   diffuse(name,rate){const a=this.fields.get(name),b=Float32Array.from(a),k=clamp(rate)*.25;for(let y=0;y<this.rows;y++)for(let x=0;x<this.cols;x++){const i=y*this.cols+x;for(const j of [x+1<this.cols?i+1:-1,y+1<this.rows?i+this.cols:-1])if(j>=0){const f=(a[j]-a[i])*k;b[i]+=f;b[j]-=f}}this.fields.set(name,b);return this}
 }
-export class InteractionEngine{
-  constructor(rules=[]){this.rules=rules.map(clone)}
+class PairEngine{
+  constructor(rules=[]){this.rules=rules.map(clone);this.constraints=[]}
   register(rule){this.rules.push(clone(rule));return this}
-  apply(store,index,dt=1){const force=new Map();for(const r of this.rules){for(const a of store.entities.values()){if(a.state!=='active'||(r.a!=='*'&&a.type!==r.a))continue;const p=a.properties;for(const b of index.query(p.x,p.y,r.radius)){if(a.id===b.id||b.state!=='active'||(r.b!=='*'&&b.type!==r.b)||(r.a===r.b&&b.id<=a.id))continue;const q=b.properties,dx=q.x-p.x,dy=q.y-p.y,d=Math.hypot(dx,dy)||.0001;if(d>r.radius)continue;const sign=r.mode==='repel'?-1:1,m=(1-d/r.radius)*num(r.strength,1)*sign*dt,fx=dx/d*m,fy=dy/d*m;for(const [e,x,y] of [[a,fx,fy],[b,-fx,-fy]]){const f=force.get(e.id)||{x:0,y:0};f.x+=x;f.y+=y;force.set(e.id,f)}}}}for(const [id,f] of force){const p=store.get(id).properties,m=Math.max(.001,num(p.mass,1));p.vx=num(p.vx)+f.x/m;p.vy=num(p.vy)+f.y/m}return force.size}
-}
-export class ConstraintEngine{
-  constructor(constraints=[]){this.constraints=constraints.map(clone)}
   add(c){this.constraints.push(clone(c));return this}
+  apply(store,index,dt=1){const force=new Map();for(const r of this.rules){for(const a of store.entities.values()){if(a.state!=='active'||(r.a!=='*'&&a.type!==r.a))continue;const p=a.properties;for(const b of index.query(p.x,p.y,r.radius)){if(a.id===b.id||b.state!=='active'||(r.b!=='*'&&b.type!==r.b)||(r.a===r.b&&b.id<=a.id))continue;const q=b.properties,dx=q.x-p.x,dy=q.y-p.y,d=Math.hypot(dx,dy)||.0001;if(d>r.radius)continue;const sign=r.mode==='repel'?-1:1,m=(1-d/r.radius)*num(r.strength,1)*sign*dt,fx=dx/d*m,fy=dy/d*m;for(const [e,x,y] of [[a,fx,fy],[b,-fx,-fy]]){const f=force.get(e.id)||{x:0,y:0};f.x+=x;f.y+=y;force.set(e.id,f)}}}}for(const [id,f] of force){const p=store.get(id).properties,m=Math.max(.001,num(p.mass,1));p.vx=num(p.vx)+f.x/m;p.vy=num(p.vy)+f.y/m}return force.size}
   solve(store,iterations=1){for(let n=0;n<iterations;n++)for(const c of this.constraints){const a=store.get(c.a)?.properties,b=store.get(c.b)?.properties;if(!a||!b)continue;const dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||.0001,err=(d-num(c.rest))/d*clamp(num(c.stiffness,1)),ia=1/Math.max(.001,num(a.mass,1)),ib=1/Math.max(.001,num(b.mass,1)),sum=ia+ib;a.x+=dx*err*ia/sum;a.y+=dy*err*ia/sum;b.x-=dx*err*ib/sum;b.y-=dy*err*ib/sum}return this}
 }
+export {PairEngine as InteractionEngine,PairEngine as ConstraintEngine};
 export class EnergyEngine{
-  constructor(){this.ledger={input:0,transferred:0,converted:0,output:0}}
+  constructor(fields){this.fields=fields;this.ledger={input:0,transferred:0,converted:0,output:0,fielded:0}}
+  heat(e,n){const p=e.properties||{};if(this.fields?.fields.has('heat')&&Number.isFinite(p.x)&&Number.isFinite(p.y)){this.fields.add('heat',p.x,p.y,n);this.ledger.fielded+=n}else this.ledger.output+=n;return n}
+  deposit(name,e,n){n=Math.min(Math.max(0,num(n)),Math.max(0,e.energy));e.energy-=n;const p=e.properties||{};this.fields.add(name,p.x,p.y,n);this.ledger.transferred+=n;return n}
+  harvest(name,e,n){const p=e.properties||{},v=this.fields.take(name,p.x,p.y,n);e.energy+=v;this.ledger.transferred+=v;return v}
   source(e,n){n=Math.max(0,num(n));e.energy+=n;this.ledger.input+=n;return n}
   transfer(a,b,n){n=clamp(n,0,Math.max(0,a.energy));a.energy-=n;b.energy+=n;this.ledger.transferred+=n;return n}
-  convert(e,n,efficiency=1){n=clamp(n,0,Math.max(0,e.energy));const out=n*clamp(efficiency);e.energy+=out-n;this.ledger.converted+=n-out;this.ledger.output+=n-out;return out}
-  dissipate(e,n){n=clamp(n,0,Math.max(0,e.energy));e.energy-=n;this.ledger.output+=n;return n}
+  convert(e,n,efficiency=1){n=clamp(n,0,Math.max(0,e.energy));const out=n*clamp(efficiency);e.energy+=out-n;this.ledger.converted+=n-out;this.heat(e,n-out);return out}
+  dissipate(e,n){n=clamp(n,0,Math.max(0,e.energy));e.energy-=n;this.heat(e,n);return n}
 }
 export class GraphEngine{
   constructor(store){this.store=store}
   neighbours(id,type){return this.store.links.filter(l=>(l.a===id||l.b===id)&&(!type||l.type===type)).map(l=>l.a===id?l.b:l.a)}
   components(type){const nodes=[...this.store.entities.values()].filter(e=>!type||e.type===type),seen=new Set(),out=[];for(const e of nodes)if(!seen.has(e.id)){const group=[],stack=[e.id];seen.add(e.id);while(stack.length){const id=stack.pop();group.push(id);for(const n of this.neighbours(id))if(!seen.has(n)&&(!type||this.store.get(n)?.type===type)){seen.add(n);stack.push(n)}}out.push(group)}return out}
   hasCycle(ids){const set=new Set(ids),seen=new Set();const visit=(id,parent)=>{seen.add(id);for(const n of this.neighbours(id))if(set.has(n)){if(!seen.has(n)){if(visit(n,id))return true}else if(n!==parent)return true}return false};for(const id of ids)if(!seen.has(id)&&visit(id,null))return true;return false}
+  assemble(type,ids,properties={}){const root=this.store.create(type,properties);for(const id of ids)this.store.compose(root.id,id);return root}
+  closed(id){const ids=[id,...this.store.descendants(id)];return ids.length>2&&this.hasCycle(ids)}
+  divide(id,groups){const parent=this.store.get(id);if(!parent)throw Error('Unknown entity');return groups.map(group=>this.assemble(parent.type,group,parent.properties))}
 }
+export {GraphEngine as TopologyEngine};
 export class RuleEngine{
   constructor(options={}){this.rules=[];this.random=options.random||Math.random;this.energy=options.energy;this.events=[]}
   register(r){if(!r.id||!Array.isArray(r.inputs)||!Array.isArray(r.outputs))throw Error('Rule requires id, inputs and outputs');this.rules.push(clone(r));return this}
   match(e,s){if(!e)return false;if(typeof s==='string')return e.type===s;return e.type===(s.type||e.type)&&Object.entries(s.where||{}).every(([k,v])=>e.properties[k]===(typeof v==='object'?v.value:v))}
   run(store,dt=1){let count=0;for(const r of this.rules){if(this.random()>1-Math.exp(-Math.max(0,num(r.rate,1))*Math.max(0,dt)))continue;const pool=[...store.entities.values()].filter(e=>e.state==='active'),used=new Set(),chosen=[];for(const s of r.inputs){const e=pool.find(x=>!used.has(x.id)&&this.match(x,s));if(!e){chosen.length=0;break}chosen.push(e);used.add(e.id)}if(chosen.length!==r.inputs.length)continue;const catalysts=(r.catalysts||[]).map(s=>pool.find(e=>this.match(e,s)));if(catalysts.some(e=>!e))continue;if((r.conditions||[]).some(c=>{const v=chosen[c.input||0]?.properties[c.property];return c.op==='gt'?!(v>c.value):c.op==='eq'?v!==c.value:!(v>=c.value)}))continue;const cost=Math.max(0,num(r.energyCost)),payer=chosen[0];if(cost&&(!payer||payer.energy<cost))continue;if(cost){payer.energy-=cost;this.energy&&(this.energy.ledger.output+=cost)}const energy=Math.max(0,num(r.productEnergy,chosen.reduce((s,e)=>s+e.energy,0)));chosen.forEach(e=>store.remove(e.id));const products=r.outputs.map(o=>store.create(o.type,o.properties||{},{energy:energy/Math.max(1,r.outputs.length)}));this.events.push({rule:r.id,inputs:chosen.map(e=>e.id),outputs:products.map(e=>e.id)});count++}return count}
 }
-export class TopologyEngine{
-  constructor(store){this.store=store;this.graph=new GraphEngine(store)}
-  assemble(type,ids,properties={}){const root=this.store.create(type,properties);for(const id of ids)this.store.compose(root.id,id);return root}
-  closed(id){const ids=this.store.descendants(id);return ids.length>2&&this.graph.hasCycle(ids)}
-  divide(id,groups){const parent=this.store.get(id);if(!parent)throw Error('Unknown entity');return groups.map(group=>this.assemble(parent.type,group,parent.properties))}
-}
 export class Scheduler{
   constructor(){this.phases=[];this.time=0;this.tick=0}
   add(name,fn,priority=0){this.phases.push({name,fn,priority,order:this.phases.length});this.phases.sort((a,b)=>a.priority-b.priority||a.order-b.order);return this}
   step(dt,context){for(const p of this.phases)p.fn(dt,context);this.time+=dt;this.tick++;return this}
 }
-export function createRuntime(options={}){const store=new EntityStore(),energy=new EnergyEngine(),fields=new FieldGrid(options.cols||64,options.rows||36,options.width||640,options.height||360),spatial=new SpatialIndex(options.cellSize||24),interactions=new InteractionEngine(),constraints=new ConstraintEngine(),rules=new RuleEngine({random:options.random,energy}),graph=new GraphEngine(store),topology=new TopologyEngine(store),scheduler=new Scheduler();return{store,energy,fields,spatial,interactions,constraints,rules,graph,topology,scheduler,step(dt=1){spatial.rebuild(store.entities.values());interactions.apply(store,spatial,dt);constraints.solve(store,options.constraintIterations||1);for(const e of store.entities.values()){if(e.state!=='active')continue;const p=e.properties;p.vx=num(p.vx);p.vy=num(p.vy);p.x=num(p.x)+p.vx*dt;p.y=num(p.y)+p.vy*dt}rules.run(store,dt);scheduler.step(dt,this);return this}}}
+export function createRuntime(options={}){const store=new EntityStore(),fields=new FieldGrid(options.cols||64,options.rows||36,options.width||640,options.height||360),energy=new EnergyEngine(fields),spatial=new SpatialIndex(options.cellSize||24),interactions=new PairEngine(),constraints=interactions,rules=new RuleEngine({random:options.random,energy}),graph=new GraphEngine(store),topology=graph,scheduler=new Scheduler();fields.define('heat');scheduler.add('reactions',(dt)=>rules.run(store,dt),options.reactionPriority??10);return{store,energy,fields,spatial,interactions,constraints,rules,graph,topology,scheduler,step(dt=1){spatial.rebuild(store.entities.values());interactions.apply(store,spatial,dt);constraints.solve(store,options.constraintIterations||1);for(const e of store.entities.values()){if(e.state!=='active')continue;const p=e.properties;p.vx=num(p.vx);p.vy=num(p.vy);p.x=num(p.x)+p.vx*dt;p.y=num(p.y)+p.vy*dt}scheduler.step(dt,this);return this}}}
