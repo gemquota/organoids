@@ -1,0 +1,31 @@
+<!doctype html>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<style>
+body{margin:0;overflow:hidden;background:#05090c}
+canvas{display:block;width:100vw;height:100vh}
+</style>
+<canvas id=c></canvas>
+<script>
+g=c.getContext('2d'),A=[],R=Math.random,M=Math.hypot,
+(onresize=_=>{W=c.width=innerWidth;H=c.height=innerHeight})();
+for(i=800;i--;)A.push({x:R()*W,y:R()*H,v:0,w:0,m:1});
+(f=_=>{
+g.fillStyle='#05090c';g.fillRect(0,0,W,H);
+A.forEach((p,i)=>{
+p.v=(p.v+R()-.5)*.95;p.w=(p.w+R()-.5)*.95;p.x+=p.v;p.y+=p.w;
+for(j=i;j--;){
+q=A[j];x=q.x-p.x;y=q.y-p.y;d=M(x,y)||1;
+if(d<160){z=d<8?-.2:1.6/(d*d);p.v-=x/d*z;p.w-=y/d*z;q.v+=x/d*z;q.w+=y/d*z}
+if(d<3*(Math.sqrt(p.m)+Math.sqrt(q.m))){
+n=p.m+q.m;
+p.v=(p.v*p.m+q.v*q.m)/n;p.w=(p.w*p.m+q.w*q.w)/n;
+p.x=(p.x*p.m+q.x*q.m)/n;p.y=(p.y*p.m+q.y*q.m)/n;
+p.m=n;A.splice(j,1)
+}
+}
+});
+g.fillStyle='#72d9d0';
+A.forEach(p=>{g.beginPath();g.arc(p.x,p.y,3*Math.sqrt(p.m),0,7);g.fill()});
+requestAnimationFrame(f)
+})()
+</script>
