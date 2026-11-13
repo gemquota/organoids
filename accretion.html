@@ -18,7 +18,7 @@ q=A[j];x=q.x-p.x;y=q.y-p.y;d=M(x,y)||1;
 if(d<160){z=d<8?-.2:1.6/(d*d);p.v-=x/d*z;p.w-=y/d*z;q.v+=x/d*z;q.w+=y/d*z}
 if(d<3*(Math.sqrt(p.m)+Math.sqrt(q.m))){
 n=p.m+q.m;
-p.v=(p.v*p.m+q.v*q.m)/n;p.w=(p.w*p.m+q.w*q.w)/n;
+p.v=(p.v*p.m+q.v*q.m)/n;p.w=(p.w*p.m+q.w*q.m)/n;
 p.x=(p.x*p.m+q.x*q.m)/n;p.y=(p.y*p.m+q.y*q.m)/n;
 p.m=n;A.splice(j,1)
 }
