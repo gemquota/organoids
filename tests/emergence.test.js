@@ -43,7 +43,7 @@ test('declarative reaction consumes reactants, preserves catalyst and accounts e
 });
 test('graph detects connected components and cycles',()=>{
   const s=new EntityStore(),a=s.create('unit'),b=s.create('unit'),c=s.create('unit');s.link(a.id,b.id);s.link(b.id,c.id);s.link(c.id,a.id);
-  const g=new GraphEngine(s);assert.deepEqual(g.components('unit'),[[a.id,b.id,c.id]]);assert.equal(g.hasCycle([a.id,b.id,c.id]),true);
+  const g=new GraphEngine(s);assert.deepEqual(g.components('unit').map(group=>group.sort((x,y)=>x-y)),[[a.id,b.id,c.id]]);assert.equal(g.hasCycle([a.id,b.id,c.id]),true);
 });
 test('topology composes structures and scheduler preserves phase order',()=>{
   const s=new EntityStore(),a=s.create('unit'),b=s.create('unit'),c=s.create('unit');s.link(a.id,b.id);s.link(b.id,c.id);s.link(c.id,a.id);
