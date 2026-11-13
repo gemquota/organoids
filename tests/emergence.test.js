@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {EntityStore,SpatialIndex,FieldGrid,InteractionEngine,ConstraintEngine,EnergyEngine,RuleEngine,GraphEngine,TopologyEngine,Scheduler} from '../emergence.js';
+import {EntityStore,SpatialIndex,FieldGrid,InteractionEngine,ConstraintEngine,EnergyEngine,RuleEngine,GraphEngine,TopologyEngine,Scheduler,createRuntime} from '../emergence.js';
 
 test('recursive composition, cycle prevention and snapshots',()=>{
   const s=new EntityStore(),p=s.create('particle'),m=s.create('molecule',{}, {energy:4}),c=s.create('cell');
