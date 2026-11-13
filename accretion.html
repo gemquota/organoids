@@ -1,31 +1,34 @@
 <!doctype html>
-<meta name=viewport content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Organoids · Emergence</title>
 <style>
-body{margin:0;overflow:hidden;background:#05090c}
+*{box-sizing:border-box}body{margin:0;overflow:hidden;background:#05090c;color:#b8d8d5;font:12px ui-monospace,monospace}
 canvas{display:block;width:100vw;height:100vh}
+#hud{position:fixed;left:12px;top:10px;pointer-events:none;line-height:1.6;text-shadow:0 1px 4px #000}
 </style>
-<canvas id=c></canvas>
-<script>
-g=c.getContext('2d'),A=[],R=Math.random,M=Math.hypot,
-(onresize=_=>{W=c.width=innerWidth;H=c.height=innerHeight})();
-for(i=800;i--;)A.push({x:R()*W,y:R()*H,v:0,w:0,m:1});
-(f=_=>{
-g.fillStyle='#05090c';g.fillRect(0,0,W,H);
-A.forEach((p,i)=>{
-p.v=(p.v+R()-.5)*.95;p.w=(p.w+R()-.5)*.95;p.x+=p.v;p.y+=p.w;
-for(j=i;j--;){
-q=A[j];x=q.x-p.x;y=q.y-p.y;d=M(x,y)||1;
-if(d<160){z=d<8?-.2:1.6/(d*d);p.v-=x/d*z;p.w-=y/d*z;q.v+=x/d*z;q.w+=y/d*z}
-if(d<3*(Math.sqrt(p.m)+Math.sqrt(q.m))){
-n=p.m+q.m;
-p.v=(p.v*p.m+q.v*q.m)/n;p.w=(p.w*p.m+q.w*q.m)/n;
-p.x=(p.x*p.m+q.x*q.m)/n;p.y=(p.y*p.m+q.y*q.m)/n;
-p.m=n;A.splice(j,1)
-}
-}
-});
-g.fillStyle='#72d9d0';
-A.forEach(p=>{g.beginPath();g.arc(p.x,p.y,3*Math.sqrt(p.m),0,7);g.fill()});
-requestAnimationFrame(f)
-})()
+<canvas id="c"></canvas><div id="hud"></div>
+<script type="module">
+import{createRuntime}from'./emergence.js';
+const canvas=document.querySelector('#c'),g=canvas.getContext('2d'),hud=document.querySelector('#hud');
+let W,H,frame=0,last=0;
+function resize(){const dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;canvas.width=W*dpr;canvas.height=H*dpr;g.setTransform(dpr,0,0,dpr,0,0)}
+addEventListener('resize',resize);resize();
+const sim=createRuntime({width:W,height:H,cols:80,rows:45,cellSize:24,constraintIterations:2});
+sim.interactions
+ .register({id:'long-range-cohesion',a:'particle',b:'particle',radius:150,strength:.045,mode:'attract'})
+ .register({id:'short-range-exclusion',a:'particle',b:'particle',radius:10,strength:.28,mode:'repel'});
+sim.fields.define('heat');
+for(let i=0;i<800;i++)sim.store.create('particle',{x:Math.random()*W,y:Math.random()*H,vx:0,vy:0,mass:1},{energy:.2});
+function merge(){const entities=[...sim.store.entities.values()],removed=new Set();for(const a of entities){if(removed.has(a.id)||!sim.store.get(a.id))continue;const p=a.properties;for(const b of sim.spatial.query(p.x,p.y,3*(Math.sqrt(p.mass)+1))){if(b.id<=a.id||removed.has(b.id)||!sim.store.get(b.id))continue;const q=b.properties,d=Math.hypot(q.x-p.x,q.y-p.y),limit=3*(Math.sqrt(p.mass)+Math.sqrt(q.mass));if(d>=limit)continue;const m=p.mass+q.mass;p.vx=(p.vx*p.mass+q.vx*q.mass)/m;p.vy=(p.vy*p.mass+q.vy*q.mass)/m;p.x=(p.x*p.mass+q.x*q.mass)/m;p.y=(p.y*p.mass+q.y*q.mass)/m;p.mass=m;a.energy+=b.energy;sim.store.remove(b.id);removed.add(b.id);sim.energy.ledger.converted+=0}}}
+function step(now){const dt=Math.min(.035,(now-last)/1000||.016);last=now;frame++;
+ sim.energy.source({get energy(){return 0},set energy(v){}},0);
+ sim.step(dt*60);
+ for(const e of sim.store.entities.values()){const p=e.properties;p.vx*=.994;p.vy*=.994;if(p.x<0||p.x>W)p.vx*=-.8;if(p.y<0||p.y>H)p.vy*=-.8;p.x=Math.max(0,Math.min(W,p.x));p.y=Math.max(0,Math.min(H,p.y));if(frame%3===0)sim.energy.dissipate(e,.00008)}
+ if(frame%2===0){sim.spatial.rebuild(sim.store.entities.values());merge()}
+ if(frame%4===0)sim.fields.diffuse('heat',.08);
+ g.fillStyle='rgba(5,9,12,.24)';g.fillRect(0,0,W,H);g.fillStyle='#72d9d0';
+ for(const e of sim.store.entities.values()){const p=e.properties,r=3*Math.sqrt(p.mass);g.globalAlpha=.55+Math.min(.4,p.mass/35);g.beginPath();g.arc(p.x,p.y,r,0,Math.PI*2);g.fill()}
+ g.globalAlpha=1;hud.textContent='ORGANOIDS // UNIFIED EMERGENCE\nentities '+sim.store.entities.size+'   ticks '+sim.scheduler.tick+'\nenergy dissipated '+sim.energy.ledger.output.toFixed(3);
+ requestAnimationFrame(step)}
+requestAnimationFrame(step);
 </script>
