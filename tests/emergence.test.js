@@ -51,3 +51,29 @@ test('topology composes structures and scheduler preserves phase order',()=>{
   const q=new Scheduler(),order=[];q.add('late',()=>order.push('late'),10).add('early',()=>order.push('early'),-1);q.step(.5,{});
   assert.deepEqual(order,['early','late']);assert.equal(q.tick,1);
 });
+test('pair and constraint APIs are one shared solver',()=>{
+  assert.equal(InteractionEngine,ConstraintEngine);
+  const s=new EntityStore(),a=s.create('p',{x:0,y:0,vx:0,vy:0,mass:1}),b=s.create('p',{x:10,y:0,vx:0,vy:0,mass:1});
+  const i=new SpatialIndex(10).rebuild(s.entities.values()),solver=new InteractionEngine([{a:'p',b:'p',radius:20,strength:1}]);
+  solver.add({a:a.id,b:b.id,rest:4,stiffness:.5});solver.apply(s,i,1);solver.solve(s,2);
+  assert.ok(Math.abs(b.properties.x-a.properties.x)<10);
+});
+test('graph and topology are one composition-aware structure engine',()=>{
+  const r=createRuntime(),a=r.store.create('unit'),b=r.store.create('unit'),c=r.store.create('unit');
+  r.topology.assemble('colony',[a.id,b.id,c.id]);
+  assert.equal(r.graph,r.topology);assert.deepEqual(r.graph.components('unit').map(x=>x.length),[3]);
+  r.store.link(a.id,b.id);r.store.link(b.id,c.id);r.store.link(c.id,a.id);
+  assert.equal(r.topology.closed(r.store.get(a.id).parent),true);
+});
+test('scheduler owns reaction and field phases',()=>{
+  const r=createRuntime({random:()=>0,cols:4,rows:4,width:4,height:4});
+  const a=r.store.create('A',{x:1,y:1},{energy:2}),b=r.store.create('B',{x:1,y:1});
+  r.rules.register({id:'AB',inputs:['A','B'],outputs:[{type:'AB'}],rate:10,energyCost:1});
+  r.step(1);assert.equal([...r.store.entities.values()].some(e=>e.type==='AB'),true);
+  assert.ok(r.fields.sample('heat',1,1)>0);assert.equal(r.scheduler.tick,1);
+});
+test('energy and fields exchange stored quantities',()=>{
+  const r=createRuntime({cols:2,rows:2,width:2,height:2}),e=r.store.create('unit',{x:0,y:0},{energy:5});
+  r.energy.deposit('heat',e,3);assert.equal(e.energy,2);assert.equal(r.energy.harvest('heat',e,2),2);
+  assert.equal(e.energy,4);assert.ok(r.fields.sample('heat',0,0)>0);
+});
