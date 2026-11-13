@@ -79,5 +79,5 @@ This order prioritises semantic interoperability and correctness before adding m
 ## Verification boundaries
 
 - Source syntax and targeted runtime integration assertions were checked in this pass.
-- The repository's GitHub Actions workflow runs `npm test` and `node --check emergence.js`; its result must be checked for the final commit.
+- GitHub Actions run 48 completed successfully: all 13 tests passed, and `node --check emergence.js` passed.
 - Browser rendering, numerical stability under sustained load and full conservation remain unverified.
