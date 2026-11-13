@@ -57,7 +57,7 @@ export class EnergyEngine{
 export class GraphEngine{
   constructor(store){this.store=store}
   neighbours(id,type){const links=this.store.links.filter(l=>(l.a===id||l.b===id)&&(!type||l.type===type)).map(l=>l.a===id?l.b:l.a),e=this.store.get(id),parts=!type||type==='contains'?[...(e?.children||[]),...(e?.parent?[e.parent]:[])]:[];return [...new Set([...links,...parts])] }
-  components(type){const nodes=[...this.store.entities.values()].filter(e=>!type||e.type===type),seen=new Set(),out=[];for(const e of nodes)if(!seen.has(e.id)){const group=[],stack=[e.id];seen.add(e.id);while(stack.length){const id=stack.pop();group.push(id);for(const n of this.neighbours(id))if(!seen.has(n)){seen.add(n);stack.push(n)}}out.push(group)}return out}
+  components(type){const nodes=[...this.store.entities.values()].filter(e=>!type||e.type===type),seen=new Set(),out=[];for(const e of nodes)if(!seen.has(e.id)){const group=[],stack=[e.id];seen.add(e.id);while(stack.length){const id=stack.pop();if(!type||this.store.get(id)?.type===type)group.push(id);for(const n of this.neighbours(id))if(!seen.has(n)){seen.add(n);stack.push(n)}}out.push(group)}return out}
   hasCycle(ids){const set=new Set(ids),seen=new Set();const visit=(id,parent)=>{seen.add(id);for(const n of this.neighbours(id))if(set.has(n)){if(!seen.has(n)){if(visit(n,id))return true}else if(n!==parent)return true}return false};for(const id of ids)if(!seen.has(id)&&visit(id,null))return true;return false}
   assemble(type,ids,properties={}){const root=this.store.create(type,properties);for(const id of ids)this.store.compose(root.id,id);return root}
   closed(id){const ids=[id,...this.store.descendants(id)];return ids.length>2&&this.hasCycle(ids)}
