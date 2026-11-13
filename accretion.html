@@ -15,18 +15,18 @@ function resize(){const dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=inner
 addEventListener('resize',resize);resize();
 const sim=createRuntime({width:W,height:H,cols:80,rows:45,cellSize:24,constraintIterations:2});
 sim.interactions
- .register({id:'long-range-cohesion',a:'particle',b:'particle',radius:150,strength:.045,mode:'attract'})
- .register({id:'short-range-exclusion',a:'particle',b:'particle',radius:10,strength:.28,mode:'repel'});
+ .register({id:'long-range-cohesion',a:'*',b:'*',radius:150,strength:.045,mode:'attract'})
+ .register({id:'short-range-exclusion',a:'*',b:'*',radius:10,strength:.28,mode:'repel'});
 sim.fields.define('heat');
 for(let i=0;i<800;i++)sim.store.create('particle',{x:Math.random()*W,y:Math.random()*H,vx:0,vy:0,mass:1},{energy:.2});
-function merge(){const entities=[...sim.store.entities.values()],removed=new Set();for(const a of entities){if(removed.has(a.id)||!sim.store.get(a.id))continue;const p=a.properties;for(const b of sim.spatial.query(p.x,p.y,180)){if(b.id<=a.id||removed.has(b.id)||!sim.store.get(b.id))continue;const q=b.properties,d=Math.hypot(q.x-p.x,q.y-p.y),limit=3*(Math.sqrt(p.mass)+Math.sqrt(q.mass));if(d>=limit)continue;const m=p.mass+q.mass;p.vx=(p.vx*p.mass+q.vx*q.mass)/m;p.vy=(p.vy*p.mass+q.vy*q.mass)/m;p.x=(p.x*p.mass+q.x*q.mass)/m;p.y=(p.y*p.mass+q.y*q.mass)/m;p.mass=m;a.energy+=b.energy;sim.store.remove(b.id);removed.add(b.id);sim.energy.ledger.converted+=0}}}
+function merge(){const entities=[...sim.store.entities.values()],seen=new Set();for(const a of entities){if(seen.has(a.id)||a.state!=='active'||!sim.store.get(a.id))continue;const p=a.properties;for(const b of sim.spatial.query(p.x,p.y,180)){if(b.id<=a.id||seen.has(b.id)||b.state!=='active')continue;const q=b.properties,d=Math.hypot(q.x-p.x,q.y-p.y),limit=3*(Math.sqrt(p.mass)+Math.sqrt(q.mass));if(d>=limit)continue;const m=p.mass+q.mass,root=sim.store.create('molecule',{x:(p.x*p.mass+q.x*q.mass)/m,y:(p.y*p.mass+q.y*q.mass)/m,vx:(p.vx*p.mass+q.vx*q.mass)/m,vy:(p.vy*p.mass+q.vy*q.mass)/m,mass:m},{energy:a.energy+b.energy});sim.store.compose(root.id,a.id);sim.store.compose(root.id,b.id);seen.add(a.id);seen.add(b.id);break}}}
 function step(now){const dt=Math.min(.035,(now-last)/1000||.016);last=now;frame++;
  sim.step(dt*60);
  for(const e of sim.store.entities.values()){const p=e.properties;p.vx*=.994;p.vy*=.994;if(p.x<0||p.x>W)p.vx*=-.8;if(p.y<0||p.y>H)p.vy*=-.8;p.x=Math.max(0,Math.min(W,p.x));p.y=Math.max(0,Math.min(H,p.y));sim.energy.source(e,.00008);if(frame%3===0)sim.energy.dissipate(e,.00008)}
  if(frame%2===0){sim.spatial.rebuild(sim.store.entities.values());merge()}
  if(frame%4===0)sim.fields.diffuse('heat',.08);
  g.fillStyle='rgba(5,9,12,.24)';g.fillRect(0,0,W,H);g.fillStyle='#72d9d0';
- for(const e of sim.store.entities.values()){const p=e.properties,r=3*Math.sqrt(p.mass);g.globalAlpha=.55+Math.min(.4,p.mass/35);g.beginPath();g.arc(p.x,p.y,r,0,Math.PI*2);g.fill()}
+ for(const e of sim.store.entities.values()){if(e.state!=='active')continue;const p=e.properties,r=3*Math.sqrt(p.mass);g.fillStyle=e.type==='molecule'?'#b0a6ed':'#72d9d0';g.globalAlpha=.55+Math.min(.4,p.mass/35);g.beginPath();g.arc(p.x,p.y,r,0,Math.PI*2);g.fill()}
  g.globalAlpha=1;hud.textContent='ORGANOIDS // UNIFIED EMERGENCE\nentities '+sim.store.entities.size+'   ticks '+sim.scheduler.tick+'\nenergy dissipated '+sim.energy.ledger.output.toFixed(3);
  requestAnimationFrame(step)}
 requestAnimationFrame(step);
