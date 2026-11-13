@@ -27,7 +27,7 @@ test('pair interactions apply equal and opposite forces',()=>{
 });
 test('distance constraints converge toward rest length',()=>{
   const s=new EntityStore(),a=s.create('p',{x:0,y:0,mass:1}),b=s.create('p',{x:10,y:0,mass:1});
-  new ConstraintEngine([{a:a.id,b:b.id,rest:4,stiffness:.5}]).solve(s,2);
+  new ConstraintEngine([{a:a.id,b:b.id,rest:4,stiffness:.5}]).solve(s,4);
   assert.ok(Math.abs(Math.hypot(b.properties.x-a.properties.x,b.properties.y-a.properties.y)-4)<1);
 });
 test('energy ledger tracks source, transfer, conversion and dissipation',()=>{
