@@ -43,7 +43,7 @@ export class InteractionEngine{
 export class ConstraintEngine{
   constructor(constraints=[]){this.constraints=constraints.map(clone)}
   add(c){this.constraints.push(clone(c));return this}
-  solve(store,iterations=1){for(let n=0;n<iterations;n++)for(const c of this.constraints){const a=store.get(c.a)?.properties,b=store.get(c.b)?.properties;if(!a||!b)continue;const dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||.0001,err=(d-num(c.rest))/d*num(c.stiffness,1)*.5,ia=1/Math.max(.001,num(a.mass,1)),ib=1/Math.max(.001,num(b.mass,1)),sum=ia+ib;a.x+=dx*err*ia/sum;a.y+=dy*err*ia/sum;b.x-=dx*err*ib/sum;b.y-=dy*err*ib/sum}return this}
+  solve(store,iterations=1){for(let n=0;n<iterations;n++)for(const c of this.constraints){const a=store.get(c.a)?.properties,b=store.get(c.b)?.properties;if(!a||!b)continue;const dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||.0001,err=(d-num(c.rest))/d*clamp(num(c.stiffness,1)),ia=1/Math.max(.001,num(a.mass,1)),ib=1/Math.max(.001,num(b.mass,1)),sum=ia+ib;a.x+=dx*err*ia/sum;a.y+=dy*err*ia/sum;b.x-=dx*err*ib/sum;b.y-=dy*err*ib/sum}return this}
 }
 export class EnergyEngine{
   constructor(){this.ledger={input:0,transferred:0,converted:0,output:0}}
