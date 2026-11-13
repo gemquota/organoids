@@ -3,11 +3,11 @@ import assert from 'node:assert/strict';
 import {EntityStore,SpatialIndex,FieldGrid,InteractionEngine,ConstraintEngine,EnergyEngine,RuleEngine,GraphEngine,TopologyEngine,Scheduler} from '../emergence.js';
 
 test('recursive composition, cycle prevention and snapshots',()=>{
-  const s=new EntityStore(),p=s.create('particle'),m=s.create('molecule'),c=s.create('cell');
+  const s=new EntityStore(),p=s.create('particle'),m=s.create('molecule',{}, {energy:4}),c=s.create('cell');
   s.compose(m.id,p.id);s.compose(c.id,m.id);
   assert.deepEqual(s.descendants(c.id),[m.id,p.id]);
   assert.throws(()=>s.compose(p.id,c.id),/cycle/i);
-  assert.deepEqual(EntityStore.restore(s.snapshot()).descendants(c.id),[m.id,p.id]);
+  const restored=EntityStore.restore(s.snapshot());assert.deepEqual(restored.descendants(c.id),[m.id,p.id]);restored.remove(m.id);assert.equal(restored.get(p.id).state,'active');assert.equal(restored.get(p.id).energy,4);
 });
 test('spatial index returns only neighbours in radius',()=>{
   const s=new EntityStore();s.create('a',{x:2,y:3});s.create('b',{x:50,y:50});
