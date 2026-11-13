@@ -37,7 +37,7 @@ export class FieldGrid{
   diffuse(name,rate){const a=this.fields.get(name),b=Float32Array.from(a),k=clamp(rate)*.25;for(let y=0;y<this.rows;y++)for(let x=0;x<this.cols;x++){const i=y*this.cols+x;for(const j of [x+1<this.cols?i+1:-1,y+1<this.rows?i+this.cols:-1])if(j>=0){const f=(a[j]-a[i])*k;b[i]+=f;b[j]-=f}}this.fields.set(name,b);return this}
 }
 class PairEngine{
-  constructor(rules=[]){this.rules=rules.map(clone);this.constraints=[]}
+  constructor(items=[]){this.rules=[];this.constraints=[];for(const item of items)(Object.hasOwn(item,'rest')?this.constraints:this.rules).push(clone(item))}
   register(rule){this.rules.push(clone(rule));return this}
   add(c){this.constraints.push(clone(c));return this}
   apply(store,index,dt=1){const force=new Map();for(const r of this.rules){for(const a of store.entities.values()){if(a.state!=='active'||(r.a!=='*'&&a.type!==r.a))continue;const p=a.properties;for(const b of index.query(p.x,p.y,r.radius)){if(a.id===b.id||b.state!=='active'||(r.b!=='*'&&b.type!==r.b)||((r.a===r.b||r.a==='*'&&r.b==='*')&&b.id<=a.id))continue;const q=b.properties,dx=q.x-p.x,dy=q.y-p.y,d=Math.hypot(dx,dy)||.0001;if(d>r.radius)continue;const sign=r.mode==='repel'?-1:1,m=(1-d/r.radius)*num(r.strength,1)*sign*dt,fx=dx/d*m,fy=dy/d*m;for(const [e,x,y] of [[a,fx,fy],[b,-fx,-fy]]){const f=force.get(e.id)||{x:0,y:0};f.x+=x;f.y+=y;force.set(e.id,f)}}}}for(const [id,f] of force){const p=store.get(id).properties,m=Math.max(.001,num(p.mass,1));p.vx=num(p.vx)+f.x/m;p.vy=num(p.vy)+f.y/m}return force.size}
