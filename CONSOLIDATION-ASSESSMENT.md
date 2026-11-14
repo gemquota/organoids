@@ -286,3 +286,10 @@ Provide a seeded random source and record external inputs plus committed action 
 Always report actual measured source size, separately from estimates and from tests/documentation. Report both total characters and non-whitespace characters; use UTF-8 bytes only when explicitly labelled as bytes. Compare like-for-like scopes.
 
 The previous 710/1,925-character figures were planning estimates, not measured implementation sizes. The earlier Boids branch's 12,803-character `emergence.js` was a different branch and is not the authoritative Organoids baseline.
+
+
+## GolfCore lineage reconciliation
+
+The unified runtime originally retained richer entity, relation and action-transaction systems but omitted GolfCore's generic predicate/effect execution contract. Biological reactions were not an equivalent replacement. The runtime now exposes `core`, with named predicate/effect registries, ordered phase/priority rules, staged entity-property patches and atomic commits through EntityStore transactions. Invalid/foreign entities and duplicate entity writes reject the complete batch. Core rules run as the first scheduler phase; reaction rules remain a distinct domain-level layer.
+
+The original GolfCore's generic entity and relation roles are covered by EntityStore and typed links. Its arbitrary declarative rule execution and staged patch semantics are now restored. The original `s` payload maps to the unified entity's `properties` object; identity/type remain stable entity metadata.
