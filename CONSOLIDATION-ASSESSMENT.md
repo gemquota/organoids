@@ -48,7 +48,7 @@ The page demonstrates particle motion, pair interactions, energy flux, dissipati
 
 ## Verification boundaries
 
-The last verified pre-GolfCore baseline passed 28 tests and `node --check emergence.js` (Actions run 119). GolfCore recovery adds four regression tests. The current changes require fresh CI. Browser rendering, sustained-load stability, complete energy/matter conservation and full biological progression are not claimed as verified.
+GitHub Actions run 137 passed all 32 tests and `node --check emergence.js` after GolfCore recovery. Browser rendering, sustained-load stability, complete energy/matter conservation and full biological progression are not claimed as verified.
 
 ## Measurement discipline
 
