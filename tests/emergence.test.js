@@ -143,3 +143,30 @@ test('directed unlink removes only the requested edge orientation',()=>{
  s.unlink(a.id,b.id,'signals');assert.deepEqual(s.outgoing(a.id,'signals'),[]);
  assert.deepEqual(s.incoming(a.id,'signals'),[b.id]);
 });
+
+test('transaction journal preserves nested property and child-array identities',()=>{
+ const s=new EntityStore(),p=s.create('cell',{nested:{v:1}}),c=s.create('part');s.compose(p.id,c.id);
+ const nested=p.properties.nested,children=p.children;
+ const bad=s.transact([{op:'set',id:p.id,key:'nested',value:{v:8}},{op:'remove',id:999}]);
+ assert.equal(bad.ok,false);assert.equal(p.properties.nested,nested);assert.equal(nested.v,1);assert.equal(p.children,children);assert.deepEqual(children,[c.id]);
+});
+test('generic quantities transfer and energy inventory audit balances',()=>{
+ const f=new FieldGrid(2,2,2,2).define('heat',0,{unit:'energy'}),e=new EnergyEngine(f),s=new EntityStore(),a=s.create('cell',{}, {energy:4}),b=s.create('cell');
+ a.quantities={carbon:6};b.quantities={carbon:1};e.transferQuantity(a,b,'carbon',2);e.source(a,3);e.dissipate(a,1);
+ const audit=e.audit(s,11);assert.equal(a.quantities.carbon,4);assert.equal(b.quantities.carbon,3);assert.equal(audit.total,14);assert.equal(audit.residual,0);assert.equal(audit.balanced,true);
+});
+test('field metadata drives diffusion, decay, gradients and advection in place',()=>{
+ const f=new FieldGrid(5,5,5,5).define('nutrient',0,{unit:'mass',diffusion:.2,decay:.1,advection:{x:.1,y:0}});
+ const a=f.fields.get('nutrient');f.add('nutrient',2,2,10);assert.ok(f.gradient('nutrient',1,2).x>0);
+ f.transport(1);assert.equal(f.fields.get('nutrient'),a);assert.ok(f.total('nutrient')<10);f.advect('nutrient',.1,0,1);assert.equal(f.fields.get('nutrient'),a);
+});
+test('reactions reject energy overdraw and require explicit external sink for remainder',()=>{
+ const s=new EntityStore(),a=s.create('A',{}, {energy:4}),r=new RuleEngine({random:()=>0,energy:new EnergyEngine()});
+ r.register({id:'leak',inputs:['A'],outputs:[{type:'B',energy:9}],rate:10});assert.equal(r.run(s,1),0);assert.ok(s.get(a.id));
+ const q=new RuleEngine({random:()=>0,energy:new EnergyEngine()});q.register({id:'sink',inputs:['A'],outputs:[{type:'B',energy:2}],rate:10,energySink:'external'});
+ assert.equal(q.run(s,1),1);assert.equal(q.energy.ledger.output,2);
+});
+test('field advection follows metadata and wraps at periodic boundaries',()=>{
+ const f=new FieldGrid(4,2,4,2).define('signal',0,{boundary:'wrap',advection:{x:1,y:0}});
+ f.add('signal',0,0,4);f.transport(1);assert.ok(f.total('signal')>0);assert.ok(f.fields.get('signal')[1]>0);
+});
