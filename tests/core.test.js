@@ -36,13 +36,13 @@ test('declarative rules stage effects and commit them',()=>{
   assert.equal(e.state.x,7);
 });
 
-test('rule phases execute in ascending order',()=>{
+test('rule phases and priorities execute in ascending order',()=>{
   const G=core(),e=G.entity('a','particle',{v:0});
   G.when('yes',()=>true);
   G.then('add1',x=>({e:x,patch:{v:x.state.v+1}}));
   G.then('add10',x=>({e:x,patch:{v:x.state.v+10}}));
-  G.rule(10,'yes','add10');
-  G.rule(0,'yes','add1');
+  G.rule(0,'yes','add10',5);
+  G.rule(0,'yes','add1',1);
   G.run([e]);
   assert.equal(e.state.v,11);
 });
