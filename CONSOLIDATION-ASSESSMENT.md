@@ -20,7 +20,7 @@ The authoritative simulation is the self-contained `accretion.html`. `emergence.
 | Scheduling | Ordered named phases, time and tick |
 | Runtime | Shared engine instances, spatial rebuild, pair forces, constraints, integration, reactions and metadata-driven field transport |
 | Browser demo | Particle motion, attraction/repulsion, environmental energy flux, aggregation into molecule entities and rendering |
-| Regression | 28 automated tests; CI run #109 passed `npm test` and `node --check emergence.js` |
+| Regression | 28 automated tests; CI run #117 passed `npm test` and `node --check emergence.js` |
 
 The browser demo demonstrates an early aggregation stage. It does not yet demonstrate polymerisation, membrane assembly, protocells, autocatalytic metabolism, replication, heredity, signalling networks, differentiation or colonial organisation. Those remain target capabilities, not completed features.
 
@@ -276,7 +276,7 @@ Provide a seeded random source and record external inputs plus committed action 
 
 ## Verification boundaries
 
-- GitHub Actions run #109 passed both `npm test` (28 tests) and `node --check emergence.js` after the implementation corrections. Browser interaction and sustained-load performance have not been separately benchmarked.
+- GitHub Actions run #117 passed both `npm test` (28 tests) and `node --check emergence.js` after the unit-aware quantity correction. Browser interaction and sustained-load performance have not been separately benchmarked.
 - Targeted earlier runtime assertions covered typed-edge traversal, containment-cycle rejection, transaction commit/rollback, reaction execution, heat accounting and composite-reactant energy handling.
 - This investigation is a source-level architectural review, not a new runtime benchmark or browser verification.
 - Sustained-load stability, global energy/matter conservation, deterministic replay and full biological progression remain unverified.
