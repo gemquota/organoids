@@ -1,24 +1,18 @@
-# Unified emergence substrate
+# Organoids runtime
 
-The simulation uses one recursive entity model. A particle, molecule, membrane, protocell or colony is an entity with properties and state; larger structures compose smaller entities and connect them through typed graph relationships.
+Organoids builds emergence from generic entities, relations and operations. A particle, molecule, membrane, protocell or colony uses the same substrate; higher biology is expressed as data and composable rules.
 
-## Runtime
+## Kernel and runtime
 
-Import `createRuntime` from `emergence.js`. It composes:
-
-- GolfCore: generic predicate/effect registries, ordered rules and atomic staged commits.
-- EntityStore: entity lifecycle, recursive composition, typed links and snapshots.
-- SpatialIndex: uniform-grid neighbour queries.
-- FieldGrid: named scalar fields and conservative diffusion.
-- InteractionEngine: declarative type-pair attraction and repulsion.
-- ConstraintEngine: reusable distance constraints.
-- EnergyEngine: source, transfer, conversion and dissipation ledger.
-- GraphEngine: neighbourhoods, connected components and cycle detection.
-- RuleEngine: data-defined reactions with inputs, outputs, catalysts, conditions, rates and energy costs.
-- TopologyEngine: structure assembly, division and closure checks.
-- Scheduler: ordered update phases.
-
-Example:
+- **GolfCore:** named predicates/effects, ordered phase/priority rules, staged property patches and atomic commits. Exposed as `runtime.core`.
+- **EntityStore:** entity lifecycle, typed links, recursive containment, graph indexes, snapshots and journalled transactions.
+- **SpatialIndex:** uniform-grid neighbour queries.
+- **PairEngine:** attraction/repulsion plus positional constraints; `InteractionEngine` and `ConstraintEngine` are aliases.
+- **FieldGrid:** typed scalar fields, conservative diffusion, decay, gradients, advection and cell-level rollback.
+- **EnergyEngine:** energy/material quantities, transfer, conversion, dissipation and inventory audit.
+- **GraphEngine:** components, cycles, assembly and division; `TopologyEngine` is an alias.
+- **RuleEngine:** data-defined reactions, catalysts, conditions, rates, products and energy costs.
+- **Scheduler:** core rules, reactions and field transport execute in ordered phases.
 
 ```js
 const sim=createRuntime({width:800,height:450});
@@ -29,27 +23,16 @@ sim.interactions.register({
   id:'cohesion',a:'particle',b:'particle',
   radius:24,strength:.2,mode:'attract'
 });
-sim.rules.register({
-  id:'polymerise',inputs:['monomer','monomer'],
-  outputs:[{type:'dimer'}],catalysts:['catalyst'],
-  rate:.08,energyCost:.01
-});
 ```
 
-## Emergence ladder
+## Emergence path
 
-Entities compose into molecules; molecules and polymers form networks and membranes; membranes enclose compartments; compartments plus reaction networks and energy flux form protocell-like systems; division, inheritance, signalling and selection can then operate on the same entity and relationship model.
+Aggregation → bonding → molecular formation → reactions → polymerisation → autocatalytic networks → lipid assembly → protocells → replication → cellular reproduction → colonies → differentiation → morphogenesis.
 
-## Thermodynamic contract
+The substrate provides reusable primitives; this list is not a claim that every stage is already implemented.
 
-The engine explicitly accounts for energy sources, transfers, conversion losses and dissipation. Sustained organisation requires an external energy flux and an entropy sink; conservative interactions alone cannot sustain it. The current accretion demo supplies a small environmental energy flux and dissipates energy each update.
+## Boundaries
 
-## Symbol accounting
+The current demo shows particle motion, pair forces, energy flux and aggregation. The later biological stages remain future work. Interpolation-based advection is not strictly conservative. Energy audits only cover flows routed through EnergyEngine and require a baseline. Arbitrary external side effects are outside transaction rollback.
 
-The previous 710/1,925 estimates were planning estimates, not source-size estimates. In the earlier Boids branch, `emergence.js` contained 12,803 characters (12,350 non-whitespace), roughly 17.4 times the 710-character substrate estimate. That branch's PR was closed unmerged and is not the authoritative Organoids implementation.
-
-For this repository, report actual source size as both UTF-8 bytes and non-whitespace characters, separately from tests and documentation. Do not compare a feature estimate with an entire file unless the measured scope matches.
-
-## Validation
-
-Run `npm test`. The browser prototype is `accretion.html`; it imports the same shared substrate used by tests.
+`emergence.js` is the tested reference module. `accretion.html` is deliberately standalone and carries a synchronised inline copy. Run `npm test` and `node --check emergence.js` for the automated checks.
