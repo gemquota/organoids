@@ -18,3 +18,5 @@ test('energy-field decay is an accounted external flux',()=>{const f=new FieldGr
 test('direct entity energy mutation is rejected outside the flux operator',()=>{const f=new FieldGrid(1,1,1,1),e=new EnergyEngine(f),a={energy:2,properties:{}},b={energy:0,properties:{}};assert.throws(()=>e.change(a,'energy',1),/flux operation/);e.transfer(a,b,1);assert.equal(a.energy,1);});
 
 test('energy-field diffusion and advection preserve the spatial reservoir',()=>{const f=new FieldGrid(4,4,4,4).define('heat',0,{unit:'energy'}),e=new EnergyEngine(f);e.sourceField('heat',1,1,12);const before=f.total('heat');f.diffuse('heat',.7).advect('heat',.2,-.1,1);assert.ok(Math.abs(f.total('heat')-before)<1e-5);assert.equal(e.audit({entities:new Map()},0).balanced,true);});
+
+test('energy ledger is a read-only accounting projection',()=>{const f=new FieldGrid(1,1,1,1),e=new EnergyEngine(f);assert.equal(Object.isFrozen(e.ledger),true);assert.throws(()=>{e.ledger.input=99},TypeError);assert.equal(e.ledger.input,0);});
