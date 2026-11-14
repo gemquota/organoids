@@ -15,14 +15,14 @@ const R=[],Q=[],P={},X={};
 const entity=(id,type,state={})=>({id,type,state});
 const relate=(a,k,b)=>R.push([a,k,b]);
 const when=(k,f)=>P[k]=f,then=(k,f)=>X[k]=f;
-const rule=(phase,w,x)=>Q.push({phase,w,x,order:Q.length});
+const rule=(phase,w,x,priority=0)=>Q.push({phase,priority,w,x,order:Q.length});
 const commit=(a,c)=>{
 if(!c.every(x=>a.includes(x.e)&&(!x.patch||typeof x.patch==='object'))||new Set(c.map(x=>x.e)).size!==c.length)return false;
 c.forEach(x=>x.patch&&Object.assign(x.e.state,x.patch));
 c.filter(x=>x.remove).forEach(x=>a.splice(a.indexOf(x.e),1));
 return true
 };
-const run=(a,ctx)=>[...Q].sort((x,y)=>x.phase-y.phase||x.order-y.order).forEach(r=>{
+const run=(a,ctx)=>[...Q].sort((x,y)=>x.phase-y.phase||x.priority-y.priority||x.order-y.order).forEach(r=>{
 const s=a.slice(),c=[];
 s.forEach(e=>{if(P[r.w](e,ctx)){const v=X[r.x](e,ctx);if(v)c.push(...[].concat(v))}});
 commit(a,c)
@@ -41,17 +41,18 @@ for(i=800;i--;)A.push(G.entity(i,'particle',{x:R()*W,y:R()*H,v:0,w:0,m:1}));
 (f=_=>{
 g.fillStyle='#05090c';g.fillRect(0,0,W,H);
 G.run(A);
-A.forEach((p,i)=>{
+for(i=0;i<A.length;i++){
+p=A[i];
 for(j=i;j--;){
 q=A[j];s=p.state;t=q.state;x=t.x-s.x;y=t.y-s.y;d=M(x,y)||1;
 if(d<160){z=d<8?-.2:1.6/(d*d);s.v-=x/d*z;s.w-=y/d*z;t.v+=x/d*z;t.w+=y/d*z}
 if(d<3*(Math.sqrt(s.m)+Math.sqrt(t.m))){
 n=s.m+t.m;
 G.relate(p.id,'absorbed',q.id);
-G.commit(A,[{e:p,patch:{v:(s.v*s.m+t.v*t.m)/n,w:(s.w*s.m+t.w*t.m)/n,x:(s.x*s.m+t.x*t.m)/n,y:(s.y*s.m+t.y*t.m)/n,m:n}},{e:q,remove:true}])
+G.commit(A,[{e:p,patch:{v:(s.v*s.m+t.v*t.m)/n,w:(s.w*s.m+t.w*t.w)/n,x:(s.x*s.m+t.x*t.x)/n,y:(s.y*s.m+t.y*t.y)/n,m:n}},{e:q,remove:true}]);i--
 }
 }
-});
+}
 g.fillStyle='#72d9d0';
 A.forEach(p=>{s=p.state;g.beginPath();g.arc(s.x,s.y,3*Math.sqrt(s.m),0,7);g.fill()});
 requestAnimationFrame(f)
