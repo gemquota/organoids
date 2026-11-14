@@ -93,7 +93,7 @@ test('entity transactions commit typed actions and roll back all state on failur
  assert.equal(bad.ok,false);assert.deepEqual(s.snapshot(),before);assert.deepEqual([...f.fields.get('heat')],heat);assert.deepEqual(energy.ledger,ledger);
 });
 test('reaction action batches are atomic and emit resolved product identities',()=>{
- const s=new EntityStore(),a=s.create('A',{purity:1},{energy:3}),b=s.create('B'),cat=s.create('catalyst'),energy=new EnergyEngine(),rules=new RuleEngine({random:()=>0,energy});
+ const s=new EntityStore(),a=s.create('A',{purity:1,x:0,y:0},{energy:3}),b=s.create('B'),cat=s.create('catalyst'),fields=new FieldGrid(2,2,2,2).define('heat'),energy=new EnergyEngine(fields),rules=new RuleEngine({random:()=>0,energy});
  rules.register({id:'make',inputs:['A','B'],catalysts:['catalyst'],energyCost:1,outputs:[{type:'AB'}],rate:10});
  assert.equal(rules.run(s,1),1);assert.equal(s.get(a.id),undefined);assert.equal(s.get(b.id),undefined);assert.equal(s.get(cat.id).type,'catalyst');
  const event=rules.events[0],product=s.get(event.outputs[0]);assert.equal(product.type,'AB');assert.equal(product.energy,2);assert.equal(energy.ledger.fielded,1);
