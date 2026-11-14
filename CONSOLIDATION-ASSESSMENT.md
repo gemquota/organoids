@@ -10,17 +10,17 @@ The authoritative simulation is the self-contained `accretion.html`. `emergence.
 | Composition | Recursive containment, descendants, reparenting and cycle prevention |
 | Relationships | Typed edges, relationship schemas, directed queries, symmetric adjacency and indexed traversal |
 | Transactions | Create, remove, set, compose, link/unlink, energy transfer, field deposit/harvest, dissipation and event emission |
-| Rollback | Entity/edge/field/ledger/event restoration with stable existing entity, property and field-array identity |
+| Rollback | Touched-state entity/edge journal, per-cell field journal, identity-preserving restoration and ledger/event rollback |
 | Spatial | Uniform-grid index and radius neighbour queries |
 | Pair mechanics | Shared PairEngine, canonical unordered-pair candidate stream, attraction/repulsion and distance constraints |
-| Fields | Named scalar grids, sample/add/take and conservative nearest-neighbour diffusion |
-| Energy | External source, transfer, conversion, dissipation, field deposit/harvest and partial ledger |
+| Fields | Unit-tagged scalar grids, gradient sampling, metadata-driven diffusion/decay/advection and in-place transport |
+| Energy | Generic named quantities, transfer, unit-aware inventory and residual audit against an initial baseline |
 | Graph/topology | Neighbours, connected components, cycle checks, assembly, closure predicate and division entry point |
 | Chemistry | Data-defined input/output matching, catalysts, property conditions, stochastic rates and energy costs |
 | Scheduling | Ordered named phases, time and tick |
-| Runtime | Shared engine instances, spatial rebuild, pair forces, constraints, integration and scheduled reactions/heat diffusion |
+| Runtime | Shared engine instances, spatial rebuild, pair forces, constraints, integration, reactions and metadata-driven field transport |
 | Browser demo | Particle motion, attraction/repulsion, environmental energy flux, aggregation into molecule entities and rendering |
-| Regression | 28 automated tests; latest recorded CI run #77 passed `npm test` and `node --check emergence.js` |
+| Regression | 28 automated tests; CI run #109 passed `npm test` and `node --check emergence.js` |
 
 The browser demo demonstrates an early aggregation stage. It does not yet demonstrate polymerisation, membrane assembly, protocells, autocatalytic metabolism, replication, heredity, signalling networks, differentiation or colonial organisation. Those remain target capabilities, not completed features.
 
@@ -39,14 +39,14 @@ The browser demo demonstrates an early aggregation stage. It does not yet demons
 
 ### Rules + scheduler
 - Reactions run as a named scheduler phase.
-- Field diffusion runs as another ordered phase.
+- Metadata-driven field transport runs as another ordered phase.
 - Scheduler owns phase ordering and time; RuleEngine owns matching and reaction semantics.
 
 ### Energy + fields
 - EnergyEngine shares the runtime FieldGrid.
 - Conversion losses and dissipation can enter the heat field when entity coordinates are valid.
 - Energy can move between entity stores and named fields.
-- The ledger distinguishes external input, transfers, useful conversion, external output and fielded heat. It is not yet a complete conservation proof.
+- The ledger distinguishes external input, transfers, useful conversion, external output and fielded heat. `audit()` compares entity/field inventory against an explicit baseline, but cannot account for arbitrary direct mutations outside EnergyEngine.
 
 ### Canonical typed relationships
 - `EntityStore.links` is now the authoritative relationship record store.
@@ -56,7 +56,7 @@ The browser demo demonstrates an early aggregation stage. It does not yet demons
 
 ### Transactional rule actions
 - `EntityStore.transact(actions, context)` provides a shared action vocabulary for entity, relationship, energy, field and event operations.
-- Failed action batches restore the entity store, edge list, field arrays, energy ledger and event length.
+- Failed action batches restore touched entities and relationship edges, journalled field cells, the energy ledger and event length without cloning unrelated entities or field cells.
 - Reactions compile into action batches; product references are resolved after commit and catalysts are preserved.
 - Composite reactants are detached without redistributing consumed reactant energy into their children.
 
@@ -276,7 +276,7 @@ Provide a seeded random source and record external inputs plus committed action 
 
 ## Verification boundaries
 
-- The latest recorded CI run #77 predates this overhaul. Five new regression tests were added; fresh CI verification is required for the 28-test suite.
+- GitHub Actions run #109 passed both `npm test` (28 tests) and `node --check emergence.js` after the implementation corrections. Browser interaction and sustained-load performance have not been separately benchmarked.
 - Targeted earlier runtime assertions covered typed-edge traversal, containment-cycle rejection, transaction commit/rollback, reaction execution, heat accounting and composite-reactant energy handling.
 - This investigation is a source-level architectural review, not a new runtime benchmark or browser verification.
 - Sustained-load stability, global energy/matter conservation, deterministic replay and full biological progression remain unverified.
