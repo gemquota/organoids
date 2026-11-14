@@ -20,7 +20,7 @@ The authoritative simulation is the self-contained `accretion.html`. `emergence.
 | Scheduling | Ordered named phases, time and tick |
 | Runtime | Shared engine instances, spatial rebuild, pair forces, constraints, integration and scheduled reactions/heat diffusion |
 | Browser demo | Particle motion, attraction/repulsion, environmental energy flux, aggregation into molecule entities and rendering |
-| Regression | 23 automated tests; latest recorded CI run #77 passed `npm test` and `node --check emergence.js` |
+| Regression | 27 automated tests; latest recorded CI run #77 passed `npm test` and `node --check emergence.js` |
 
 The browser demo demonstrates an early aggregation stage. It does not yet demonstrate polymerisation, membrane assembly, protocells, autocatalytic metabolism, replication, heredity, signalling networks, differentiation or colonial organisation. Those remain target capabilities, not completed features.
 
@@ -73,9 +73,32 @@ Implemented in the shared substrate and mirrored into the standalone browser eng
 
 These are implemented substrate improvements, not claims that later biological stages are complete.
 
+## Three-pass consolidation overhaul
+
+### Pass 1: transaction journal
+- Replaced whole-store snapshots with a journal of touched entities, their relationship endpoints and affected edges. New entities are removed by transaction ID range on rollback.
+- Rollback preserves entity, properties, nested property and children-array identities for touched entities.
+- FieldGrid journals individual changed cells, avoiding full-field copies for transactional deposits and harvests.
+- Removal updates adjacent endpoints rather than scanning every entity.
+
+### Pass 2: quantity and conservation primitives
+- Added generic named entity quantities and transfer operations while retaining `energy` as the compatibility quantity.
+- Field metadata declares units; energy inventory includes entity energy and fields marked as energy.
+- EnergyEngine exposes inventory and residual audit against an explicit initial baseline.
+- Reactions reject energy overdraw and require an explicit external sink for unallocated product-energy remainder.
+- Field deposits and harvests validate field names and coordinates before changing stores.
+
+### Pass 3: metadata-driven field transport
+- Fields carry unit, diffusion, decay, advection and boundary metadata.
+- Added finite-difference gradients and metadata-selected constant-velocity advection with clamp or periodic-wrap boundaries.
+- Diffusion, decay and advection mutate existing typed arrays in place.
+- Runtime schedules a shared transport phase across configured fields rather than a heat-only diffusion callback.
+
+These are reusable infrastructure primitives, not a complete proof of global matter or energy conservation under arbitrary external mutation.
+
 ## Further consolidation investigation
 
-The following items remain future work; the latest pass implemented relationship indexing/directionality, stable-identity rollback, pair candidate deduplication and atomic assembly.
+The following items remain future work after this three-pass overhaul.
 
 ### 1. Relationship semantics need direction, schema and adjacency
 
@@ -96,30 +119,30 @@ Extend the relationship-kind registry with endpoint-type constraints and configu
 ### 2. Transactions need stable identity and validated action contracts
 
 **Current state**
-- Transactions snapshot the entire entity map, edge list, field arrays, energy ledger and event length.
-- Rollback now restores existing entity/property objects and original field arrays in place.
+- Transactions journal touched entities, relationship endpoints, changed field cells, the energy ledger and event length.
+- Rollback restores touched entity, property, nested property and children-array identities in place.
 - Action names and numeric amounts are prevalidated, but operation-specific required fields and references are still checked during execution.
 - Numeric amounts are not consistently checked for finiteness and valid ranges.
 - A missing relationship removal currently succeeds as a no-op.
 - Transactional removal has an implicit energy-distribution policy unless `discardEnergy` is set.
 
 **Interoperability gap**
-Stable object identity is now preserved for pre-existing entities, properties and field arrays. Whole-store snapshots still scale with total world size, and nested mutable property values are replaced during restoration. Without validated action contracts, each new behaviour can introduce slightly different validation and failure semantics.
+Stable object identity is now preserved for pre-existing entities, properties and field arrays. Journal cost now scales with touched entities, edges and field cells rather than the whole world. Without validated action contracts, each new behaviour can introduce slightly different validation and failure semantics.
 
 **Opportunity**
-Define one action schema with required fields, numeric domains, reference types and preconditions. Validate the full batch before mutation where possible. Replace whole-world snapshots with an undo journal or copy-on-write transaction while retaining the identity guarantees. Make removal energy policy explicit, such as transfer-to-children, transfer-to-products, deposit-to-field or external sink. Add nested transaction policy only if a real use case requires it.
+Define one action schema with required fields, numeric domains, reference types and preconditions. Validate the full batch before mutation where possible. Extend the journal to cover arbitrary external side effects and validate complete operation-specific action schemas before mutation. Make removal energy policy explicit, such as transfer-to-children, transfer-to-products, deposit-to-field or external sink. Add nested transaction policy only if a real use case requires it.
 
 **Priority:** very high. This underpins every reaction, division, fusion, replication and behavioural transition.
 
 ### 3. Energy accounting is not yet conservation accounting
 
 **Current state**
-- Entity energy is a scalar.
-- Fields are scalar arrays without units or transport metadata.
-- The ledger records selected flows but does not calculate total energy held in entities plus all fields plus external output.
+- Energy remains a compatibility scalar; entities also support generic named quantity stores.
+- Fields are scalar arrays with unit and transport metadata.
+- EnergyEngine calculates entity/field energy inventory and a residual audit against an explicit initial baseline; coverage remains limited to stores and flows routed through the engine.
 - Generic field deposits are counted as transfers, while the `fielded` counter is used for heat output specifically.
-- Reaction product energy can be explicitly overridden per output; the engine does not verify that explicit product totals equal reactant energy minus costs and declared sinks.
-- Energy operations assume valid field names and usable entity coordinates; invalid coordinates can cause a field write to miss its intended cell.
+- Reaction output totals are checked against the reactant energy budget; any unallocated remainder requires an explicit external sink.
+- Field deposits and harvests validate field names and finite coordinates before changing entity stores.
 
 **Interoperability gap**
 A ledger of events is not an invariant. The system cannot currently prove that energy entering, leaving, stored in entities and stored in fields balances. Nor can it distinguish energy from arbitrary resource quantities because both are represented as untyped numbers.
@@ -132,10 +155,10 @@ Define typed quantities and material/energy stores with explicit units. Track ex
 ### 4. Field transport is a grid primitive, not a reusable field system
 
 **Current state**
-- FieldGrid supports named scalar arrays, clamped cell lookup, add, sample, take and pairwise conservative diffusion.
+- FieldGrid supports named scalar arrays, units, metadata-driven diffusion/decay/advection, gradients, add/sample/take and per-cell transaction journalling.
 - Diffusion is a no-flux interior exchange: edge cells do not exchange with an exterior reservoir.
-- There is no field metadata, advection, decay, vector field, gradient API, source/sink accounting or boundary-condition policy.
-- The scheduler currently diffuses heat only.
+- Vector/tensor fields, richer boundary policies and field source/sink ledgers remain future work.
+- The scheduler transports all configured fields according to their metadata.
 
 **Interoperability gap**
 Chemotaxis, nutrient uptake, waste export, osmotic gradients, temperature and signalling all need fields, but not necessarily the same transport law. Treating every field as an untyped scalar makes units and transport assumptions implicit.
@@ -253,7 +276,7 @@ Provide a seeded random source and record external inputs plus committed action 
 
 ## Verification boundaries
 
-- Latest recorded GitHub Actions run #77 passed `npm test` and `node --check emergence.js`; the suite contains 17 tests.
+- The latest recorded CI run #77 predates this overhaul. Four new regression tests were added; fresh CI verification is required for the 27-test suite.
 - Targeted earlier runtime assertions covered typed-edge traversal, containment-cycle rejection, transaction commit/rollback, reaction execution, heat accounting and composite-reactant energy handling.
 - This investigation is a source-level architectural review, not a new runtime benchmark or browser verification.
 - Sustained-load stability, global energy/matter conservation, deterministic replay and full biological progression remain unverified.
