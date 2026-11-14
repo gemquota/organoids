@@ -13,11 +13,11 @@ export class EntityStore{
   constructor(){this.entities=new Map();this.links=[];this.next=1}
   create(type,properties={},options={}){const e={id:this.next++,type,properties:{...properties},state:options.state??'active',energy:num(options.energy),parent:null,children:[]};this.entities.set(e.id,e);return e}
   get(id){return this.entities.get(id)}
-  remove(id){const e=this.get(id);if(!e)return false;if(e.parent){const p=this.get(e.parent);if(p)p.children=p.children.filter(x=>x!==id)}const share=e.children.length?e.energy/e.children.length:0;for(const c of e.children){const child=this.get(c);if(child){child.parent=null;child.state='active';child.energy+=share}}this.links=this.links.filter(l=>l.a!==id&&l.b!==id);return this.entities.delete(id)}
-  compose(parent,child){const p=this.get(parent),c=this.get(child);if(!p||!c||p===c)throw Error('Invalid composition');for(let n=p;n;n=n.parent?this.get(n.parent):null)if(n.id===child)throw Error('Composition cycle');if(c.parent){const old=this.get(c.parent);if(old)old.children=old.children.filter(x=>x!==child)}c.parent=parent;c.state='bound';if(!p.children.includes(child))p.children.push(child);return p}
-  link(a,b,type='bond',properties={}){if(!this.get(a)||!this.get(b)||a===b)throw Error('Invalid relationship');if(!this.links.some(l=>l.a===a&&l.b===b&&l.type===type))this.links.push({a,b,type,properties:{...properties}});return this}
-  unlink(a,b,type){this.links=this.links.filter(l=>!(l.a===a&&l.b===b&&(!type||l.type===type))&&!(l.a===b&&l.b===a&&(!type||l.type===type)));return this}
-  descendants(id){const out=[],visit=n=>{for(const c of this.get(n)?.children||[]){out.push(c);visit(c)}};visit(id);return out}
+  remove(id){const e=this.get(id);if(!e)return false;const children=this.links.filter(l=>l.type==='contains'&&l.a===id).map(l=>l.b);for(const c of children){const child=this.get(c);if(child){child.parent=null;child.state='active';child.energy+=e.energy/Math.max(1,children.length)}}if(e.parent){const p=this.get(e.parent);if(p)p.children=p.children.filter(x=>x!==id)}this.links=this.links.filter(l=>l.a!==id&&l.b!==id);for(const n of this.entities.values()){n.children=n.children.filter(x=>x!==id);if(n.parent===id)n.parent=null}return this.entities.delete(id)}
+  compose(parent,child){this.link(parent,child,'contains');return this.get(parent)}
+  link(a,b,type='bond',properties={}){if(!this.get(a)||!this.get(b)||a===b)throw Error('Invalid relationship');if(type==='contains'){for(let n=this.get(a);n;n=n.parent?this.get(n.parent):null)if(n.id===b)throw Error('Composition cycle');const c=this.get(b);if(c.parent&&c.parent!==a)this.unlink(c.parent,b,'contains');c.parent=a;c.state='bound';const p=this.get(a);if(!p.children.includes(b))p.children.push(b)}if(!this.links.some(l=>l.a===a&&l.b===b&&l.type===type))this.links.push({a,b,type,properties:{...properties}});return this}
+  unlink(a,b,type){const removed=this.links.filter(l=>l.type==='contains'&&((l.a===a&&l.b===b)||(l.a===b&&l.b===a))&&(!type||type==='contains'));this.links=this.links.filter(l=>!(l.a===a&&l.b===b&&(!type||l.type===type))&&!(l.a===b&&l.b===a&&(!type||l.type===type)));for(const l of removed){const p=this.get(l.a),c=this.get(l.b);if(p)p.children=p.children.filter(x=>x!==l.b);if(c&&c.parent===l.a){c.parent=null;c.state='active'}}return this}
+  descendants(id){const out=[],visit=n=>{for(const c of this.links.filter(l=>l.type==='contains'&&l.a===n).map(l=>l.b)){out.push(c);visit(c)}};visit(id);return out}
   snapshot(){return{next:this.next,entities:[...this.entities.values()].map(clone),links:clone(this.links)}}
   static restore(s){const store=new EntityStore();store.next=s.next;store.entities=new Map(s.entities.map(e=>[e.id,clone(e)]));store.links=clone(s.links);return store}
 }
@@ -56,7 +56,7 @@ export class EnergyEngine{
 }
 export class GraphEngine{
   constructor(store){this.store=store}
-  neighbours(id,type){const links=this.store.links.filter(l=>(l.a===id||l.b===id)&&(!type||l.type===type)).map(l=>l.a===id?l.b:l.a),e=this.store.get(id),parts=!type||type==='contains'?[...(e?.children||[]),...(e?.parent?[e.parent]:[])]:[];return [...new Set([...links,...parts])] }
+  neighbours(id,type){return [...new Set(this.store.links.filter(l=>(l.a===id||l.b===id)&&(!type||l.type===type)).map(l=>l.a===id?l.b:l.a))] }
   components(type){const nodes=[...this.store.entities.values()].filter(e=>!type||e.type===type),seen=new Set(),out=[];for(const e of nodes)if(!seen.has(e.id)){const group=[],stack=[e.id];seen.add(e.id);while(stack.length){const id=stack.pop();if(!type||this.store.get(id)?.type===type)group.push(id);for(const n of this.neighbours(id))if(!seen.has(n)){seen.add(n);stack.push(n)}}out.push(group)}return out}
   hasCycle(ids){const set=new Set(ids),seen=new Set();const visit=(id,parent)=>{seen.add(id);for(const n of this.neighbours(id))if(set.has(n)){if(!seen.has(n)){if(visit(n,id))return true}else if(n!==parent)return true}return false};for(const id of ids)if(!seen.has(id)&&visit(id,null))return true;return false}
   assemble(type,ids,properties={}){const root=this.store.create(type,properties);for(const id of ids)this.store.compose(root.id,id);return root}
