@@ -119,3 +119,11 @@ test('reaction action batches are atomic and emit resolved product identities',(
  assert.equal(rules.run(s,1),1);assert.equal(s.get(a.id),undefined);assert.equal(s.get(b.id),undefined);assert.equal(s.get(cat.id).type,'catalyst');
  const event=rules.events[0],product=s.get(event.outputs[0]);assert.equal(product.type,'AB');assert.equal(product.energy,2);assert.equal(energy.ledger.fielded,1);
 });
+
+test('reaction consumption conserves energy when reactants contain components',()=>{
+ const s=new EntityStore(),a=s.create('A',{x:0,y:0},{energy:3}),part=s.create('part',{}, {energy:1}),b=s.create('B'),f=new FieldGrid(2,2,2,2).define('heat'),energy=new EnergyEngine(f),rules=new RuleEngine({random:()=>0,energy});
+ s.compose(a.id,part.id);rules.register({id:'consume',inputs:['A','B'],energyCost:1,outputs:[{type:'AB'}],rate:10});
+ assert.equal(rules.run(s,1),1);const product=s.get(rules.events[0].outputs[0]);
+ assert.equal(s.get(part.id).energy,1);assert.equal(product.energy,2);assert.equal(energy.ledger.fielded,1);
+ assert.equal(s.get(part.id).state,'active');
+});
