@@ -1,31 +1,63 @@
 <!doctype html>
-<meta name=viewport content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ORGANOIDS · Emergent Life Atlas</title>
 <style>
-body{margin:0;overflow:hidden;background:#05090c}
-canvas{display:block;width:100vw;height:100vh}
+:root{color-scheme:dark;font:14px system-ui;background:#071014;color:#d8eeeb}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 70% 0,#15343a,#071014 65%)}
+header{padding:18px 22px;border-bottom:1px solid #25464b;display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+h1{font-size:18px;letter-spacing:.16em;margin:0;color:#9ce5d9}header small,.muted{color:#83a9a6}
+main{display:grid;grid-template-columns:minmax(230px,290px) 1fr;min-height:calc(100vh - 60px)}
+aside{border-right:1px solid #25464b;padding:14px;max-height:calc(100vh - 60px);overflow:auto}
+input,select{width:100%;background:#102328;color:#d8eeeb;border:1px solid #31575a;border-radius:7px;padding:9px;margin:5px 0 12px}
+nav{display:grid;gap:5px}.item{background:#102328;border:1px solid #25464b;color:inherit;text-align:left;padding:9px;border-radius:7px;cursor:pointer}.item[aria-current=true]{border-color:#72d9c9;background:#17383b}
+section{padding:18px;min-width:0}.top{display:grid;grid-template-columns:minmax(220px,360px) 1fr;gap:18px;align-items:start}
+canvas{width:100%;aspect-ratio:1;background:radial-gradient(circle,#16363b,#081316 72%);border:1px solid #25464b;border-radius:12px}
+h2{margin:0 0 6px;font-size:22px;color:#a6e9dc}.tag{display:inline-block;border:1px solid #386366;border-radius:99px;padding:3px 8px;margin:3px 4px 3px 0;color:#a9d9d2;font-size:12px}
+dl{display:grid;grid-template-columns:110px 1fr;gap:8px;margin:14px 0}dt{color:#82aaa5}dd{margin:0}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-top:20px}.card{background:#0e2024;border:1px solid #25464b;border-radius:9px;padding:11px;cursor:pointer}.card:hover{border-color:#72d9c9}.card b{display:block;margin-bottom:4px}.card small{color:#83a9a6}
+@media(max-width:720px){main{grid-template-columns:1fr}aside{max-height:32vh;border-right:0;border-bottom:1px solid #25464b}.top{grid-template-columns:1fr 1fr}section{padding:12px}}@media(max-width:480px){.top{grid-template-columns:1fr}}
 </style>
-<canvas id=c></canvas>
+<header><h1>ORGANOIDS / LIFE ATLAS</h1><small>Data-driven morphologies · composable biological capabilities · non-linear emergence</small></header>
+<main><aside><label for="search">Find an entity</label><input id="search" placeholder="Search names, structures, functions…"><label for="stage">Organisation</label><select id="stage"><option value="">All levels</option></select><nav id="nav"></nav></aside>
+<section><div class="top"><canvas id="specimen" width="480" height="480"></canvas><div><h2 id="name">Select a specimen</h2><p class="muted" id="summary">Browse the registry. Each entry describes a reusable organisational pattern, not a fixed species.</p><div id="tags"></div><dl id="facts"></dl></div></div><div class="cards" id="cards"></div></section></main>
 <script>
-g=c.getContext('2d'),A=[],R=Math.random,M=Math.hypot,
-(onresize=_=>{W=c.width=innerWidth;H=c.height=innerHeight})();
-for(i=800;i--;)A.push({x:R()*W,y:R()*H,v:0,w:0,m:1});
-(f=_=>{
-g.fillStyle='#05090c';g.fillRect(0,0,W,H);
-A.forEach((p,i)=>{
-p.v=(p.v+R()-.5)*.95;p.w=(p.w+R()-.5)*.95;p.x+=p.v;p.y+=p.w;
-for(j=i;j--;){
-q=A[j];x=q.x-p.x;y=q.y-p.y;d=M(x,y)||1;
-if(d<160){z=d<8?-.2:1.6/(d*d);p.v-=x/d*z;p.w-=y/d*z;q.v+=x/d*z;q.w+=y/d*z}
-if(d<3*(Math.sqrt(p.m)+Math.sqrt(q.m))){
-n=p.m+q.m;
-p.v=(p.v*p.m+q.v*q.m)/n;p.w=(p.w*p.m+q.w*q.m)/n;
-p.x=(p.x*p.m+q.x*q.m)/n;p.y=(p.y*p.m+q.y*q.m)/n;
-p.m=n;A.splice(j,1)
-}
-}
-});
-g.fillStyle='#72d9d0';
-A.forEach(p=>{g.beginPath();g.arc(p.x,p.y,3*Math.sqrt(p.m),0,7);g.fill()});
-requestAnimationFrame(f)
-})()
+const E=[
+{id:"vesicle",name:"Lipid vesicle",stage:"Compartments",form:"sphere",summary:"A membrane-bounded compartment formed by amphiphilic self-assembly.",structure:"Lipid bilayer enclosing an aqueous volume",energy:"No inherent metabolism; can host reactions",growth:"Membrane incorporation",division:"Budding, fission under suitable conditions",cap:["compartmentalisation","selective permeability"],next:["protocell","multivesicle"]},
+{id:"coacervate",name:"Coacervate droplet",stage:"Compartments",form:"droplet",summary:"A dense liquid phase that concentrates molecules and can exchange material with its surroundings.",structure:"Molecularly enriched liquid phase",energy:"Depends on hosted chemistry",growth:"Droplet fusion and solute uptake",division:"Shear- or instability-driven fragmentation",cap:["concentration","exchange","reaction hosting"],next:["protocell"]},
+{id:"micelle",name:"Micelle",stage:"Assemblies",form:"micelle",summary:"A self-assembled amphiphile aggregate with a hydrophobic interior.",structure:"Single-layer amphiphile assembly",energy:"None intrinsically",growth:"Amphiphile addition",division:"Disassembly and reassembly",cap:["self-assembly"],next:["vesicle"]},
+{id:"autocatalyst",name:"Autocatalytic network",stage:"Assemblies",form:"network",summary:"A set of reactions in which products help catalyse further production within the network.",structure:"Interdependent reaction graph",energy:"Requires external free-energy flow",growth:"Catalyst and substrate availability",division:"Network partitioning with retained closure",cap:["catalysis","chemical memory"],next:["protocell"]},
+{id:"protocell",name:"Protocell",stage:"Protocells",form:"cell",summary:"A bounded chemical system coupling compartment growth with internal reaction networks.",structure:"Boundary plus internally coupled chemistry",energy:"Gradient-driven or substrate-driven",growth:"Boundary and internal network co-growth",division:"Compartment fission with compositional inheritance",cap:["compartmentalisation","metabolism-like chemistry","heritable variation"],next:["replicator","colony"]},
+{id:"replicator",name:"Minimal replicator",stage:"Protocells",form:"cell",summary:"A system that produces copies of heritable information or structure, with variation and resource limits.",structure:"Template or self-propagating organisation",energy:"Substrate-dependent",growth:"Template replication",division:"Copy propagation",cap:["replication","heredity","variation"],next:["cell"]},
+{id:"coccus",name:"Coccus",stage:"Cells",form:"sphere",summary:"A roughly spherical cellular morphology; may occur singly, in pairs, chains or clusters.",structure:"Single compact cell",energy:"Metabolic strategy varies",growth:"Cell enlargement then division",division:"Binary fission in many examples",cap:["membrane","metabolism","homeostasis","replication"],next:["pairs","chains","clusters"]},
+{id:"bacillus",name:"Bacillus",stage:"Cells",form:"rod",summary:"A rod-shaped cell with length and width as distinct morphological parameters.",structure:"Elongated cell envelope",energy:"Metabolic strategy varies",growth:"Polar or dispersed wall growth",division:"Transverse division",cap:["membrane","metabolism","homeostasis","replication"],next:["chains","filament"]},
+{id:"spirillum",name:"Spiral cell",stage:"Cells",form:"spiral",summary:"A helical or curved cellular body plan, often associated with specialised motility.",structure:"Helical cell body",energy:"Metabolic strategy varies",growth:"Cell elongation",division:"Cell division",cap:["membrane","metabolism","motility"],next:["motile-colony"]},
+{id:"amoeboid",name:"Amoeboid cell",stage:"Cells",form:"amoeba",summary:"A deformable cell that changes shape and moves using cytoplasmic protrusions.",structure:"Flexible membrane and dynamic cytoskeleton",energy:"ATP-dependent remodelling",growth:"Assimilation and biosynthesis",division:"Cell division",cap:["deformation","motility","phagocytosis","sensing"],next:["aggregative-colony"]},
+{id:"flagellate",name:"Flagellated cell",stage:"Cells",form:"flagellum",summary:"A cell propelled or steered by one or more flagella.",structure:"Cell body with rotary or bending appendage",energy:"Motor-driven propulsion",growth:"Cell growth and division",division:"Cell division",cap:["motility","chemotaxis","sensing"],next:["colonial-sphere"]},
+{id:"filament",name:"Cellular filament",stage:"Colonies",form:"filament",summary:"A chain of connected cells forming a one-dimensional multicellular structure.",structure:"Serial connected cells",energy:"Distributed or shared",growth:"Intercalary or terminal cell division",division:"Fragmentation and propagule formation",cap:["adhesion","coordination","distributed growth"],next:["branched-colony"]},
+{id:"colonial-sphere",name:"Spherical colony",stage:"Colonies",form:"colony",summary:"Cells arranged around a shared surface or matrix, sometimes with coordinated movement.",structure:"Radial cellular arrangement",energy:"Shared environmental resources",growth:"Colony enlargement and cell division",division:"Daughter-colony formation",cap:["adhesion","coordination","collective motility"],next:["differentiated-colony"]},
+{id:"aggregative-colony",name:"Aggregative colony",stage:"Colonies",form:"cluster",summary:"Previously independent cells gather into a temporary or persistent multicellular assembly.",structure:"Adhesive cellular cluster",energy:"Individual or shared",growth:"Recruitment and cell division",division:"Dispersal or propagule formation",cap:["chemotaxis","adhesion","communication"],next:["slug","fruiting-body"]},
+{id:"mycelium",name:"Mycelial network",stage:"Colonies",form:"branch",summary:"A branching network of tubular filaments that explores and exploits distributed resources.",structure:"Interconnected hyphal tubes",energy:"Transported nutrients and local uptake",growth:"Apical extension and branching",division:"Fragmentation or spore production",cap:["branching","transport","resource foraging"],next:["fruiting-body"]},
+{id:"organoid",name:"Self-organising organoid",stage:"Tissues",form:"organoid",summary:"A three-dimensional cell assembly that develops organised, tissue-like features through local rules and signalling.",structure:"Differentiated cell populations with spatial organisation",energy:"Nutrient and oxygen supply",growth:"Proliferation, differentiation and morphogenesis",division:"Budding or fragmentation in some systems",cap:["differentiation","signalling","morphogenesis","pattern formation"],next:["modular-organism"]},
+{id:"modular-organism",name:"Modular organism",stage:"Organisms",form:"branch",summary:"An organism built from repeated modules that may retain partial physiological or developmental autonomy.",structure:"Repeated connected modules",energy:"Integrated or semi-independent",growth:"Module addition and branching",division:"Fragmentation, budding or sexual reproduction",cap:["modularity","regeneration","distributed control"],next:["population"]},
+{id:"radial-organism",name:"Radial body plan",stage:"Organisms",form:"radial",summary:"An organism organised around a central axis with repeated structures arranged radially.",structure:"Radial symmetry and tissue layers",energy:"Integrated metabolism",growth:"Tissue expansion and patterning",division:"Species-dependent reproduction",cap:["tissue integration","sensing","movement or sessility"],next:["population"]},
+{id:"bilateral-organism",name:"Bilateral body plan",stage:"Organisms",form:"bilateral",summary:"A body with distinct anterior-posterior and dorsal-ventral organisation.",structure:"Differentiated axes and organ systems",energy:"Integrated metabolism",growth:"Coordinated tissue and organ development",division:"Species-dependent reproduction",cap:["directional movement","centralised sensing","organ integration"],next:["population"]},
+{id:"ecosystem",name:"Ecological community",stage:"Ecologies",form:"ecosystem",summary:"Interacting populations linked by resource flows, competition, predation, cooperation and environmental feedback.",structure:"Multi-species interaction network",energy:"External energy input and trophic transfer",growth:"Population and habitat dynamics",division:"Not applicable; community assembly and succession",cap:["trophic interaction","competition","symbiosis","succession"],next:[]}
+];
+const $=id=>document.getElementById(id),stages=[...new Set(E.map(e=>e.stage))];
+stages.forEach(s=>{let o=document.createElement("option");o.value=s;o.textContent=s;$("stage").append(o)});
+let active=E[0].id;
+function draw(e){let c=$("specimen"),x=c.getContext("2d"),w=c.width,h=c.height;x.clearRect(0,0,w,h);x.save();x.translate(w/2,h/2);x.strokeStyle="#83e2d2";x.fillStyle="rgba(91,205,188,.18)";x.lineWidth=3;
+const dot=(a,b,r=5)=>{x.beginPath();x.arc(a,b,r,0,7);x.fill();x.stroke()};
+if(e.form==="sphere"||e.form==="cell"||e.form==="micelle"||e.form==="droplet"){dot(0,0,e.form==="micelle"?55:85);if(e.form!=="micelle"){x.beginPath();x.arc(0,0,67,0,7);x.stroke();for(let i=0;i<12;i++){let a=i*Math.PI/6;dot(Math.cos(a)*85,Math.sin(a)*85,4)}}}
+if(e.form==="rod"){x.beginPath();x.roundRect(-105,-42,210,84,42);x.fill();x.stroke();for(let i=-2;i<=2;i++)dot(i*34,0,3)}
+if(e.form==="spiral"||e.form==="flagellum"){x.beginPath();for(let i=0;i<240;i++){let t=i/239*Math.PI*5,r=8+i*.25;x.lineTo(Math.cos(t)*r,Math.sin(t)*r)}x.stroke();if(e.form==="flagellum"){x.beginPath();x.moveTo(0,0);x.quadraticCurveTo(100,-100,150,20);x.stroke()}}
+if(e.form==="amoeba"||e.form==="cluster"||e.form==="colony"){for(let i=0;i<(e.form==="amoeba"?1:18);i++){let a=i*2.4,r=e.form==="amoeba"?0:Math.sqrt(i)*20;dot(Math.cos(a)*r,Math.sin(a)*r, e.form==="amoeba"?65:13)}}
+if(e.form==="filament"||e.form==="branch"){for(let k=0;k<(e.form==="filament"?1:7);k++){x.beginPath();for(let i=0;i<100;i++){let t=i/99;x.lineTo((t-.5)*230,Math.sin(t*12+k)*18+(e.form==="branch"?k*12:0))}x.stroke()}}
+if(e.form==="organoid"){for(let i=0;i<34;i++){let a=i*2.399,r=Math.sqrt(i)*13;dot(Math.cos(a)*r,Math.sin(a)*r,10)}x.beginPath();x.arc(0,0,28,0,7);x.stroke()}
+if(e.form==="radial"||e.form==="bilateral"){for(let i=0;i<8;i++){let a=i*Math.PI/4;x.beginPath();x.moveTo(0,0);x.lineTo(Math.cos(a)*105,Math.sin(a)*105);x.stroke()}dot(0,0,25)}
+if(e.form==="ecosystem"){for(let i=0;i<12;i++){let a=i*2.4,r=30+(i%3)*35;dot(Math.cos(a)*r,Math.sin(a)*r,10);x.beginPath();x.moveTo(0,0);x.lineTo(Math.cos(a)*r,Math.sin(a)*r);x.stroke()}}
+x.restore()}
+function select(id){active=id;let e=E.find(v=>v.id===id);$("name").textContent=e.name;$("summary").textContent=e.summary;$("tags").innerHTML=e.cap.map(t=>'<span class="tag">'+t+'</span>').join("");$("facts").innerHTML=[["Structure",e.structure],["Energy",e.energy],["Growth",e.growth],["Division",e.division],["Potential transitions",e.next.join(", ")||"—"]].map(([a,b])=>'<dt>'+a+'</dt><dd>'+b+'</dd>').join("");draw(e);render()}
+function render(){let q=$("search").value.toLowerCase(),s=$("stage").value;let list=E.filter(e=>(!s||e.stage===s)&&(!q||(e.name+" "+e.summary+" "+e.cap.join(" ")).toLowerCase().includes(q)));$("nav").innerHTML=list.map(e=>'<button class="item" data-id="'+e.id+'" aria-current="'+(e.id===active)+'">'+e.name+'<small style="display:block">'+e.stage+'</small></button>').join("");$("cards").innerHTML=list.map(e=>'<div class="card" data-id="'+e.id+'"><b>'+e.name+'</b><small>'+e.stage+' · '+e.cap.slice(0,2).join(" / ")+'</small></div>').join("");document.querySelectorAll("[data-id]").forEach(n=>n.onclick=()=>select(n.dataset.id))}
+$("search").oninput=render;$("stage").onchange=render;select(active);
 </script>
