@@ -4,7 +4,7 @@ A minimal generative physics prototype exploring emergence from particles throug
 
 - [Live prototype source](./accretion.html)
 - [Unified emergence architecture](./docs/EMERGENCE.md)
-- [Shared runtime](./emergence.js)
+- [Standalone runtime and live prototype](./accretion.html)
 
 ## Development
 
