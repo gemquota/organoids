@@ -7,10 +7,10 @@ Organoids builds emergence from generic entities, relations and operations. A pa
 - **GolfCore:** named predicates/effects, ordered phase/priority rules, staged property patches and atomic commits. Exposed as `runtime.core`.
 - **EntityStore:** entity lifecycle, typed links, recursive containment, append-only immutable edge history with atomically rebuilt directional projections, snapshots and journalled transactions.
 - **SpatialIndex:** uniform-grid neighbour queries.
-- ****InteractionEngine:** continuous attraction/repulsion force accumulation and velocity updates.
+- **InteractionEngine:** continuous attraction/repulsion force accumulation and velocity updates.
 - **ConstraintEngine:** iterative geometric position projection, with independent constraint state.
-- **FieldGrid:** typed scalar fields, conservative diffusion, decay, gradients, advection and cell-level rollback.
-- **EnergyEngine:** entity-owned energy and typed material quantities, a transactional flux operator for entity/field transfers, read-only accounting ledger projections, field decay as external output, and conservation audits. Energy-field writes require flux authority.
+- **FieldGrid:** typed scalar fields, gradients, cell-level rollback, and energy-preserving diffusion/advection; configured energy decay is routed to the external-output ledger.
+- **EnergyEngine:** entity-owned energy and typed material quantities, transactional flux operations, read-only accounting-ledger projections, field decay as external output, and conservation audits. Energy-field writes require flux authority.
 - **GraphEngine:** neighbour traversal, connected components and cycle analysis.
 - **TopologyEngine:** composition, assembly and division, delegating graph analysis to GraphEngine.
 - **RuleEngine:** data-defined reactions, catalysts, conditions, rates, products and energy costs.
