@@ -20,7 +20,7 @@ The authoritative simulation is the self-contained `accretion.html`. `emergence.
 | Scheduling | Ordered named phases, time and tick |
 | Runtime | Shared engine instances, spatial rebuild, pair forces, constraints, integration and scheduled reactions/heat diffusion |
 | Browser demo | Particle motion, attraction/repulsion, environmental energy flux, aggregation into molecule entities and rendering |
-| Regression | 22 automated tests; latest recorded CI run #77 passed `npm test` and `node --check emergence.js` |
+| Regression | 23 automated tests; latest recorded CI run #77 passed `npm test` and `node --check emergence.js` |
 
 The browser demo demonstrates an early aggregation stage. It does not yet demonstrate polymerisation, membrane assembly, protocells, autocatalytic metabolism, replication, heredity, signalling networks, differentiation or colonial organisation. Those remain target capabilities, not completed features.
 
@@ -64,7 +64,7 @@ The browser demo demonstrates an early aggregation stage. It does not yet demons
 
 Implemented in the shared substrate and mirrored into the standalone browser engine:
 
-- Relationship kinds declare directed or undirected semantics; containment is directed, acyclic and single-parent.
+- Relationship kinds declare directed or undirected semantics; directed unlink preserves edge orientation, while containment is directed, acyclic and single-parent.
 - Canonical edges feed outgoing, incoming and undirected-neighbour indexes. Descendant and graph queries use indexed adjacency rather than scanning the full edge list.
 - Reparenting updates the previous containment edge before applying the new edge; compatibility parent/children views remain synchronised.
 - Pair interactions use one candidate iterator with unordered-pair deduplication, fixing wildcard selector double-processing while preserving selector roles.
@@ -82,15 +82,14 @@ The following items remain future work; the latest pass implemented relationship
 **Current state**
 - Edges are records of `{a,b,type,properties}`.
 - Containment is treated as directed by its dedicated methods.
-- `GraphEngine.neighbours()` treats every relationship as undirected, regardless of type.
-- `descendants()`, `neighbours()` and graph traversals repeatedly scan the full edge array.
-- Parent pointers are still consulted for containment-cycle checks, while traversal reads edge records.
+- Relationship schemas now distinguish directed and undirected edges; graph-neighbour traversal remains intentionally undirected, while incoming/outgoing queries preserve direction.
+- Descendant and graph queries now use adjacency indexes; index rebuilds are currently used after rollback.
 
 **Interoperability gap**
 A signalling edge, an ancestry edge, a symmetric bond and a containment edge do not have the same semantics. A single edge shape is useful, but a single undirected traversal rule is not. Consumers cannot currently ask for incoming versus outgoing signals, enforce relationship-specific cardinality, or distinguish directed and symmetric edge kinds through a shared schema.
 
 **Opportunity**
-Introduce a relationship-kind registry describing directionality, symmetry, endpoint constraints, multiplicity and removal policy. Add explicit `outgoing`, `incoming` and undirected `neighbours` queries. Maintain adjacency indexes from the canonical edge store and derive legacy parent/children views from containment edges. Keep containment acyclic while allowing cyclic bonds and signalling networks.
+Extend the relationship-kind registry with endpoint-type constraints and configurable multiplicity/removal policies. Consider deriving compatibility parent/children views rather than maintaining mirrors.
 
 **Priority:** very high. This is the common structural language for chemistry, membranes, lineage, signalling and colonies.
 
@@ -98,17 +97,17 @@ Introduce a relationship-kind registry describing directionality, symmetry, endp
 
 **Current state**
 - Transactions snapshot the entire entity map, edge list, field arrays, energy ledger and event length.
-- Rollback replaces the entity map with cloned entities and replaces field maps with cloned arrays.
-- The action switch validates some references but does not validate a complete action schema before execution.
+- Rollback now restores existing entity/property objects and original field arrays in place.
+- Action names and numeric amounts are prevalidated, but operation-specific required fields and references are still checked during execution.
 - Numeric amounts are not consistently checked for finiteness and valid ranges.
 - A missing relationship removal currently succeeds as a no-op.
 - Transactional removal has an implicit energy-distribution policy unless `discardEnergy` is set.
 
 **Interoperability gap**
-Replacing objects on rollback means callers holding references to entity objects or field arrays can retain stale objects after a failed transaction. Whole-store snapshots also scale with total world size, not transaction size. Without validated action contracts, each new behaviour can introduce slightly different validation and failure semantics.
+Stable object identity is now preserved for pre-existing entities, properties and field arrays. Whole-store snapshots still scale with total world size, and nested mutable property values are replaced during restoration. Without validated action contracts, each new behaviour can introduce slightly different validation and failure semantics.
 
 **Opportunity**
-Define one action schema with required fields, numeric domains, reference types and preconditions. Validate the full batch before mutation where possible. Replace whole-world rollback with an undo journal or copy-on-write transaction that restores objects in place and preserves identity. Make removal energy policy explicit, such as transfer-to-children, transfer-to-products, deposit-to-field or external sink. Add nested transaction policy only if a real use case requires it.
+Define one action schema with required fields, numeric domains, reference types and preconditions. Validate the full batch before mutation where possible. Replace whole-world snapshots with an undo journal or copy-on-write transaction while retaining the identity guarantees. Make removal energy policy explicit, such as transfer-to-children, transfer-to-products, deposit-to-field or external sink. Add nested transaction policy only if a real use case requires it.
 
 **Priority:** very high. This underpins every reaction, division, fusion, replication and behavioural transition.
 
@@ -150,16 +149,15 @@ Represent a field as data plus policies: quantity unit, scalar/vector/tensor sha
 
 **Current state**
 - One PairEngine contains force rules and distance constraints.
-- Force candidate traversal and constraint solving remain separate loops.
-- Pair filtering is encoded inside the force loop.
-- The wildcard rule combination `a:'*', b:'A'` can visit A-to-A pairs from both endpoints because the duplicate-pair guard only covers equal selectors and wildcard/wildcard.
+- Force candidates now come from one reusable iterator with unordered-pair deduplication; constraint solving remains a separate positional pass.
+- Force and constraint policies share the solver but retain distinct numerical update rules.
 - Unknown force modes currently fall through to attraction.
 
 **Interoperability gap**
 Attraction, repulsion, springs, adhesion, collision response and geometric constraints need common candidate selection and validation, but different update policies. The current class alias unifies identity more than semantics.
 
 **Opportunity**
-Extract a deterministic pair-candidate iterator with canonical pair ordering, selector matching and shared exclusions. Make each operation a policy over the candidate stream: force accumulation, positional correction, impulse, adhesion or measurement. Validate modes and parameters at registration. Preserve distinct numerical solvers where their mathematics differs.
+Extend the candidate stream to collision, impulse, adhesion and measurement policies. Validate modes and parameters at registration.
 
 **Priority:** high after transaction and invariant work. Fix pair duplication as part of the shared candidate iterator.
 
@@ -185,7 +183,7 @@ Add fixed-step or bounded-substep clocks per phase group, deterministic phase bo
 **Current state**
 - Assembly creates a new root and composes members.
 - Division creates new structures from supplied groups but does not detach or consume the parent.
-- Assembly is not atomic if a later member is invalid.
+- Assembly now removes its newly-created root if a later member is invalid; rollback of all pre-existing members remains unnecessary because failed composition validates before mutation.
 - Closure is graph-cycle based, not a spatial enclosure test.
 
 **Interoperability gap**
@@ -242,11 +240,11 @@ Provide a seeded random source and record external inputs plus committed action 
 
 ## Recommended consolidation sequence
 
-1. **Relationship contract v2:** directionality/schema, adjacency indexes, derived containment views and traversal tests.
-2. **Transaction contract v2:** action validation, stable object identity on rollback, explicit removal-energy policy and undo journal.
+1. **Relationship contract v3:** endpoint constraints, configurable multiplicity/removal policies and fully derived containment views.
+2. **Transaction contract v3:** complete per-operation schemas, explicit removal-energy policy and undo journal.
 3. **Conservation contract:** typed quantities, entity/field inventory totals, reaction balance and per-tick residual audit.
 4. **Field transport:** field metadata, boundary conditions, gradients, advection/decay operators and scheduler integration.
-5. **Pair pipeline:** deterministic candidate iterator, wildcard duplicate fix and explicit force/constraint policies.
+5. **Pair pipeline:** collision/impulse/adhesion policies over the shared candidate stream.
 6. **Multi-rate scheduler:** stable substeps, event queue and phase failure semantics.
 7. **Transactional topology:** atomic fusion/fission/division with conserved contents and relationships.
 8. **Generic aggregation demonstration:** move the demo's imperative merge semantics into reusable operators and actions.
