@@ -10,29 +10,11 @@ g=c.getContext('2d'),A=[],R=Math.random,M=Math.hypot,
 (onresize=_=>{W=c.width=innerWidth;H=c.height=innerHeight})();
 
 /* GolfCore: generic entities, relations, declarative rules and atomic commits. */
-const G=(()=>{
-const R=[],Q=[],P={},X={};
-const entity=(id,type,state={})=>({id,type,state});
-const relate=(a,k,b)=>R.push([a,k,b]);
-const when=(k,f)=>P[k]=f,then=(k,f)=>X[k]=f;
-const rule=(phase,w,x,priority=0)=>Q.push({phase,priority,w,x,order:Q.length});
-const commit=(a,c)=>{
-if(!c.every(x=>a.includes(x.e)&&(!x.patch||typeof x.patch==='object'))||new Set(c.map(x=>x.e)).size!==c.length)return false;
-c.forEach(x=>x.patch&&Object.assign(x.e.state,x.patch));
-c.filter(x=>x.remove).forEach(x=>a.splice(a.indexOf(x.e),1));
-return true
-};
-const run=(a,ctx)=>[...Q].sort((x,y)=>x.phase-y.phase||x.priority-y.priority||x.order-y.order).forEach(r=>{
-const s=a.slice(),c=[];
-s.forEach(e=>{if(P[r.w](e,ctx)){const v=X[r.x](e,ctx);if(v)c.push(...[].concat(v))}});
-commit(a,c)
-});
-return {entity,relate,when,then,rule,commit,run,relations:R}
-})();
+const G=(()=>{let R=[],Q=[],P={},X={},entity=(id,type,s={})=>({id,type,s}),relate=(a,k,b)=>R.push([a,k,b]),when=(k,f)=>P[k]=f,then=(k,f)=>X[k]=f,rule=(ph,w,x,pri=0)=>Q.push({ph,pri,w,x,n:Q.length}),commit=(a,c)=>{if(!c.every(x=>a.includes(x.e)&&(!x.patch||typeof x.patch=='object'))||new Set(c.map(x=>x.e)).size<c.length)return false;c.forEach(x=>x.remove?a.splice(a.indexOf(x.e),1):Object.assign(x.e.s,x.patch));return true},run=(a,ctx)=>Q.sort((x,y)=>x.ph-y.ph||x.pri-y.pri||x.n-y.n).forEach(r=>{let c=[];a.slice().forEach(e=>{if(P[r.w](e,ctx)){let v=X[r.x](e,ctx);if(v)c.push(...[].concat(v))}});commit(a,c)});return{entity,relate,when,then,rule,commit,run,relations:R}})();
 
 G.when('particle',p=>p.type==='particle');
 G.then('drift',p=>{
-const s=p.state,v=(s.v+R()-.5)*.95,w=(s.w+R()-.5)*.95;
+const s=p.s,v=(s.v+R()-.5)*.95,w=(s.w+R()-.5)*.95;
 return {e:p,patch:{v,w,x:s.x+v,y:s.y+w}}
 });
 G.rule(0,'particle','drift');
@@ -44,7 +26,7 @@ G.run(A);
 for(i=0;i<A.length;i++){
 p=A[i];
 for(j=i;j--;){
-q=A[j];s=p.state;t=q.state;x=t.x-s.x;y=t.y-s.y;d=M(x,y)||1;
+q=A[j];s=p.s;t=q.s;x=t.x-s.x;y=t.y-s.y;d=M(x,y)||1;
 if(d<160){z=d<8?-.2:1.6/(d*d);s.v-=x/d*z;s.w-=y/d*z;t.v+=x/d*z;t.w+=y/d*z}
 if(d<3*(Math.sqrt(s.m)+Math.sqrt(t.m))){
 n=s.m+t.m;
@@ -54,7 +36,7 @@ G.commit(A,[{e:p,patch:{v:(s.v*s.m+t.v*t.m)/n,w:(s.w*s.m+t.w*t.m)/n,x:(s.x*s.m+t
 }
 }
 g.fillStyle='#72d9d0';
-A.forEach(p=>{s=p.state;g.beginPath();g.arc(s.x,s.y,3*Math.sqrt(s.m),0,7);g.fill()});
+A.forEach(p=>{s=p.s;g.beginPath();g.arc(s.x,s.y,3*Math.sqrt(s.m),0,7);g.fill()});
 requestAnimationFrame(f)
 })()
 </script>
