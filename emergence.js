@@ -62,7 +62,7 @@ export class SpatialIndex{
 }
 export class FieldGrid{
   constructor(cols,rows,width=cols,height=rows){this.cols=cols;this.rows=rows;this.width=width;this.height=height;this.fields=new Map();this.meta=new Map();this.journal=null}
-  define(name,initial=0,meta={}){this.fields.set(name,new Float32Array(this.cols*this.rows).fill(initial));this.meta.set(name,{unit:meta.unit||'quantity',diffusion:Math.max(0,num(meta.diffusion)),decay:Math.max(0,num(meta.decay)),boundary:meta.boundary||'clamp',advection:meta.advection||null});return this}
+  define(name,initial=0,meta={}){this.fields.set(name,new Float32Array(this.cols*this.rows).fill(initial));this.meta.set(name,{unit:meta.unit||(name==='heat'?'energy':'quantity'),diffusion:Math.max(0,num(meta.diffusion)),decay:Math.max(0,num(meta.decay)),boundary:meta.boundary||'clamp',advection:meta.advection||null});return this}
   index(x,y){return clamp(Math.floor(y/this.height*this.rows),0,this.rows-1)*this.cols+clamp(Math.floor(x/this.width*this.cols),0,this.cols-1)}
   _write(name,i,value){const a=this.fields.get(name);if(!a)throw Error('Unknown field: '+name);if(this.journal){const key=name+':'+i;if(!this.journal.has(key))this.journal.set(key,[a,i,a[i]])}a[i]=value}
   begin(){if(this.journal)throw Error('Nested field transaction');this.journal=new Map();return this}
@@ -89,16 +89,16 @@ export {PairEngine as InteractionEngine,PairEngine as ConstraintEngine};
 export class EnergyEngine{
   constructor(fields){this.fields=fields;this.ledger={input:0,transferred:0,converted:0,output:0,fielded:0}}
   heat(e,n){const p=e.properties||{};if(this.fields?.fields.has('heat')&&Number.isFinite(p.x)&&Number.isFinite(p.y)){this.fields.add('heat',p.x,p.y,n);this.ledger.fielded+=n}else this.ledger.output+=n;return n}
-  deposit(name,e,n){n=Math.min(Math.max(0,num(n)),Math.max(0,e.energy));const p=e.properties||{};if(!this.fields?.fields.has(name)||!Number.isFinite(p.x)||!Number.isFinite(p.y))throw Error('Invalid field deposit');this.fields.add(name,p.x,p.y,n);e.energy-=n;this.ledger.transferred+=n;return n}
-  harvest(name,e,n){const p=e.properties||{};if(!Number.isFinite(p.x)||!Number.isFinite(p.y))throw Error('Invalid field harvest');const v=this.fields.take(name,p.x,p.y,n);e.energy+=v;this.ledger.transferred+=v;return v}
+  deposit(name,e,n){n=Math.min(Math.max(0,num(n)),Math.max(0,e.energy));const p=e.properties||{};if(!this.fields?.fields.has(name)||this.fields.meta.get(name)?.unit!=='energy'||!Number.isFinite(p.x)||!Number.isFinite(p.y))throw Error('Invalid field deposit');this.fields.add(name,p.x,p.y,n);e.energy-=n;this.ledger.transferred+=n;return n}
+  harvest(name,e,n){const p=e.properties||{};if(this.fields.meta.get(name)?.unit!=='energy'||!Number.isFinite(p.x)||!Number.isFinite(p.y))throw Error('Invalid field harvest');const v=this.fields.take(name,p.x,p.y,n);e.energy+=v;this.ledger.transferred+=v;return v}
   source(e,n){n=Math.max(0,num(n));e.energy+=n;this.ledger.input+=n;return n}
   transfer(a,b,n){n=clamp(n,0,Math.max(0,a.energy));a.energy-=n;b.energy+=n;this.ledger.transferred+=n;return n}
   quantity(e,key){return key==='energy'?num(e.energy):num(e.quantities?.[key])}
-  change(e,key,delta){if(key==='energy')e.energy=Math.max(0,this.quantity(e,key)+delta);else{e.quantities||={};e.quantities[key]=Math.max(0,this.quantity(e,key)+delta)}return this.quantity(e,key)}
-  transferQuantity(a,b,key,n){n=Math.min(Math.max(0,num(n)),this.quantity(a,key));this.change(a,key,-n);this.change(b,key,n);this.ledger.transferred+=key==='energy'?n:0;return n}
+  change(e,key,delta,unit='quantity'){if(key==='energy')e.energy=Math.max(0,this.quantity(e,key)+delta);else{e.quantities||={};e.quantityUnits||={};e.quantityUnits[key]??=unit;e.quantities[key]=Math.max(0,this.quantity(e,key)+delta)}return this.quantity(e,key)}
+  transferQuantity(a,b,key,n,unit){const u=a.quantityUnits?.[key]||unit||'quantity',v=b.quantityUnits?.[key]||u;if(u!==v)throw Error('Quantity unit mismatch');n=Math.min(Math.max(0,num(n)),this.quantity(a,key));this.change(a,key,-n,u);this.change(b,key,n,u);this.ledger.transferred+=key==='energy'?n:0;return n}
   convert(e,n,efficiency=1){n=clamp(n,0,Math.max(0,e.energy));const out=n*clamp(efficiency);e.energy+=out-n;this.ledger.converted+=out;this.heat(e,n-out);return out}
   dissipate(e,n){n=clamp(n,0,Math.max(0,e.energy));e.energy-=n;this.heat(e,n);return n}
-  inventory(store){const entities=[...store.entities.values()].reduce((sum,e)=>sum+num(e.energy)+Object.entries(e.quantities||{}).reduce((a,[k,v])=>a+(k==='energy'?0:num(v)),0),0),fields=[...this.fields.fields].reduce((sum,[name])=>sum+(this.fields.meta.get(name)?.unit==='energy'?this.fields.total(name):0),0);return{entities,fields,total:entities+fields}}
+  inventory(store){const entities=[...store.entities.values()].reduce((sum,e)=>sum+num(e.energy)+Object.entries(e.quantities||{}).reduce((a,[k,v])=>a+(e.quantityUnits?.[k]==='energy'?num(v):0),0),0),fields=[...this.fields.fields].reduce((sum,[name])=>sum+(this.fields.meta.get(name)?.unit==='energy'?this.fields.total(name):0),0);return{entities,fields,total:entities+fields}}
   audit(store,baseline=0){const inventory=this.inventory(store),residual=inventory.total+this.ledger.output-this.ledger.input-baseline;return{...inventory,input:this.ledger.input,output:this.ledger.output,residual,balanced:Math.abs(residual)<1e-5}}
 }
 export class GraphEngine{
