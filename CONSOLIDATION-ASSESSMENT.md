@@ -81,3 +81,29 @@ This order prioritises semantic interoperability and correctness before adding m
 - Source syntax and targeted runtime integration assertions were checked in this pass.
 - GitHub Actions run 48 completed successfully: all 13 tests passed, and `node --check emergence.js` passed.
 - Browser rendering, numerical stability under sustained load and full conservation remain unverified.
+
+
+## Follow-up consolidation implemented
+
+### Canonical typed relationships
+- `EntityStore.links` is now the authoritative edge store for containment and ordinary relationships.
+- Containment is represented by directed `contains` edges and rejects ancestor cycles; bonds, adhesion, ancestry, signalling and compartment membership can use the same typed edge format.
+- `parent` and `children` remain synchronised compatibility views, not independent graph storage. Graph traversal reads the typed edge store.
+- Removing or reparenting entities updates both the canonical edges and compatibility views.
+
+### Transactional action execution
+- `EntityStore.transact(actions, context)` executes a shared action vocabulary: create, remove, set, compose, link/unlink, energy transfer, field deposit/harvest, dissipation and event emission.
+- It snapshots entity state, typed edges, field arrays, energy ledger and event length. Any failed action restores the full snapshot and returns a failure result.
+- Reactions now compile into action batches and use the transaction engine. Product IDs are resolved only after a successful commit; catalysts remain untouched.
+- Consumed reactants discard their own energy into the reaction product accounting rather than accidentally redistributing it to child entities. Child entities are detached and remain active.
+
+### Verification added
+- Typed-edge traversal and containment-cycle rejection.
+- Transaction commit and rollback across entities, fields, ledger and events.
+- Reaction execution, product identity resolution and heat deposition.
+- Composite-reactant energy accounting.
+
+### Remaining caveats
+- Compatibility `parent`/`children` properties are still mirrored onto entities. The edge store is authoritative, but a future migration can replace these with computed accessors after downstream consumers are audited.
+- Transactions use whole-store snapshots. This is correct and simple for the current scale, but expensive; an undo journal or copy-on-write transaction will be preferable as populations grow.
+- Rule matching still selects the first eligible entities. Stoichiometric selection, competing reaction scheduling, resource reservation and declarative action validation remain future work.
