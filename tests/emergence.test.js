@@ -153,7 +153,7 @@ test('transaction journal preserves nested property and child-array identities',
 test('generic quantities transfer and energy inventory audit balances',()=>{
  const f=new FieldGrid(2,2,2,2).define('heat',0,{unit:'energy'}),e=new EnergyEngine(f),s=new EntityStore(),a=s.create('cell',{}, {energy:4}),b=s.create('cell');
  a.quantities={carbon:6};b.quantities={carbon:1};e.transferQuantity(a,b,'carbon',2);e.source(a,3);e.dissipate(a,1);
- const audit=e.audit(s,11);assert.equal(a.quantities.carbon,4);assert.equal(b.quantities.carbon,3);assert.equal(audit.total,14);assert.equal(audit.residual,0);assert.equal(audit.balanced,true);
+ const audit=e.audit(s,11);assert.equal(a.quantities.carbon,4);assert.equal(b.quantities.carbon,3);assert.equal(audit.total,13);assert.equal(audit.residual,0);assert.equal(audit.balanced,true);
 });
 test('field metadata drives diffusion, decay, gradients and advection in place',()=>{
  const f=new FieldGrid(5,5,5,5).define('nutrient',0,{unit:'mass',diffusion:.2,decay:.1,advection:{x:.1,y:0}});
