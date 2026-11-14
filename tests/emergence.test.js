@@ -136,3 +136,10 @@ test('assembly rolls back its new root when a member is invalid',()=>{
  const s=new EntityStore(),a=s.create('unit'),g=new GraphEngine(s),before=s.entities.size;
  assert.throws(()=>g.assemble('colony',[a.id,999]));assert.equal(s.entities.size,before);
 });
+
+test('directed unlink removes only the requested edge orientation',()=>{
+ const s=new EntityStore(),a=s.create('unit'),b=s.create('unit');
+ s.defineRelation('signals',{direction:'directed'}).link(a.id,b.id,'signals').link(b.id,a.id,'signals');
+ s.unlink(a.id,b.id,'signals');assert.deepEqual(s.outgoing(a.id,'signals'),[]);
+ assert.deepEqual(s.incoming(a.id,'signals'),[b.id]);
+});
