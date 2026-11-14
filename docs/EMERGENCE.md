@@ -6,6 +6,7 @@ The simulation uses one recursive entity model. A particle, molecule, membrane, 
 
 Import `createRuntime` from `emergence.js`. It composes:
 
+- GolfCore: generic predicate/effect registries, ordered rules and atomic staged commits.
 - EntityStore: entity lifecycle, recursive composition, typed links and snapshots.
 - SpatialIndex: uniform-grid neighbour queries.
 - FieldGrid: named scalar fields and conservative diffusion.
@@ -21,6 +22,9 @@ Example:
 
 ```js
 const sim=createRuntime({width:800,height:450});
+sim.core.when('particle',e=>e.type==='particle')
+  .then('drift',e=>({e,patch:{x:e.properties.x+1}}))
+  .rule(0,'particle','drift');
 sim.interactions.register({
   id:'cohesion',a:'particle',b:'particle',
   radius:24,strength:.2,mode:'attract'
