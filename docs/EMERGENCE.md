@@ -35,4 +35,4 @@ The substrate provides reusable primitives; this list is not a claim that every 
 
 The current demo shows particle motion, pair forces, energy flux and aggregation. The later biological stages remain future work. Interpolation-based advection is not strictly conservative. Energy audits only cover flows routed through EnergyEngine and require a baseline. Arbitrary external side effects are outside transaction rollback.
 
-`emergence.js` is the tested reference module. `accretion.html` is deliberately standalone and carries a synchronised inline copy. Run `npm test` and `node --check emergence.js` for the automated checks.
+`accretion.html` is the single authoritative runtime and browser prototype. The test suite extracts its engine module directly, so there is no duplicated runtime source. Run `npm test` for the automated checks.
