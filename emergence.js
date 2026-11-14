@@ -17,7 +17,7 @@ export class EntityStore{
   unlink(a,b,type){const undirected=type&&this.kinds.get(type)?.direction==='undirected',gone=this.links.filter(e=>(type?e.type===type:true)&&(e.a===a&&e.b===b||(!type||undirected)&&e.a===b&&e.b===a));for(const e of gone)this._index(e,false);this.links=this.links.filter(e=>!gone.includes(e));for(const e of gone)if(e.type==='contains'){const p=this.get(e.a),c=this.get(e.b);if(p)p.children=p.children.filter(x=>x!==e.b);if(c&&c.parent===e.a){c.parent=null;c.state='active'}}return this}
   outgoing(id,type){return this.edges(id,'out',type).map(e=>e.a===id?e.b:e.a)}
   incoming(id,type){return this.edges(id,'in',type).map(e=>e.a===id?e.b:e.a)}
-  neighbours(id,type){return [...new Set((this.adj.get(id)||[]).filter(e=>!type||e.type===type).map(e=>e.a===id?e.b:e.a))]}
+  neighbours(id,type){return [...new Set([...(this.adj.get(id)||[])].filter(e=>!type||e.type===type).map(e=>e.a===id?e.b:e.a))]}
   descendants(id){const out=[],seen=new Set(),visit=n=>{for(const c of this.outgoing(n,'contains'))if(!seen.has(c)){seen.add(c);out.push(c);visit(c)}};visit(id);return out}
   snapshot(){return{next:this.next,entities:[...this.entities.values()].map(clone),links:clone(this.links),kinds:[...this.kinds]}}
   static restore(s){const store=new EntityStore();store.next=s.next;store.entities=new Map(s.entities.map(e=>[e.id,clone(e)]));store.links=clone(s.links);if(s.kinds)store.kinds=new Map(s.kinds);return store._rebuild()}
