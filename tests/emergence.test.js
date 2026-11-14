@@ -106,3 +106,33 @@ test('reaction consumption conserves energy when reactants contain components',(
  assert.equal(s.get(part.id).energy,1);assert.equal(product.energy,2);assert.equal(energy.ledger.fielded,1);
  assert.equal(s.get(part.id).state,'active');
 });
+
+test('relationship schemas index direction and symmetric adjacency',()=>{
+ const s=new EntityStore(),a=s.create('cell'),b=s.create('cell'),c=s.create('cell');
+ s.defineRelation('signals',{direction:'directed'}).link(a.id,b.id,'signals').link(b.id,c.id,'bond');
+ assert.deepEqual(s.outgoing(a.id,'signals'),[b.id]);assert.deepEqual(s.incoming(b.id,'signals'),[a.id]);
+ assert.deepEqual(s.outgoing(b.id,'bond'),[c.id]);assert.deepEqual(s.incoming(c.id,'bond'),[b.id]);
+ assert.deepEqual(s.neighbours(c.id,'bond'),[b.id]);
+});
+test('containment cardinality reparents safely and rejects cycles',()=>{
+ const s=new EntityStore(),a=s.create('cell'),b=s.create('cell'),c=s.create('molecule');
+ s.compose(a.id,c.id);s.compose(b.id,c.id);assert.equal(s.get(c.id).parent,b.id);
+ assert.deepEqual(s.descendants(a.id),[]);assert.deepEqual(s.descendants(b.id),[c.id]);
+ assert.throws(()=>s.compose(c.id,b.id),/cycle/i);
+});
+test('failed transactions preserve entity, property and field-array identity',()=>{
+ const s=new EntityStore(),a=s.create('cell',{x:1},{energy:3}),entity=a,props=a.properties;
+ const f=new FieldGrid(2,2,2,2).define('heat'),array=f.fields.get('heat'),energy=new EnergyEngine(f);
+ const result=s.transact([{op:'set',id:a.id,key:'x',value:9},{op:'deposit',id:a.id,field:'heat',amount:1},{op:'remove',id:999}],{energy,fields:f});
+ assert.equal(result.ok,false);assert.equal(s.get(a.id),entity);assert.equal(entity.properties,props);assert.equal(props.x,1);
+ assert.equal(f.fields.get('heat'),array);assert.equal(array.reduce((x,y)=>x+y,0),0);
+});
+test('wildcard pair matching processes each unordered pair once',()=>{
+ const s=new EntityStore(),a=s.create('A',{x:0,y:0,vx:0,vy:0,mass:1}),b=s.create('A',{x:5,y:0,vx:0,vy:0,mass:1});
+ const i=new SpatialIndex(10).rebuild(s.entities.values()),solver=new InteractionEngine([{a:'*',b:'A',radius:10,strength:1}]);
+ solver.apply(s,i,1);assert.ok(Math.abs(a.properties.vx-.5)<1e-9);assert.ok(Math.abs(b.properties.vx+.5)<1e-9);
+});
+test('assembly rolls back its new root when a member is invalid',()=>{
+ const s=new EntityStore(),a=s.create('unit'),g=new GraphEngine(s),before=s.entities.size;
+ assert.throws(()=>g.assemble('colony',[a.id,999]));assert.equal(s.entities.size,before);
+});
