@@ -46,7 +46,7 @@ The browser demo demonstrates an early aggregation stage. It does not yet demons
 - EnergyEngine shares the runtime FieldGrid.
 - Conversion losses and dissipation can enter the heat field when entity coordinates are valid.
 - Energy can move between entity stores and named fields.
-- The ledger distinguishes external input, transfers, useful conversion, external output and fielded heat. `audit()` compares entity/field inventory against an explicit baseline, but cannot account for arbitrary direct mutations outside EnergyEngine.
+- The ledger distinguishes external input, transfers, useful conversion, external output and fielded heat. `audit()` compares energy-only entity/field inventory against an explicit baseline, but cannot account for arbitrary direct mutations outside EnergyEngine.
 
 ### Canonical typed relationships
 - `EntityStore.links` is now the authoritative relationship record store.
@@ -82,14 +82,14 @@ These are implemented substrate improvements, not claims that later biological s
 - Removal updates adjacent endpoints rather than scanning every entity.
 
 ### Pass 2: quantity and conservation primitives
-- Added generic named entity quantities and transfer operations while retaining `energy` as the compatibility quantity.
-- Field metadata declares units; energy inventory includes entity energy and fields marked as energy.
-- EnergyEngine exposes inventory and residual audit against an explicit initial baseline.
+- Added unit-tagged named entity quantities and transfer operations while retaining `energy` as the compatibility quantity.
+- Entity quantity metadata distinguishes mass/material stores from energy; energy inventory includes only entity quantities tagged as energy and fields marked as energy.
+- EnergyEngine exposes an energy-only inventory and residual audit against an explicit initial baseline; generic mass quantities are excluded unless explicitly tagged as energy.
 - Reactions reject energy overdraw and require an explicit external sink for unallocated product-energy remainder.
 - Field deposits and harvests validate field names and coordinates before changing stores.
 
 ### Pass 3: metadata-driven field transport
-- Fields carry unit, diffusion, decay, advection and boundary metadata.
+- Fields carry unit, diffusion, decay, advection and boundary metadata; boundary mode currently controls advection sampling.
 - Added finite-difference gradients and metadata-selected constant-velocity advection with clamp or periodic-wrap boundaries.
 - Diffusion, decay and advection mutate existing typed arrays in place.
 - Runtime schedules a shared transport phase across configured fields rather than a heat-only diffusion callback.
