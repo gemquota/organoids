@@ -49,7 +49,7 @@ if(d<160){z=d<8?-.2:1.6/(d*d);s.v-=x/d*z;s.w-=y/d*z;t.v+=x/d*z;t.w+=y/d*z}
 if(d<3*(Math.sqrt(s.m)+Math.sqrt(t.m))){
 n=s.m+t.m;
 G.relate(p.id,'absorbed',q.id);
-G.commit(A,[{e:p,patch:{v:(s.v*s.m+t.v*t.m)/n,w:(s.w*s.m+t.w*t.w)/n,x:(s.x*s.m+t.x*t.x)/n,y:(s.y*s.m+t.y*t.y)/n,m:n}},{e:q,remove:true}]);i--
+G.commit(A,[{e:p,patch:{v:(s.v*s.m+t.v*t.m)/n,w:(s.w*s.m+t.w*t.m)/n,x:(s.x*s.m+t.x*t.m)/n,y:(s.y*s.m+t.y*t.m)/n,m:n}},{e:q,remove:true}]);i--
 }
 }
 }
