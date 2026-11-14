@@ -33,6 +33,14 @@ Aggregation → bonding → molecular formation → reactions → polymerisation
 
 The substrate provides reusable primitives; this list is not a claim that every stage is already implemented.
 
+## Conservation contract
+
+Entity and energy-field values are the physical reservoirs. The ledger is a read-only accounting projection, not another reservoir. Internal transfers and conversion losses routed into fields do not change the total; energy leaving the model is recorded as output, and external sources are recorded as input:
+
+\`E_entities + E_fields + E_output - E_input = E_baseline\`
+
+The ledger's transfer, conversion and fielding counters are diagnostics only. Energy mutation and energy-field writes pass through the flux boundary; field diffusion/advection preserve spatial totals, while configured decay is an accounted output.
+
 ## Boundaries
 
 The current demo shows particle motion, pair forces, energy flux and aggregation. The later biological stages remain future work. Energy-field diffusion and advection preserve the field total; configured field decay is recorded as external output. Entity and energy-field mutations are routed through EnergyEngine. Audits require an initial-state baseline and can only account for operations that use the flux boundary. Arbitrary external side effects are outside transaction rollback.
