@@ -8,11 +8,11 @@ The authoritative simulation is the self-contained `accretion.html`. `emergence.
 |---|---|
 | Entity model | Typed entities, properties, state, energy, IDs, create/remove, snapshots and restore |
 | Composition | Recursive containment, descendants, reparenting and cycle prevention |
-| Relationships | Typed edge records for containment and arbitrary relationship kinds |
+| Relationships | Typed edges, relationship schemas, directed queries, symmetric adjacency and indexed traversal |
 | Transactions | Create, remove, set, compose, link/unlink, energy transfer, field deposit/harvest, dissipation and event emission |
-| Rollback | Entity map, edges, field arrays, energy ledger and event length |
+| Rollback | Entity/edge/field/ledger/event restoration with stable existing entity, property and field-array identity |
 | Spatial | Uniform-grid index and radius neighbour queries |
-| Pair mechanics | Shared PairEngine class for attraction/repulsion and distance constraints |
+| Pair mechanics | Shared PairEngine, canonical unordered-pair candidate stream, attraction/repulsion and distance constraints |
 | Fields | Named scalar grids, sample/add/take and conservative nearest-neighbour diffusion |
 | Energy | External source, transfer, conversion, dissipation, field deposit/harvest and partial ledger |
 | Graph/topology | Neighbours, connected components, cycle checks, assembly, closure predicate and division entry point |
@@ -20,7 +20,7 @@ The authoritative simulation is the self-contained `accretion.html`. `emergence.
 | Scheduling | Ordered named phases, time and tick |
 | Runtime | Shared engine instances, spatial rebuild, pair forces, constraints, integration and scheduled reactions/heat diffusion |
 | Browser demo | Particle motion, attraction/repulsion, environmental energy flux, aggregation into molecule entities and rendering |
-| Regression | 17 automated tests; latest recorded CI run #77 passed `npm test` and `node --check emergence.js` |
+| Regression | 22 automated tests; latest recorded CI run #77 passed `npm test` and `node --check emergence.js` |
 
 The browser demo demonstrates an early aggregation stage. It does not yet demonstrate polymerisation, membrane assembly, protocells, autocatalytic metabolism, replication, heredity, signalling networks, differentiation or colonial organisation. Those remain target capabilities, not completed features.
 
@@ -60,9 +60,22 @@ The browser demo demonstrates an early aggregation stage. It does not yet demons
 - Reactions compile into action batches; product references are resolved after commit and catalysts are preserved.
 - Composite reactants are detached without redistributing consumed reactant energy into their children.
 
+## Latest consolidation pass: primitive generalisation and simplification
+
+Implemented in the shared substrate and mirrored into the standalone browser engine:
+
+- Relationship kinds declare directed or undirected semantics; containment is directed, acyclic and single-parent.
+- Canonical edges feed outgoing, incoming and undirected-neighbour indexes. Descendant and graph queries use indexed adjacency rather than scanning the full edge list.
+- Reparenting updates the previous containment edge before applying the new edge; compatibility parent/children views remain synchronised.
+- Pair interactions use one candidate iterator with unordered-pair deduplication, fixing wildcard selector double-processing while preserving selector roles.
+- Failed transactions restore existing entity and properties objects in place, preserve original field-array identities, rebuild indexes, and prevalidate action names and numeric amounts.
+- Assembly removes its partial root if a member cannot be composed. Typed graph component queries no longer traverse through unrelated entity types.
+
+These are implemented substrate improvements, not claims that later biological stages are complete.
+
 ## Further consolidation investigation
 
-This investigation inspects the current implementation and identifies the next semantic seams. It does not implement these changes.
+The following items remain future work; the latest pass implemented relationship indexing/directionality, stable-identity rollback, pair candidate deduplication and atomic assembly.
 
 ### 1. Relationship semantics need direction, schema and adjacency
 
