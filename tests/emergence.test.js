@@ -77,3 +77,24 @@ test('energy and fields exchange stored quantities',()=>{
   r.energy.deposit('heat',e,3);assert.equal(e.energy,2);assert.equal(r.energy.harvest('heat',e,2),2);
   assert.equal(e.energy,4);assert.ok(r.fields.sample('heat',0,0)>0);
 });
+
+test('typed relationship edges are canonical and containment is acyclic',()=>{
+ const s=new EntityStore(),root=s.create('cell'),a=s.create('molecule'),b=s.create('particle');
+ s.link(root.id,a.id,'contains');s.link(a.id,b.id,'contains');s.link(root.id,b.id,'signals',{strength:2});
+ assert.deepEqual(s.descendants(root.id),[a.id,b.id]);assert.throws(()=>s.link(b.id,root.id,'contains'),/cycle/i);
+ assert.equal(s.links.filter(l=>l.type==='contains').length,2);s.unlink(a.id,b.id,'contains');assert.equal(s.get(b.id).parent,null);assert.deepEqual(s.descendants(root.id),[a.id]);
+});
+test('entity transactions commit typed actions and roll back all state on failure',()=>{
+ const s=new EntityStore(),a=s.create('cell',{x:1,y:2},{energy:5}),b=s.create('cell'),f=new FieldGrid(2,2,2,2).define('heat'),energy=new EnergyEngine(f),events=[];
+ const ok=s.transact([{op:'transfer',from:a.id,to:b.id,amount:2},{op:'create',type:'molecule',as:'m'},{op:'link',from:a.id,to:'$m',type:'bond'},{op:'deposit',id:a.id,field:'heat',amount:1}],{energy,fields:f,events});
+ assert.equal(ok.ok,true);assert.equal(s.get(a.id).energy,2);assert.equal(s.get(b.id).energy,2);assert.equal(s.links.at(-1).type,'bond');
+ const before=s.snapshot(),heat=[...f.fields.get('heat')],ledger=clone(energy.ledger);
+ const bad=s.transact([{op:'set',id:a.id,key:'x',value:99},{op:'remove',id:999}],{energy,fields:f,events});
+ assert.equal(bad.ok,false);assert.deepEqual(s.snapshot(),before);assert.deepEqual([...f.fields.get('heat')],heat);assert.deepEqual(energy.ledger,ledger);
+});
+test('reaction action batches are atomic and emit resolved product identities',()=>{
+ const s=new EntityStore(),a=s.create('A',{purity:1},{energy:3}),b=s.create('B'),cat=s.create('catalyst'),energy=new EnergyEngine(),rules=new RuleEngine({random:()=>0,energy});
+ rules.register({id:'make',inputs:['A','B'],catalysts:['catalyst'],energyCost:1,outputs:[{type:'AB'}],rate:10});
+ assert.equal(rules.run(s,1),1);assert.equal(s.get(a.id),undefined);assert.equal(s.get(b.id),undefined);assert.equal(s.get(cat.id).type,'catalyst');
+ const event=rules.events[0],product=s.get(event.outputs[0]);assert.equal(product.type,'AB');assert.equal(product.energy,2);assert.equal(energy.ledger.fielded,1);
+});
