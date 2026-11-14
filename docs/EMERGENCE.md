@@ -5,12 +5,12 @@ Organoids builds emergence from generic entities, relations and operations. A pa
 ## Kernel and runtime
 
 - **GolfCore:** named predicates/effects, ordered phase/priority rules, staged property patches and atomic commits. Exposed as `runtime.core`.
-- **EntityStore:** entity lifecycle, typed links, recursive containment, graph indexes, snapshots and journalled transactions.
+- **EntityStore:** entity lifecycle, typed links, recursive containment, atomic materialized graph indexes, snapshots and journalled transactions.
 - **SpatialIndex:** uniform-grid neighbour queries.
-- **PairEngine:** attraction/repulsion plus positional constraints; `InteractionEngine` and `ConstraintEngine` are aliases.
+- **InteractionEngine and ConstraintEngine:** attraction/repulsion plus positional constraints; `InteractionEngine` and `ConstraintEngine` are aliases.
 - **FieldGrid:** typed scalar fields, conservative diffusion, decay, gradients, advection and cell-level rollback.
-- **EnergyEngine:** energy/material quantities, transfer, conversion, dissipation and inventory audit.
-- **GraphEngine:** components, cycles, assembly and division; `TopologyEngine` is an alias.
+- **EnergyEngine:** entity-owned energy and typed material quantities, flux-mediated transfer, conversion and dissipation, spatial reservoirs, and a conservation audit.
+- **GraphEngine and TopologyEngine:** components, cycles, assembly and division; `TopologyEngine` is an alias.
 - **RuleEngine:** data-defined reactions, catalysts, conditions, rates, products and energy costs.
 - **Scheduler:** core rules, reactions and field transport execute in ordered phases.
 
