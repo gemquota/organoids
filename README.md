@@ -12,4 +12,4 @@ A minimal generative physics prototype exploring emergence from particles throug
 npm test
 ```
 
-The browser prototype uses the same entity, interaction, field and energy substrate exercised by the Node regression suite.
+GolfCore supplies generic declarative execution; the shared substrate adds entity, relation, physics, field, energy and reaction systems. The browser prototype is standalone and mirrors the tested runtime.
