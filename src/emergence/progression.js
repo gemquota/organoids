@@ -25,7 +25,7 @@ export class EmergenceProgression {
     .define("lipid",{headPolarity:{type:"number",min:0,max:1,default:1},tailHydrophobicity:{type:"number",min:0,max:1,default:1}})
     .define("membrane",{permeability:{type:"number",min:0,max:1,default:.2},lipidCount:{type:"number",min:3,default:8}})
     .define("protocell",{genome:{type:"object",required:true},age:{type:"number",min:0,default:0},biomass:{type:"number",min:0,default:1}})
-    .define("cell",{genome:{type:"object",required:true},age:{type:"number",min:0,default:0},biomass:{type:"number",min:0,default:1},lifeStage:{type:"string",default:"nascent"}})}
+    .define("cell",{genome:{type:"object",required:true},age:{type:"number",min:0,default:0},biomass:{type:"number",min:0,default:1},lifeStage:{type:"string",default:"nascent"}});this.store.protectType("cell",["genome","age","biomass","lifeStage","phenotype","differentiation","expressedTraits"]);this.store.protectType("protocell",["genome","age","biomass","lifeStage","phenotype","differentiation","expressedTraits"])}
   create(type,properties={},energy=0){return this.owner.create(type,properties,Math.max(0,finite(energy)))}
   _record(kind,data){return this.lineage.record(kind,{time:this.runtime.scheduler.time,...data})}
   tick(dt=1){for(const e of this.store.entities.values())if(active(e)&&e.properties.genome){this.lifecycle.age(e.id,dt);const age=finite(e.properties.age),maxAge=finite(e.properties.maxAge,1000);if(age>maxAge&&this.lifecycle.stage(e)!=="dead")this.lifecycle.transition(e.id,"senescent","age threshold")}return this}
