@@ -15,7 +15,8 @@ export class EventRuleRouter {
 }
 
 export class DependencyEventIndex {
-  constructor(){this.subscriptions=new Map();this.byType=new Map();this.sequence=0}
+  constructor(){this.subscriptions=new Map();this.byType=new Map();this.sequence=0;this.errors=[]}
+  attach(store){if(typeof store?.subscribeChanges!=="function")throw Error("EntityStore change notifications are required");return store.subscribeChanges(change=>this.publish(change))}
   subscribe({entityType="*",property="*",phase=0}={},handler){
     if(typeof handler!=="function")throw Error("A dependency handler is required");
     const id=++this.sequence,entry={id,entityType,property,phase,handler};
