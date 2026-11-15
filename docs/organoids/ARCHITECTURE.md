@@ -1,6 +1,6 @@
 # Organoids Architecture
 
-**Status:** consolidated target architecture; implementation mapping remains pending source verification.
+**Status:** consolidated target architecture; current implementation mapping is recorded in FEATURES.md and SOURCE_MAPPED_AUDIT.md.
 **Decision basis:** user-confirmed selections from the nine-question architecture review, 14 November 2026.
 
 ## 1. Architectural objective
@@ -21,7 +21,7 @@ The kernel's conceptual vocabulary is:
 
 Everything else should be expressed as composable data and higher-level operations built on this substrate. Physics, chemistry, biology, rendering, observation and domain-specific policies are not intrinsic GolfCore responsibilities.
 
-The exact primitive list and byte count must be established from the authoritative implementation, not inferred from this conceptual contract.
+The GolfCore evaluator is measured at 552 ASCII bytes (538 non-whitespace); EntityStore owns validated commitChanges, while GolfCore remains the generic rule registration/evaluation layer. The approximate 600–700-byte target is treated as a design constraint, not a reason to pad code.
 
 ## 3. Canonical entity model
 
@@ -146,3 +146,9 @@ Project discussion identifies `accretion.html` as the central artifact. The rela
 - Module contracts and dependency direction.
 - Reproducibility and observability implementation.
 - Mapping of this specification to current source and tests.
+
+## 9. Modular source architecture
+
+The implementation is now decomposed behind the stable `src/emergence.js` compatibility entry point. The composition root is `src/emergence/progression.js`; focused modules own aggregation, molecular assembly, membranes, heredity, organismal behaviour, development, lifecycle, lineage, events, state ownership, execution and experiments. Shared helpers are isolated in a pure module. The four progression domains are nested meta-modules because each has a distinct semantic responsibility and common runtime contract.
+
+See [MODULARITY.md](MODULARITY.md) for the module map, read/write ownership rules, interoperability contracts, future module criteria and consolidation findings. The architecture deliberately reuses the existing entity, energy, field, topology, constraint, reaction and scheduler authorities rather than creating parallel stores.

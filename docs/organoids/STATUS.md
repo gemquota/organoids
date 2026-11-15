@@ -1,133 +1,91 @@
 # Organoids Project Status
 
-**Status snapshot:** 14 November 2026  
-**Source confidence:** live `gemquota/organoids` `main` tree and `accretion.html` were statically inspected on 14 November 2026; runtime and test execution remain unverified.
+**Snapshot:** 15 November 2026  
+**Implementation branch:** feat/four-stage-emergence-completion  
+**Base:** PR #5 head d0b2059784bce916daf183b73acd3d381ca91ed1  
+**PR #5:** open and unmerged; this implementation remains on a separate stacked branch.
 
 ## 1. Executive status
 
-Organoids is in architectural consolidation and foundational implementation. The architectural direction is now substantially clearer: a minimal universal GolfCore, generic entities with extensible payloads, relationship/lifecycle-based state ownership, atomic transformations, approximate physical conservation, specialised domain policies on universal primitives, replaceable modules and systematic emergence testing.
+The four requested stages have reusable implementations and automated behavioural coverage. The runtime and progression module share the existing entity, relation, energy, field, topology, constraint, reaction and scheduling systems. The final consolidation pass removed the bespoke demo merge path and redundant mutable metrics, and moved incomplete construction paths behind atomic transactions.
 
-The rules model was subsequently approved and is now a confirmed architectural decision. The consolidated specification is documented; this does not establish that the current source implements it.
+The older project status and source audit were stale. main and PR #5 have been inspected separately; see SOURCE_MAPPED_AUDIT.md. The feature catalogue now maps capabilities to current source and tests.
 
-## 2. Historical source measurements
+## 2. Four-stage implementation status
 
-The following measurements were reported in project discussion on 13 November 2026:
+| Stage | Implemented work | Verification | Remaining boundary |
+|---|---|---|---|
+| 1. Substrate | StateOwner facade; validated entity creation; transactional entity/lifecycle/material state; module contracts; AtomicExecutor; deterministic event queue/router; GolfCore evaluator | Automated rollback, ownership and ordering tests | Legacy public payloads are not fully encapsulated; event dependency indexing and whole-tick rollback remain |
+| 2. Emergence | Contact aggregation, bonding, molecular assembly, polymerisation with energy cost, autocatalytic network assembly/rule registration, atomic lipid-ring membranes and protocells | Automated composition, energy and rollback tests | No fluid bilayer, selective membrane transport or protocell metabolism |
+| 3. Biology | Seeded replication/mutation, heredity, growth, reproduction with daughter membrane, colonies, differentiation and radial/bilateral morphogenesis | Automated lifecycle, energy, lineage and morphology tests | No gene expression/regulatory network, complete organelle partitioning or endogenous morphogen development |
+| 4. Evidence | Seeded experiments, energy/field/knockout/mutation interventions, reaction and biological lineage, replicate sweeps, descriptive/bootstrap statistics, blind coded experiments with preregistered metrics | Automated reproducibility, intervention, lineage, bootstrap and blinding tests | Large parameter sweeps and stronger statistical inference remain |
 
-| Artifact | Characters | Non-whitespace |
-|---|---:|---:|
-| `emergence.js` | 10,531 | 10,126 |
-| `accretion.html` | 3,179 | 3,087 |
-| Tests | 3,997 | 3,786 |
-| Documentation | 2,730 | 2,383 |
+These are operational artificial-life primitives, not claims of complete biological fidelity. A discrete lipid ring is not a fluid bilayer; sequence mutation is not gene expression; explicit phenotype assignment is not developmental regulation.
 
-These are reported measurements, not estimates. Re-run them against current files before treating them as the present baseline.
+## 3. Source of truth
 
-A separate comparison exposed a major estimate/measurement discrepancy:
-
-| Measure | Estimate | Actual |
-|---|---:|---:|
-| Shared substrate | 710 | 12,350 |
-
-The actual was approximately 17.4 times the estimate. The 12,350-character figure is a separate reported measurement; do not assume it is the sum of the artifact rows above without confirming scope and counting method.
-
-## 3. Live source audit (14 November 2026)\n\nThe current `gemquota/organoids` `main` tree contains exactly one tracked file, `accretion.html`. Its live content measures **976 characters / 942 non-whitespace characters** (976 bytes; ASCII). It creates 800 canvas particles, applies randomised pairwise attraction/repulsion, merges close particles using mass-weighted position and velocity, and renders them. It is a compact particle prototype, not yet the specified generic substrate. No tests, package manifests, module directories or CI workflow files appear in the inspected tree. See [SOURCE_AUDIT.md](SOURCE_AUDIT.md) for the full inventory and capability mapping.\n\nThe live measurement differs from the historical 3,179 / 3,087 report; these are different snapshots or scopes and must not be conflated.\n\n## 4. Artifact lineage
-
-### `accretion.html`
-
-Project discussion identifies this as the central and authoritative Organoids artifact. The stated approach is to build the system up from a golfed foundation in this file.
-
-### `emergence.js`
-
-Discussed as a previous implementation attempt. Its exact relationship to the current `accretion.html` implementation, including whether it is superseded, partially reusable as reference or still active, requires source-level reconciliation.
-
-Do not silently treat both as current parallel implementations.
-
-### Tests and documentation
-
-Historical measurements exist, but current paths, test coverage and whether documentation reflects the latest implementation remain unverified.
-
-## 4. Architecture decisions consolidated
-
-The nine-question review produced the following user-confirmed decisions:
-
-| Area | Decision | Status |
-|---|---|---|
-| GolfCore | Minimal universal execution kernel: entities, state, relations, operations; higher-level behaviour as composable data | Confirmed |
-| Entity schema | Minimal common header plus extensible, composable payloads | Confirmed |
-| State ownership | Generic containers and relationship-based ownership, governed by lifecycle | Confirmed; D and E reconciled |
-| Rules | Lightweight hybrid: declarative data, shared evaluator, event triggers where reliable, deterministic conflict phases; rules become entities only when lifecycle/identity/state is needed | Confirmed after user approval |
-| Transformations | Constraints, validation and atomic commits | Confirmed |
-| Conservation | Approximate conservation prioritising emergence and performance | Confirmed |
-| Universalisation | Universal primitives, specialised policies; generalise after demonstrated reuse | Confirmed; B/D/E reconciled |
-| Module boundaries | Replaceable physics, chemistry and biology; boundaries follow contracts and independent testability | Confirmed |
-| Emergence testing | Statistical, seeded, perturbation, intervention, blind and lineage/history methods | Confirmed |
-
-### Important clarifications
-
-- State ownership D and E are complementary: generic containers/relationships provide representation; lifecycle determines ownership policy.
-- Universalisation B, D and E are reconciled by adopting universal primitives and specialised policies, with demonstrated semantic reuse as the gate for generalisation. "Universalise almost everything" is an exploration goal, not permission to erase domain distinctions.
-- Rule evaluation is not yet a confirmed user decision. The proposed hybrid uses declarative rule data, a shared evaluator, event triggers where reliable, deterministic phases for conflicts, and rules-as-entities only when lifecycle/identity/state is needed.
-
-## 5. Work reported or requested
-
-- Established Organoids as a VEPA architectural successor rather than a sequel.
-- Established the GolfCore minimal-core philosophy (approximately 600–700 bytes).
-- Identified a unified entity/composition model and shared physical substrate.
-- Reviewed implementation footprint and exposed the estimate-versus-actual discrepancy.
-- Investigated `emergence.js` lineage.
-- Requested a golfed, maximally abstracted review/rewrite.
-- Requested consolidation and further assessments focused on semantic interoperability, modularisation, primitive generalisation, universal abstraction and simplification.
-- Consolidated the nine architectural decision areas into a coherent documented specification.
-
-This list distinguishes discussion and documentation from verified merged implementation. No source code, tests or runtime behaviour were changed or verified by this documentation update.
-
-## 7. Current completion assessment
-
-| Area | Current assessment |
+| Path | Responsibility |
 |---|---|
-| Project identity and lineage | Established |
-| Boids implementation exclusion | Explicit constraint |
-| GolfCore conceptual contract | Specified; 677-character prototype on draft PR #2 |
-| Canonical entity model | Minimal header/payload prototype on draft PR #2; full ownership model outstanding |
-| State ownership/lifecycle | Specification complete; implementation outstanding |
-| Rule execution | Declarative predicate/effect prototype and deterministic phases/priorities on draft PR #2; event semantics outstanding |
-| Atomic transformations | Staged atomic commit/reject prototype and seven passing kernel tests on draft PR #2 |
-| Approximate conservation | Policy selected; tolerances and accounting outstanding |
-| Universal primitives/specialised policies | Specified; reuse evidence outstanding |
-| Replaceable module boundaries | Specified; implementation outstanding/unverified |
-| Emergence test strategy | Specified; implementation outstanding/unverified |
-| Current source reconciliation | Initial static audit complete; full source-to-contract mapping outstanding |
-| Current tests and CI | 7 GolfCore tests pass on PR branch; CI configuration absent/unverified |
-| Runtime smoke test | Unverified |
-| Current measured size baseline | Live baseline established: 976 / 942 for accretion.html |
+| accretion.html | Shared runtime, GolfCore, EntityStore, energy/field/physics/reaction services, browser prototype and module bootstrap |
+| src/emergence.js | State ownership facade, contracts, lifecycle, emergence progression, event routing, lineage and experiment harness |
+| tests/emergence.test.js | Existing inline runtime regression suite |
+| tests/emergence-progression.test.js | Four-stage progression, rollback, blind experiment and statistical tests |
+| scripts/check-inline.mjs | Syntax validation of the complete inline browser module |
+| docs/organoids/FEATURES.md | Capability catalogue with source and evidence |
+| docs/organoids/SOURCE_MAPPED_AUDIT.md | Independent main/PR #5 audit and current source map |
+| docs/organoids/POST_COMPLETION_REVIEW.md | Redundancy removal and abstraction review |
+| docs/EMERGENCE.md | Runtime architecture and execution guarantees |
 
-## 8. Immediate risks
+## 4. Main versus PR #5
 
-1. Competing or overlapping artifacts: `emergence.js` and `accretion.html`.
-2. Measurement ambiguity around the 12,350-character shared-substrate figure.
-3. Status inflation: documentation can be mistaken for implementation.
-4. Abstraction without semantic equivalence can erase meaningful domain differences.
-5. Generic state containers can obscure ownership unless relationships and lifecycle are explicit.
-6. Rule scheduling can become nondeterministic unless snapshots, phases, conflicts and commits are specified.
-7. Approximate conservation can become uncontrolled drift without tolerances and diagnostics.
-8. Modules can appear modular while retaining hidden representation or lifecycle assumptions.
-9. Scope contamination from related projects.
+- main at fcc24e222a59bfc872c649bf62a6b5b80a342462: accretion.html 24,977 characters; stale tests/core.test.js remains; older feature/status/source-audit documents incorrectly describe the former 976-character prototype.
+- PR #5 at d0b2059784bce916daf183b73acd3d381ca91ed1: five commits ahead, zero behind; accretion.html 35,243 characters; removes the stale CommonJS suite and obsolete syntax-check step; updates docs/EMERGENCE.md but explicitly leaves biology and experiments as future work.
+- This implementation branch is based on PR #5, does not modify or merge PR #5, and adds the four-stage progression plus the refreshed source-mapped documents.
 
-## 9. Next verification actions
+## 5. Final automated verification
 
-1. Inspect current authoritative `accretion.html`.
-2. Establish whether `emergence.js` is active, superseded or historical reference.
-3. Inventory primitives, shared mechanisms, consumers and duplicated implementations.
-4. Re-run character and non-whitespace measurements with documented counting.
-5. Map every specification item to source locations and tests.
-6. Define exact GolfCore operations and verify the byte target.
-7. Specify the confirmed rule model's snapshot, ordering, conflict, event and commit semantics.
-8. Run tests and report actual results.
-9. Run the simulation and perform a runtime smoke test.
-10. Update status from source and test evidence.
+**97 / 97 tests passed.**
 
-## 10. Reporting rule
+- GitHub Actions run 372 at 3298419a729315b849dcb8f5071a54db240e2e62: npm test passed, 97 tests, 0 failures.
+- scripts/check-inline.mjs parsed the complete inline browser module successfully.
+- The final test suite covers substrate contracts, transactional rollback, typed material ownership, energy accounting, aggregation, molecular formation, polymerisation, autocatalytic networks, membranes, protocells, replication, heredity, growth, reproduction, colonies, differentiation, morphogenesis, event routing, seeded experiments, interventions, reaction lineage, bootstrap statistics, blind experiments and the GolfCore byte-budget assertion.
+- Browser rendering and sustained-load behaviour remain unverified until exercised in an actual browser.
 
-Every consolidation report must include pass number/scope, actual changes, features/primitives consolidated, semantic effects, tests/results, before/after character counts, before/after non-whitespace counts, regressions and unresolved work.
+## 6. Measured source footprint
 
-Never report an assessment or proposal as a completed implementation pass.
+| Artifact | Main | PR #5 | Completion branch |
+|---|---:|---:|---:|
+| accretion.html characters | 24,977 | 35,243 | 36,472 |
+| accretion.html non-whitespace | 24,516 | 34,563 | 35,756 |
+| pre-refactor src/emergence.js characters / non-whitespace | — | — | 38,607 / 37,560 |
+| tests/emergence-progression.test.js characters / non-whitespace | — | — | 20,242 / 19,704 |
+| GolfCore evaluator | — | — | 552 ASCII bytes / 538 non-whitespace |
+
+GolfCore is slightly below the approximate 600–700-byte target; it was not padded to meet a number. EntityStore owns validated transactional commits.
+
+## 7. Remaining risks and follow-on work
+
+1. Enforce state ownership across all legacy public entity writes, not only through the StateOwner facade and owning engines.
+2. Add dependency indexing and automatic event subscriptions for every legacy GolfCore/RuleEngine module.
+3. Decide whether whole-tick rollback is required beyond per-operation/per-rule/per-module atomicity.
+4. Add membrane transport, selective permeability and protocell metabolic flux.
+5. Extend sequence-string heredity into genotype/phenotype, expression and regulatory networks.
+6. Implement resource-limited growth and true fission with material/organelle partition policies.
+7. Replace explicit differentiation/morphogenesis policies with field-driven developmental dynamics.
+8. Expand replicate sweeps, distributional tests and uncertainty analysis.
+9. Exercise the browser build on desktop/mobile and run sustained-load profiling.
+
+## 8. Reporting discipline
+
+Keep source measurements, CI results and browser observations tied to exact commits. Do not carry forward historical counts as current measurements. Do not describe a bounded primitive as a full biological model. See SOURCE_MAPPED_AUDIT.md for the complete audit, FEATURES.md for capability evidence and POST_COMPLETION_REVIEW.md for the final consolidation review.
+
+## 9. Modularization status
+
+The former single emergence source has been extracted into focused ES modules under `src/emergence/`. The public `src/emergence.js` entry remains as a compatibility barrel. Aggregation, molecular assembly, membranes, heredity, organismal behaviour, development, lifecycle, lineage, event routing, state ownership, execution and experiments now have separate source boundaries. The old combined biology module was deleted after its responsibilities were separated.
+
+The source split is complete at the current domain boundaries. Final refactor CI run 43708650558 passed 98/98 tests (0 failures) on final commit ff22fb31b15898bcb4e3535e8e51b725473bf66e. Browser and sustained-load verification remain unperformed. See MODULARITY.md.
+
+
+## 10. Modular source footprint
+
+The compatibility entry `src/emergence.js` is now 38 bytes. The 19 implementation files under `src/emergence/` total 41,629 bytes; with the 38-byte compatibility entry, the full modular source totals 41,667 bytes. The largest leaf is the experiment harness at 6,476 bytes. The progression composition root is 4,472 bytes. This is a modest size cost versus the former single-file source in exchange for explicit ownership, domain boundaries and stable interoperability contracts; it is not claimed as byte compression.

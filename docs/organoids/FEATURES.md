@@ -1,123 +1,95 @@
 # Organoids Feature Catalogue
 
-**Snapshot:** 14 November 2026
+**Snapshot:** 15 November 2026  
+**Implementation branch:** feat/four-stage-emergence-completion  
+**Evidence authority:** source-mapped audit in SOURCE_MAPPED_AUDIT.md
 
-This catalogue separates intended capabilities from implementation evidence. A feature appearing here does not automatically mean it exists in working code.
+This catalogue separates implementation from design scope. A method name or documented intention is not sufficient evidence of completion.
 
-### Status vocabulary
+## Status vocabulary
 
-- **Design scope:** part of the agreed architectural direction.
-- **Reported:** previously described as present or implemented, but not independently rechecked against current source.
-- **In progress:** actively being consolidated, designed or integrated.
-- **Unverified:** discussed or intended; no sufficient implementation evidence is available here.
-- **Blocked / unresolved:** requires a decision, integration or verification step.
+- **Implemented / tested:** authoritative source exists and automated behavioural tests cover the contract.
+- **Implemented / bounded:** working implementation exists, but its scope is deliberately narrower than the full research capability.
+- **Partial:** some primitives exist, but a required ownership, integration or execution guarantee remains incomplete.
+- **Design only:** specified but not implemented.
+- **Unverified:** runtime-dependent behaviour has not been smoke-tested in a browser or under sustained load.
 
-## 1. Foundational substrate
+## Stage 1 — Substrate and execution guarantees
 
-| Capability | Description | Evidence status |
+| Capability | Source map | Status | Boundary |
+|---|---|---|---|
+| Generic entity identity and payloads | accretion.html: EntityStore | Implemented / tested | Public entity objects remain mutable |
+| Typed relationships and composition | accretion.html: EntityStore link, compose, indexes, immutable edge log | Implemented / tested | Relation policies remain explicit per type |
+| State ownership facade | src/emergence.js: StateOwner | Partial | Legacy engines can still mutate public payloads directly |
+| Lifecycle semantics | src/emergence.js: LifecycleEngine; accretion.html: transactional state action | Implemented / tested | Biology stages are separate from containment state |
+| Material schemas and validation | src/emergence.js: ContractRegistry | Implemented / tested | Schemas cover current progression entities, not every runtime type |
+| Module contracts | src/emergence.js: ModuleContractRegistry | Implemented / tested | Contracts are enforced for registered modules, not every legacy callback |
+| Transactional action batches | accretion.html: EntityStore.transact; src/emergence.js: AtomicExecutor | Implemented / tested | Whole scheduler tick and arbitrary external side effects are not atomic |
+| Deterministic phase ordering | accretion.html: GolfCore and Scheduler | Implemented / tested | Deterministic event queue/router exists; dependency indexing is not comprehensive |
+| Energy and field accounting | accretion.html: EnergyEngine and FieldGrid | Implemented / tested | Audits cover flux-authority operations; direct external mutation is invisible |
+
+## Stage 2 — Emergence progression
+
+| Capability | Source map | Status | Boundary |
+|---|---|---|---|
+| Reusable contact aggregation | src/emergence.js: aggregateContacts | Implemented / tested | Contact geometry is a configurable radius rule |
+| Bonding | accretion.html: EntityStore transactions; src/emergence.js: aggregateContacts, _membranePlan | Implemented / tested | Bond energetics are represented as relation metadata |
+| Molecular formation | src/emergence.js: formMolecules | Implemented / tested | Forms connected bonded components |
+| Polymerisation | src/emergence.js: polymerize | Implemented / tested | Requires pre-bonded monomers |
+| Autocatalytic networks | src/emergence.js: buildAutocatalyticNetwork, registerAutocatalysis | Implemented / bounded | Explicit assembly and rule registration, not spontaneous discovery |
+| Membrane assembly | src/emergence.js: assembleMembrane | Implemented / bounded | Discrete lipid ring; no bilayer fluid mechanics |
+| Protocell formation | src/emergence.js: formProtocell | Implemented / bounded | Container, genome, membrane and contents; no selective transport/metabolism |
+
+## Stage 3 — Biological behaviour
+
+| Capability | Source map | Status | Boundary |
+|---|---|---|---|
+| Replication | src/emergence.js: replicate | Implemented / tested | Sequence-copying model |
+| Heredity and mutation | src/emergence.js: SeededRandom, replicate, LineageJournal | Implemented / tested | No gene expression or regulatory genome |
+| Growth | src/emergence.js: grow | Implemented / tested | Biomass increment with explicit energy cost |
+| Reproduction | src/emergence.js: reproduce | Implemented / tested | Parent/daughter energy split and membrane reassembly; not complete organelle partitioning |
+| Colonies | src/emergence.js: formColony | Implemented / tested | Composition-based multicellular group |
+| Differentiation | src/emergence.js: differentiate | Implemented / bounded | Explicit role assignment, not gene-regulated fate choice |
+| Morphogenesis | src/emergence.js: morphogenesis | Implemented / bounded | Radial/bilateral placement and constraints; not a self-organising morphogen model |
+
+## Stage 4 — Emergence evidence
+
+| Capability | Source map | Status | Boundary |
+|---|---|---|---|
+| Seeded random streams | src/emergence.js: SeededRandom | Implemented / tested | Deterministic within the same runtime/numerical envelope |
+| Reproducible experiments | src/emergence.js: ExperimentHarness.run | Implemented / tested | Factory must supply deterministic initial state |
+| Perturbations/interventions | ExperimentHarness.intervene | Implemented / tested | Energy pulse, knockout, mutation-rate and field pulse |
+| Lineage histories | LineageJournal | Implemented / tested | Records implemented lifecycle and formation events |
+| Statistical measurements | ExperimentHarness.summarize, compare | Implemented / tested | Descriptive statistics, seeded bootstrap intervals and pooled effect size |
+| Replicate sweeps | ExperimentHarness.replicate | Implemented / bounded | Sequential runner; no parallel statistical pipeline |
+| Blind emergence tests | src/emergence.js: ExperimentHarness.runBlind, analyzeBlind, revealBlind | Implemented / tested | Preregistered metrics, randomized coded arms and sealed condition key |
+| Browser stress and long-run stability | Browser/runtime | Unverified | CI does not exercise sustained visual execution |
+
+## Cross-cutting exclusions
+
+- This is a fictional/software artificial-life simulation, not real-world organoid development.
+- No Boids implementation, source or dependencies are imported.
+- Mocean and NEXUS Aquarium remain separate projects.
+- The feature catalogue does not claim that discrete membranes, sequence mutation or explicit morphogenesis reproduce their full biological counterparts.
+
+## Completion rule
+
+Mark a capability complete only when its authoritative source, documented contract, relevant passing tests and integration evidence agree. Mark browser-dependent behaviour unverified until it has actually been exercised in a browser. See SOURCE_MAPPED_AUDIT.md for the independent main versus PR #5 comparison.
+
+## Modular source map
+
+| Concern | Source | Contract |
 |---|---|---|
-| GolfCore | Minimal universal execution kernel: entities, state, relations and operations; higher-level behaviour expressed as composable data | Design scope |
-| Entity representation | Minimal common header with extensible, composable payloads | Prototype on draft PR #2 |
-| State containers | Generic state representation with ownership determined by relationships and lifecycle | Design scope; not yet implemented |
-| State lifecycles | Local/intrinsic, shared/global, derived and transient state semantics | Design scope |
-| Relations | Generic links for identity references, ownership, composition, dependency and interaction | Basic generic relation list prototyped; ownership semantics outstanding |
-| Transformations | Constraints, validation and atomic commit/reject | Basic staged atomic commit/reject prototyped; full domain constraints outstanding |
-| Shared substrate | Common mechanisms rather than isolated feature implementations | Design scope; size discrepancy measured |
+| Stable API and composition | `src/emergence.js`, `src/emergence/index.js`, `src/emergence/progression.js` | Compatibility exports and one composition root |
+| Aggregation and connectivity | `src/emergence/aggregation.js` | Reusable contact and bond components |
+| Molecular emergence | `src/emergence/molecular.js` | Molecule, polymer and catalytic network policy |
+| Membrane/protocell construction | `src/emergence/membranes.js` | Transactional boundary construction |
+| Heredity | `src/emergence/heredity.js` | Seeded genome replication and mutation |
+| Growth/reproduction | `src/emergence/organismal.js` | Lifecycle-gated biomass and reproduction |
+| Development | `src/emergence/development.js` | Colony, differentiation and morphogenesis policy |
+| Lifecycle/lineage | `src/emergence/lifecycle.js`, `src/emergence/lineage.js` | Legal transitions and historical truth |
+| Ownership/execution | `src/emergence/ownership.js`, `src/emergence/execution.js` | State authorities and atomic module batches |
+| Events/contracts | `src/emergence/events.js`, `src/emergence/contracts.js` | Deterministic event delivery and module interfaces |
+| Experiments | `src/emergence/experiments.js` | Seeded protocols and intervention orchestration |\n| Statistical analysis | `src/emergence/statistics.js` | Descriptive summaries, bootstrap intervals and comparisons |
 
-## 2. Rules and execution
-
-- Declarative rule data describing conditions, operations/effects and constraints.
-- Shared rule evaluator.
-- Event-triggered evaluation where dependencies are explicit.
-- Deterministic phases/priorities for conflict resolution.
-- Specialised domain predicates and effects behind stable contracts.
-- Rules promoted to entities only when they need identity, lifecycle or independent state.
-
-**Status:** hybrid rule kernel prototyped on draft PR #2: predicate/effect registries, per-rule snapshots, deterministic phase/priority/registration order and staged atomic commits. Event queues and seeded randomness remain outstanding. Seven kernel tests pass. Exact snapshot, ordering, conflict, event and commit semantics remain unverified.
-
-## 3. Physics and interactions
-
-- Independently replaceable physics module.
-- Shared fields and constraints.
-- Particle-level representation and interaction.
-- Density, pressure and other interaction properties where required by the physical model.
-- Energy/resource transfer and transformation.
-- Approximate conservation with declared tolerances and meaningful sources/sinks.
-- Reusable interaction mechanisms rather than per-species physics.
-
-**Live source:** a simple particle interaction/merge loop exists in accretion.html. The specified replaceable physics module, numerical tolerances and diagnostics are not implemented.
-
-## 4. Chemistry and transformation
-
-- Independently replaceable chemistry module.
-- Declarative chemical policies and reaction descriptions.
-- General transformation/reaction mechanisms.
-- Composition and decomposition.
-- Interaction-driven formation of more complex structures.
-- Domain-specific constraints implemented on shared transformation contracts.
-
-**Evidence:** chemistry and declarative rules are design scope. Specific reaction catalogues and tested reaction behaviour are unverified.
-
-## 5. Biological emergence
-
-- Independently replaceable biology module.
-- Emergence from particles into structures.
-- Compound and protocell formation.
-- Organism-like and colony organisation.
-- Self-organisation through local interactions.
-- Growth, structural change, reproduction and propagation as higher-order mechanisms.
-- Life-like behaviour arising from shared rules and specialised biological policies.
-
-**Evidence:** particle-to-protocell-to-colony emergence is design scope. Completeness of each stage is not verified.
-
-## 6. Universal mechanisms and specialised policies
-
-- Shared primitives for identity, state, relations, composition, transformation and execution.
-- Specialised physics, chemistry and biology policies.
-- Abstraction based on demonstrated semantic reuse, not superficial code similarity.
-- Stable contracts that permit domain modules to be independently tested and replaced.
-
-This is the governing design principle, not proof that all mechanisms have already been consolidated.
-
-## 7. Emergence observability and verification
-
-- Statistical measurements of populations, structures, diversity and distributions.
-- Seeded reproducible experiments.
-- Perturbation experiments.
-- Intervention tests removing or changing mechanisms.
-- Blind emergence tests with predefined metrics and no encoded target outcome.
-- Causal histories, event traces and lineage tracking.
-- Regression and interoperability tests.
-- Runtime inspection and measured source-size reporting.
-
-**Evidence:** seven GolfCore unit tests are present on draft PR #2. Statistical emergence experiments, browser/runtime tests and the wider verification programme remain unimplemented.
-
-## 8. Engineering and delivery
-
-- Single coherent implementation.
-- Consolidation of semantically equivalent mechanisms.
-- Progressive golfing and abstraction.
-- Stable module contracts.
-- Automated tests and CI.
-- Runtime verification.
-- Reproducible measurements.
-- Before/after total and non-whitespace character counts for every consolidation pass.
-
-## 9. Explicit exclusions
-
-- Real-world biological organoid development or experimentation.
-- Importing Boids implementation, source, dependencies or code.
-- Folding Mocean or NEXUS Aquarium into this repository.
-- Treating conceptual discussion as proof of implementation.
-- Forcing superficially similar but semantically distinct mechanisms into one abstraction.
-
-## 10. Feature completion rule
-
-A feature should only be marked **complete** when:
-1. Its implementation exists in the authoritative source.
-2. Its contract and semantics are documented.
-3. Relevant tests pass.
-4. Integration with the shared substrate is demonstrated.
-5. Runtime-dependent behaviour has been smoke-tested.
-
-Until then, retain the appropriate weaker status.
+The module boundaries and future extension rules are specified in [MODULARITY.md](MODULARITY.md).

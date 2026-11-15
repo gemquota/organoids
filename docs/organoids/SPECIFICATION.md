@@ -13,7 +13,7 @@ The central design rule is: **share mechanisms when their semantics are genuinel
 
 GolfCore is the minimal universal execution kernel. Its conceptual primitives are entities, state, relations and operations. Higher-level functionality is composed from data and operations over those primitives.
 
-The kernel must not absorb physics, chemistry, biology, rendering, observation or organism-specific logic. Its exact primitive list and approximately 600–700-byte target must be measured against the implementation.
+The kernel must not absorb physics, chemistry, biology, rendering, observation or organism-specific logic. The GolfCore evaluator is measured at 552 ASCII bytes (538 non-whitespace); validated commitChanges belongs to EntityStore. The approximate 600–700-byte target is not met by padding or by moving domain logic into the kernel.
 
 ## 2. Entities
 
@@ -59,15 +59,15 @@ Use statistical measurements, seeded reproducible runs, perturbations, intervent
 
 The intended emergence ladder is particles → structures → compounds → protocells → organisms → colonies. It is a research trajectory, not a scripted guarantee for every run.
 
-## 11. Implementation gates
+## 11. Implementation gate audit
 
-1. Reconcile `accretion.html` and historical `emergence.js`.
-2. Map every contract to source and tests.
-3. Verify GolfCore's exact operations and size.
-4. Define entity, state, relation and transformation semantics.
-5. Confirm or revise the provisional rule model.
-6. Specify numerical tolerances and module contracts.
-7. Test primitive behaviour and cross-module interoperability.
-8. Run seeded, perturbation, intervention and blind emergence experiments.
+1. **Source reconciliation:** accretion.html is the authoritative shared runtime; the obsolete standalone emergence.js path is not used by the current build. The separate source audit compares main and PR #5 independently.
+2. **Contract-to-source mapping:** completed in FEATURES.md and SOURCE_MAPPED_AUDIT.md; state encapsulation across legacy public objects remains partial.
+3. **GolfCore operations and size:** measured at 552 ASCII bytes; validated entity commits are owned by EntityStore.
+4. **Entity/state/relation/transformation semantics:** implemented with typed relationships, lifecycle separation, transactional property/material operations and documented ownership limits.
+5. **Rule model:** the approved declarative hybrid is implemented through GolfCore, RuleEngine, deterministic event routing and ordered scheduler phases; automatic dependency indexing remains incomplete.
+6. **Numerical tolerances and module contracts:** energy/field invariants and module write ownership are tested; mass/charge conservation remains future work.
+7. **Primitive and cross-module behaviour:** 97 automated tests pass, including rollback, energy, chemistry-like assembly, biological progression, blind experiments and the GolfCore size contract.
+8. **Emergence experiments:** seeded runs, perturbations, interventions, lineage, bootstrap statistics and blinded coded arms with preregistered metrics are implemented and tested. Large-scale experimental campaigns and browser stress tests remain unverified.
 
 A documented capability is not an implemented capability. Mark features complete only with source, contract, passing tests and runtime evidence.
