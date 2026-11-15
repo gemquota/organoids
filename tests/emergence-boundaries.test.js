@@ -83,7 +83,7 @@ test("resource-limited growth refuses shortages and consumes supplied precursors
 });
 
 test("field gradients drive differentiation and morphogenetic movement",()=>{
-  const r=createRuntime({width:20,height:20,cols:4,rows:4}),b=new EmergenceProgression(r);
+  const r=createRuntime({width:20,height:20,cols:20,rows:20}),b=new EmergenceProgression(r);
   r.fields.define("morphogen",0,{unit:"concentration"});
   r.fields.add("morphogen",5,5,1);
   const cells=[0,1,2].map(i=>b.create("cell",{genome:{sequence:"A"},x:5+i,y:5}));
