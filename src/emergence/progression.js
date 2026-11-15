@@ -5,6 +5,9 @@ import {LineageJournal} from './lineage.js';
 import {LifecycleEngine} from './lifecycle.js';
 import {DeterministicEventQueue,EventRuleRouter} from './events.js';
 import {StateOwner} from './ownership.js';
+import {DependencyEventIndex} from './events.js';
+import {RuntimeTickTransaction} from './transactions.js';
+import {GeneRegulatoryEngine} from './genetics.js';
 import {AtomicExecutor} from './execution.js';
 import {methods as aggregation} from './aggregation.js';
 import {methods as molecular} from './molecular.js';
@@ -12,8 +15,9 @@ import {methods as membranes} from './membranes.js';
 import {methods as heredity} from './heredity.js';
 import {methods as organismal} from './organismal.js';
 import {methods as development} from './development.js';
+import {methods as physiology} from './physiology.js';
 export class EmergenceProgression {
-  constructor(runtime,options={}){if(!runtime?.store||!runtime?.energy)throw Error("A complete runtime is required");this.runtime=runtime;this.store=runtime.store;this.energy=runtime.energy;this.rng=options.random||new SeededRandom(options.seed||1);this.contracts=new ContractRegistry();this.owner=new StateOwner(runtime,this.contracts);this.executor=new AtomicExecutor(runtime);this.modules=new ModuleContractRegistry();this.eventQueue=new DeterministicEventQueue(options.eventCapacity);this.eventRouter=new EventRuleRouter(runtime,this.eventQueue,this.executor);this.lineage=new LineageJournal(options.historyCapacity);this.lifecycle=new LifecycleEngine(runtime,this.lineage);this._defineContracts()}
+  constructor(runtime,options={}){if(!runtime?.store||!runtime?.energy)throw Error("A complete runtime is required");this.runtime=runtime;this.store=runtime.store;this.energy=runtime.energy;this.rng=options.random||new SeededRandom(options.seed||1);this.contracts=new ContractRegistry();this.dependencies=new DependencyEventIndex();this.owner=new StateOwner(runtime,this.contracts,this.dependencies);this.executor=new AtomicExecutor(runtime);this.modules=new ModuleContractRegistry();this.eventQueue=new DeterministicEventQueue(options.eventCapacity);this.eventRouter=new EventRuleRouter(runtime,this.eventQueue,this.executor);this.lineage=new LineageJournal(options.historyCapacity);this.lifecycle=new LifecycleEngine(runtime,this.lineage);this.genetics=new GeneRegulatoryEngine(this);this.tickTransaction=new RuntimeTickTransaction(runtime,options.transactionOptions);this.tickTransaction.registerParticipant(()=>({events:copy(this.lineage.events),sequence:this.lineage.sequence,parents:[...this.lineage.parents].map(([k,v])=>[k,v.slice()]),children:[...this.lineage.children].map(([k,v])=>[k,v.slice()]),counts:[...this.lineage.counts],totals:[...this.lineage.totals],queue:this.eventQueue.snapshot(),random:this.rng.snapshot?.()}),state=>{this.lineage.events=state.events;this.lineage.sequence=state.sequence;this.lineage.parents=new Map(state.parents);this.lineage.children=new Map(state.children);this.lineage.counts=new Map(state.counts);this.lineage.totals=new Map(state.totals);this.eventQueue.restore(state.queue);if(state.random!==undefined)this.rng.restore(state.random)});this._defineContracts()}
   get metrics(){const l=this.lineage;return freeze({aggregations:l.total("aggregation","bonds"),bonds:l.count("bonding"),molecules:l.count("molecular-formation"),polymers:l.count("polymerisation"),networks:l.count("autocatalytic-network"),membranes:l.count("membrane-assembly"),protocells:l.count("protocell-formation"),replications:l.count("replication"),reproductions:l.count("reproduction"),colonies:l.count("colony-formation"),differentiations:l.count("differentiation"),morphogenesis:l.count("morphogenesis")})}
   _defineContracts(){this.contracts
     .define("particle",{mass:{type:"number",min:0,default:1},x:{type:"number"},y:{type:"number"}})
@@ -29,4 +33,4 @@ export class EmergenceProgression {
   snapshot(){return{random:this.rng.snapshot?.(),metrics:copy(this.metrics),events:copy(this.lineage.events),parents:[...this.lineage.parents].map(([id,parents])=>[id,parents.slice()]),children:[...this.lineage.children].map(([id,children])=>[id,children.slice()]),eventQueue:this.eventQueue.snapshot(),sequence:this.lineage.sequence}}
   statistics(){const entities=[...this.store.entities.values()].filter(active),byType={};for(const e of entities)byType[e.type]=(byType[e.type]||0)+1;return{entities:entities.length,byType,metrics:copy(this.metrics),lineageEvents:this.lineage.sequence,meanAge:entities.length?entities.reduce((s,e)=>s+finite(e.properties.age),0)/entities.length:0,meanBiomass:entities.length?entities.reduce((s,e)=>s+finite(e.properties.biomass),0)/entities.length:0,typeDiversity:Object.values(byType).length?Object.values(byType).reduce((h,n)=>{const p=n/entities.length;return h-p*Math.log(p)},0):0}}
 }
-Object.assign(EmergenceProgression.prototype,aggregation,molecular,membranes,heredity,organismal,development);
+Object.assign(EmergenceProgression.prototype,aggregation,molecular,membranes,heredity,organismal,development,physiology);
