@@ -15,7 +15,7 @@ test("energy-bearing material converts to ATP and heat under the energy flux inv
   assert.equal(result.consumed,2);assert.equal(result.energy,1.5);
   assert.equal(r.energy.quantity(cell,"glucose"),2);assert.equal(r.energy.quantity(cell,"waste"),2);
   assert.equal(cell.energy,1.5);assert.ok(Math.abs(r.energy.inventory(r.store).total-before)<1e-6);
-  assert.equal(r.energy.audit(r.store,0).balanced,true);
+  assert.equal(r.energy.audit(r.store,0).balanced,true,JSON.stringify(r.energy.audit(r.store,0)));
 });
 
 test("membrane transport is selective, permeability-limited and conserves material",()=>{
