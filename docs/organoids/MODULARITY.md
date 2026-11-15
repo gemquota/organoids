@@ -94,3 +94,16 @@ The six nested progression domains are a deliberately small meta-module family. 
 ## Deliberately not claimed
 
 This is modular source architecture, not a claim that all future biology is implemented. Selective membrane transport, metabolism, gene regulation, whole-tick rollback, large-scale parameter campaigns, and browser/load validation remain separate engineering work. The modules provide places to add those capabilities without reopening a monolith.
+
+
+## Remaining-boundaries module extensions
+
+The current focused module family also includes:
+
+- `transactions.js`: whole-tick checkpoint and rollback coordinator.
+- `physiology.js`: selective membrane transport and energy-bearing substrate conversion.
+- `genetics.js`: locus definition, signal-weighted expression and phenotype trait mapping.
+
+The EntityStore now protects declared biological payload keys with transaction-only setters and deeply immutable nested values. Runtime entity energy is guarded by a private store capability bound to EnergyEngine. The dependency index subscribes to committed transactional property/state/material changes; tick-level change batches are delivered only after successful commit and discarded on rollback.
+
+The current module topology is intentionally not a claim of universal ownership. Unprotected generic payloads remain extensible, direct non-transactional physics writes are not indexed, and the browser animation loop is not yet wrapped by RuntimeTickTransaction. The canonical capability boundaries are in [FEATURES.md](FEATURES.md).
