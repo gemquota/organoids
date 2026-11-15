@@ -44,7 +44,7 @@ This file is a chronological engineering log, not a live status catalogue. Curre
 - Bound runtime entity energy writes to EnergyEngine through a private EntityStore capability.
 - Added EntityStore change notifications, indexed dependency subscriptions and commit-deferred notification batches.
 - Added whole-tick runtime checkpoint/rollback and integrated it into experimental runs.
-- Added energy-bearing substrate conversion with heat/output accounting.
+- Added energy-bearing quantity source/sink accounting, internal material transfer and substrate conversion with heat/output accounting.
 - Added selective membrane transport with permeability, selectivity, channel and gradient controls.
 - Added locus-based gene expression and signal-weighted phenotype traits.
 - Added resource-limited growth and fission with biomass, energy and material partition.
