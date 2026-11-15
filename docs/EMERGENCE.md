@@ -5,12 +5,14 @@ Organoids builds emergence from generic entities, relations and operations. A pa
 ## Kernel and runtime
 
 - **GolfCore:** named predicates/effects, ordered phase/priority rules, staged property patches and atomic commits. Exposed as `runtime.core`.
-- **EntityStore:** entity lifecycle, typed links, recursive containment, graph indexes, snapshots and journalled transactions.
+- **EntityStore:** entity lifecycle, typed links, recursive containment, append-only immutable edge history with atomically rebuilt directional projections, snapshots and journalled transactions.
 - **SpatialIndex:** uniform-grid neighbour queries.
-- **PairEngine:** attraction/repulsion plus positional constraints; `InteractionEngine` and `ConstraintEngine` are aliases.
-- **FieldGrid:** typed scalar fields, conservative diffusion, decay, gradients, advection and cell-level rollback.
-- **EnergyEngine:** energy/material quantities, transfer, conversion, dissipation and inventory audit.
-- **GraphEngine:** components, cycles, assembly and division; `TopologyEngine` is an alias.
+- **InteractionEngine:** continuous attraction/repulsion force accumulation and velocity updates.
+- **ConstraintEngine:** iterative geometric position projection, with independent constraint state.
+- **FieldGrid:** typed scalar fields, gradients, cell-level rollback, and energy-preserving diffusion/advection; configured energy decay is routed to the external-output ledger.
+- **EnergyEngine:** entity-owned energy and typed material quantities, transactional flux operations, read-only accounting-ledger projections, field decay as external output, and conservation audits. Energy-field writes require flux authority.
+- **GraphEngine:** neighbour traversal, connected components and cycle analysis.
+- **TopologyEngine:** composition, assembly and division, delegating graph analysis to GraphEngine.
 - **RuleEngine:** data-defined reactions, catalysts, conditions, rates, products and energy costs.
 - **Scheduler:** core rules, reactions and field transport execute in ordered phases.
 
@@ -31,8 +33,16 @@ Aggregation → bonding → molecular formation → reactions → polymerisation
 
 The substrate provides reusable primitives; this list is not a claim that every stage is already implemented.
 
+## Conservation contract
+
+Entity and energy-field values are the physical reservoirs. The ledger is a read-only accounting projection, not another reservoir. Internal transfers and conversion losses routed into fields do not change the total; energy leaving the model is recorded as output, and external sources are recorded as input:
+
+\`E_entities + E_fields + E_output - E_input = E_baseline\`
+
+The ledger's transfer, conversion and fielding counters are diagnostics only. Energy mutation and energy-field writes pass through the flux boundary; field diffusion/advection preserve spatial totals, while configured decay is an accounted output.
+
 ## Boundaries
 
-The current demo shows particle motion, pair forces, energy flux and aggregation. The later biological stages remain future work. Interpolation-based advection is not strictly conservative. Energy audits only cover flows routed through EnergyEngine and require a baseline. Arbitrary external side effects are outside transaction rollback.
+The current demo shows particle motion, pair forces, energy flux and aggregation. The later biological stages remain future work. Energy-field diffusion and advection preserve the field total; configured field decay is recorded as external output. Entity and energy-field mutations are routed through EnergyEngine. Audits require an initial-state baseline and can only account for operations that use the flux boundary. Arbitrary external side effects are outside transaction rollback.
 
 `accretion.html` is the single authoritative runtime and browser prototype. The test suite extracts its engine module directly, so there is no duplicated runtime source. Run `npm test` for the automated checks.
