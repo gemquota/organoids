@@ -65,12 +65,13 @@ test("whole-tick transaction restores entity, field, scheduler and lineage state
 
 test("fission partitions biomass, energy and material inventories atomically",()=>{
   const r=createRuntime(),b=new EmergenceProgression(r),parent=b.create("cell",{genome:{sequence:"ACGT"},biomass:10},10);
-  b.owner.material(parent.id,"carbon",8,"mass");
+  b.owner.material(parent.id,"carbon",8,"mass");b.owner.material(parent.id,"chemical",6,"energy");
   b.lifecycle.transition(parent.id,"growing");b.lifecycle.transition(parent.id,"mature");
   const daughter=b.fission(parent.id,{share:.5});
   assert.equal(parent.properties.biomass,5);assert.equal(daughter.properties.biomass,5);
   assert.equal(parent.energy,5);assert.equal(daughter.energy,5);
   assert.equal(r.energy.quantity(parent,"carbon"),4);assert.equal(r.energy.quantity(daughter,"carbon"),4);
+  assert.equal(r.energy.quantity(parent,"chemical"),3);assert.equal(r.energy.quantity(daughter,"chemical"),3);assert.equal(r.energy.audit(r.store,10).balanced,true);
   assert.equal(b.lifecycle.stage(parent),"mature");assert.equal(b.metrics.reproductions,0);
   assert.equal(b.lineage.count("fission"),1);
 });
