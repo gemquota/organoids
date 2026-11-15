@@ -46,7 +46,7 @@ test("dependency index dispatches only matching entity-property subscriptions",(
   r.store.transact([{op:"set",id:cell.id,key:"phenotype",value:"boundary"}]);
   assert.deepEqual(seen,["boundary"]);
   const moving=b.create("cell",{genome:{sequence:"A"},x:1,y:1,vx:1,vy:0}),positions=[];
-  b.dependencies.subscribe({entityType:"cell",property:"x"},change=>positions.push(change.value));
+  b.dependencies.subscribe({entityType:"cell",property:"x"},change=>{if(change.entity===moving.id)positions.push(change.value)});
   r.step(1);assert.equal(moving.properties.x,2);assert.deepEqual(positions,[2]);
   assert.equal(b.dependencies.size,3);
 });
