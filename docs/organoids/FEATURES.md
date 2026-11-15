@@ -83,7 +83,7 @@ A method name, UI label, documentation statement or passing syntax check is not 
 
 All 26 rows marked **Implemented / tested** above were checked against their authoritative source and a named automated behavioural test. The 14 remaining rows are not silently promoted to complete: 13 are explicitly bounded and one remains unverified. The new boundary tests cover transaction-only protected payload writes, nested genome immutability, indexed notifications, tick rollback with deferred notifications, membrane selectivity/transport, conserved substrate conversion, gene expression, resource-limited growth, fission, field-driven development and factorial campaigns.
 
-**Current CI evidence:** final branch run is recorded in the branch's GitHub Actions history. GitHub Actions run 43722390029 on commit 6b1374fc2e7f4ac521ed631cb32c8bbdbafe7b8a passed 108/108 tests (0 failures). This is the latest fully documented source-and-pointer state before this final catalogue wording correction.
+**Current CI evidence:** final branch run is recorded in the branch's GitHub Actions history. GitHub Actions run 43722673372 on commit c578dd77c301079ddbc2996853ddb24178be2dfb passed 108/108 tests (0 failures). This run includes the runtime physics dependency notifications and lazy listener binding.
 
 ### Current module map
 
