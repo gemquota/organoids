@@ -1,7 +1,7 @@
 # Modularity and module-contract architecture
 
 **Snapshot:** 15 November 2026  
-**Implementation branch:** `feat/four-stage-emergence-completion`  
+**Implementation branch:** `feat/remaining-emergence-boundaries`  
 **Compatibility entry:** `src/emergence.js`
 
 ## Intent
@@ -31,14 +31,16 @@ src/
     aggregation.js             contact detection and bond components
     molecular.js               molecules, polymers and catalytic networks
     membranes.js               membrane plans and protocell assembly
-    heredity.js                replication and mutation
+    physiology.js              selective transport and metabolic flux
+    heredity.js                replication, mutation and partition
+    genetics.js                locus expression and regulation
     organismal.js              biomass growth and reproduction
     development.js             colonies, differentiation and morphogenesis
     experiments.js             seeded protocols and interventions
     statistics.js              descriptive and bootstrap summaries
 ```
 
-The six nested progression domains are a deliberately small meta-module family. Their exported method sets are attached to the `EmergenceProgression` facade once at module load. They share the same runtime, owner, lifecycle, lineage and transaction authorities; they do not own shadow stores or duplicate biological state.
+The eight nested progression domains are a deliberately small meta-module family. Their exported method sets are attached to the `EmergenceProgression` facade once at module load. They share the same runtime, owner, lifecycle, lineage and transaction authorities; they do not own shadow stores or duplicate biological state.
 
 ## Semantic boundaries
 
