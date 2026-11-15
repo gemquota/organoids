@@ -23,7 +23,8 @@ src/
     contracts.js               entity schemas + module contracts
     lineage.js                 append-oriented ancestry/event history
     lifecycle.js               legal state transitions and ageing
-    events.js                  deterministic queue + event router
+    events.js                  deterministic queue, router and dependency index
+    transactions.js             whole-tick checkpoint and rollback
     ownership.js               validated state/energy/relation facade
     execution.js               atomic module batch executor
     progression.js             composition root and public facade
