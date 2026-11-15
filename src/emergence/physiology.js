@@ -27,9 +27,8 @@ export const methods={
     if((cell.quantityUnits?.[substrate]||"quantity")!=="energy")throw Error("Metabolic substrate must use energy units");
     const available=this.energy.quantity(cell,substrate),consumed=Math.min(amount,available),yieldEnergy=consumed*efficiency;
     if(consumed<=0)return{consumed:0,energy:0};
-    const result=this.store.transact([{op:"material",id,key:substrate,delta:-consumed,unit:"energy"},{op:"material",id,key:waste,delta:consumed,unit:options.wasteUnit||"mass"}],{energy:this.energy,fields:this.energy.fields});
+    const result=this.store.transact([{op:"convert-quantity",id,key:substrate,amount:consumed,efficiency},{op:"material",id,key:waste,delta:consumed,unit:options.wasteUnit||"mass"}],{energy:this.energy,fields:this.energy.fields});
     if(!result.ok)throw result.error;
-    this.energy.source(cell,yieldEnergy);
     this._record("metabolism",{entity:id,substrate,waste,consumed,energy:yieldEnergy,efficiency});
     return{consumed,energy:yieldEnergy,waste:consumed};
   }
