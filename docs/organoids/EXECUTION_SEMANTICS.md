@@ -61,9 +61,12 @@ Automated tests cover:
 - membrane/protocell assembly;
 - replication, mutation, growth, reproduction and lineage;
 - colony composition, differentiation and morphogenesis;
-- experiment interventions and descriptive statistics.
+- experiment interventions, descriptive/bootstrap statistics and factorial campaigns;
+- indexed transactional and physics-step dependency notifications;
+- whole-tick experiment rollback and rollback-safe notification deferral;
+- selective membrane transport, metabolic energy conversion, locus expression, resource-limited growth and fission.
 
-Not yet covered: automatic event dependency indexing across every legacy module, global conflict reduction, whole-tick rollback, distributional hypothesis tests, large blind replicate campaigns, browser stress tests and cross-platform floating-point equivalence. The current blind harness, seeded bootstrap intervals and generic event router are implemented and tested.
+Not yet covered: indexing arbitrary direct writes outside EntityStore transactions and the runtime physics step, global conflict reduction, browser-wide tick rollback, distributional hypothesis tests, large blind replicate campaigns, browser stress tests and cross-platform floating-point equivalence. The current blind harness, seeded bootstrap intervals and generic event router are implemented and tested.
 
 
 ## 8. New physiology and developmental semantics
