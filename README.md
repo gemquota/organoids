@@ -5,7 +5,6 @@ A generative physics and artificial-life simulation exploring organisation from 
 - [Live prototype](./accretion.html)
 - [Unified runtime architecture](./docs/EMERGENCE.md)
 - [Reusable emergence and biology module](./src/emergence.js)
-- [Feature catalogue](./docs/organoids/FEATURES.md)
 - [Canonical feature catalogue, verification and roadmap](./docs/organoids/FEATURES.md)
 - [Modular architecture and contracts](./docs/organoids/MODULARITY.md)
 - [Post-completion review](./docs/organoids/POST_COMPLETION_REVIEW.md)
