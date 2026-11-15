@@ -152,3 +152,12 @@ Project discussion identifies `accretion.html` as the central artifact. The rela
 The implementation is now decomposed behind the stable `src/emergence.js` compatibility entry point. The composition root is `src/emergence/progression.js`; focused modules own aggregation, molecular assembly, membranes, heredity, organismal behaviour, development, lifecycle, lineage, events, state ownership, execution and experiments. Shared helpers are isolated in a pure module. The four progression domains are nested meta-modules because each has a distinct semantic responsibility and common runtime contract.
 
 See [MODULARITY.md](MODULARITY.md) for the module map, read/write ownership rules, interoperability contracts, future module criteria and consolidation findings. The architecture deliberately reuses the existing entity, energy, field, topology, constraint, reaction and scheduler authorities rather than creating parallel stores.
+
+
+## 11. Current module boundaries and ownership hardening
+
+The public module remains `src/emergence.js`. The implementation is split under `src/emergence/` into substrate contracts/ownership/execution/events/transactions, lifecycle and lineage, aggregation and molecular assembly, membranes and physiology, heredity and genetics, organismal growth/fission, development, and experiment/statistics modules. The authoritative source map and completion evidence are in [FEATURES.md](FEATURES.md).
+
+Declared biological payload keys (genome, age, biomass, life stage and phenotype) are protected by transaction-only EntityStore setters and deeply immutable nested values. Runtime entity energy is protected by an EntityStore capability bound to EnergyEngine. Generic payload extensibility remains for keys outside those explicit ownership contracts.
+
+Whole-tick checkpoints currently wrap experimental ticks, with rollback of entity/link/field/ledger/scheduler/constraint/rule/lineage state and deferred dependency notifications. The interactive browser tick loop is not yet wrapped, and direct non-transactional physics writes are not all indexed. These boundaries are deliberately explicit rather than being called universal enforcement.
