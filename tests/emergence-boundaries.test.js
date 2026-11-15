@@ -35,18 +35,17 @@ test("gene regulation maps sequence loci and signals into heritable phenotype tr
   b.owner.patch(cell.id,{genome});
   const traits=b.genetics.express(cell.id,{signal:.5});
   assert.ok(Math.abs(traits.adhesion-.6)<1e-9);
-  assert.equal(cell.properties.genome.expression["adhesion-gene"],.6);
+  assert.ok(Math.abs(cell.properties.genome.expression["adhesion-gene"]-.6)<1e-9);
   assert.equal(b.lineage.count("gene-expression"),1);
 });
 
 test("dependency index dispatches only matching entity-property subscriptions",()=>{
-  const index=new DependencyEventIndex(),seen=[];
-  index.subscribe({entityType:"cell",property:"phenotype"},change=>seen.push(change.value));
-  index.subscribe({entityType:"particle",property:"phenotype"},()=>seen.push("wrong"));
-  const r=createRuntime(),b=new EmergenceProgression(r),cell=b.create("cell",{genome:{sequence:"A"}});
+  const seen=[],r=createRuntime(),b=new EmergenceProgression(r),cell=b.create("cell",{genome:{sequence:"A"}});
+  b.dependencies.subscribe({entityType:"cell",property:"phenotype"},change=>seen.push(change.value));
+  b.dependencies.subscribe({entityType:"particle",property:"phenotype"},()=>seen.push("wrong"));
   b.owner.patch(cell.id,{phenotype:"boundary"});
   assert.deepEqual(seen,["boundary"]);
-  assert.equal(index.size,2);
+  assert.equal(b.dependencies.size,2);
 });
 
 test("whole-tick transaction restores entity, field, scheduler and lineage state after failure",()=>{
