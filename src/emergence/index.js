@@ -8,3 +8,6 @@ export {DeterministicEventQueue,EventRuleRouter} from './events.js';
 export {StateOwner} from './ownership.js';
 export {AtomicExecutor} from './execution.js';
 export {createEmergence} from './factory.js';
+export {DependencyEventIndex} from './events.js';
+export {RuntimeTickTransaction} from './transactions.js';
+export {GeneRegulatoryEngine} from './genetics.js';
