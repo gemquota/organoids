@@ -23,7 +23,7 @@ A method name, UI label, documentation statement or passing syntax check is not 
 |---:|---|---|---|---|---|
 | 1 | Generic entity identity and extensible payloads | `accretion.html: EntityStore` | `tests/emergence.test.js` entity creation and snapshot tests | Implemented / tested | Generic non-protected payload keys remain extensible |
 | 2 | Typed relationships, containment and graph projections | `accretion.html: EntityStore`, `GraphEngine`, `TopologyEngine` | `tests/emergence.test.js` relation, cycle and topology tests | Implemented / tested | Relation-specific policies are declared per relation type |
-| 3 | Declared biological state ownership | `accretion.html: EntityStore.protectType/_guardEntity`; `src/emergence/ownership.js` | `tests/emergence-boundaries.test.js` protected payload test | Implemented / bounded | Genome, age, biomass, life stage and phenotype fields are transaction-only and deeply immutable; arbitrary legacy payload fields and direct energy writes are not globally sealed |
+| 3 | Declared biological state ownership | `accretion.html: EntityStore.protectType/_guardEntity`; `src/emergence/ownership.js` | `tests/emergence-boundaries.test.js` protected payload test | Implemented / bounded | Genome, age, biomass, life stage and phenotype fields are transaction-only and deeply immutable; arbitrary legacy payload fields and direct energy/quantity inventory writes are not globally sealed |
 | 4 | Lifecycle transitions and ageing | `src/emergence/lifecycle.js` | `tests/emergence-progression.test.js` lifecycle transition and rollback tests | Implemented / tested | Biological life stage is separate from containment/active state |
 | 5 | Typed material schemas and validation | `src/emergence/contracts.js`, `src/emergence/progression.js` | `tests/emergence-progression.test.js` contract validation tests | Implemented / tested | Schemas cover progression entities, not every possible runtime entity type |
 | 6 | Module service and write contracts | `src/emergence/contracts.js`, `src/emergence/execution.js` | `tests/emergence-progression.test.js` module contract and atomic executor tests | Implemented / bounded | Required services and exclusive declared writers are checked; declared read sets are metadata and are not enforced at every access |
@@ -83,7 +83,7 @@ A method name, UI label, documentation statement or passing syntax check is not 
 
 All 26 rows marked **Implemented / tested** above were checked against their authoritative source and a named automated behavioural test. The 14 remaining rows are not silently promoted to complete: 13 are explicitly bounded and one remains unverified. The new boundary tests cover transaction-only protected payload writes, nested genome immutability, indexed notifications, tick rollback with deferred notifications, membrane selectivity/transport, conserved substrate conversion, gene expression, resource-limited growth, fission, field-driven development and factorial campaigns.
 
-**Current CI evidence:** final branch run is recorded in the branch's GitHub Actions history. The exact final run number and test count must be updated here only after the latest commit has completed successfully.
+**Current CI evidence:** final branch run is recorded in the branch's GitHub Actions history. GitHub Actions run 43722154589 on commit f906178b3c73d4dc48d41e937775a7f6731f526b passed 108/108 tests (0 failures). The documentation-only updates after that source commit receive their own final CI run.
 
 ### Current module map
 
