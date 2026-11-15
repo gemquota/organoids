@@ -2,7 +2,7 @@
 
 **Snapshot:** 15 November 2026  
 **Design authority:** docs/organoids/SPECIFICATION.md  
-**Implementation evidence:** accretion.html and src/emergence.js; see SOURCE_MAPPED_AUDIT.md.
+**Implementation evidence:** `accretion.html` and focused modules under `src/emergence/`; see [FEATURES.md](FEATURES.md).
 
 ## 1. Rule representation and order
 
@@ -18,26 +18,26 @@ The two evaluators remain separate because general property effects and multi-re
 - A failed action batch rolls back the state covered by EntityStore.transact.
 - Later rules/phases observe earlier successful commits according to the scheduler's ordered sequential semantics.
 
-This is per-rule/per-module atomicity, not whole-tick atomicity. A failed later phase does not undo earlier committed phases.
+EntityStore actions remain per-operation atomic. `RuntimeTickTransaction` adds a wider checkpoint around experimental ticks: it snapshots entity payloads and identity, relation history/projections, fields, energy ledger, scheduler counters, constraints, rule events and registered participants. A failure restores the checkpoint in place, preserving references to pre-existing entities. The interactive browser loop is not yet wrapped by this coordinator, and arbitrary external side effects remain outside rollback.
 
 ## 3. Conflict policy
 
 AtomicExecutor's ModuleContractRegistry rejects duplicate declared write ownership. AtomicExecutor also rejects duplicate writes to the same entity/property within a staged batch. EntityStore transaction action validation rejects invalid actions and failed preconditions; the transaction is rolled back as a unit.
 
-Legacy GolfCore commit rejects duplicate entity writes in one staged commit. The runtime does not yet implement a universal property-level conflict reducer or a global dependency-aware conflict graph.
+Legacy GolfCore commit rejects duplicate entity writes in one staged commit. The runtime does not implement a universal property-level conflict reducer. `DependencyEventIndex` indexes transactional EntityStore changes by entity type/property; direct unguarded physics writes and arbitrary external mutation are not indexed. Declared read sets remain metadata rather than enforced access control.
 
 ## 4. Event and lineage semantics
 
 EntityStore maintains immutable relationship event history and active relationship projections. RuleEngine emits reaction events only after a successful reaction transaction. LineageJournal records immutable, sequenced biological formation, lifecycle, replication, differentiation and morphogenesis events.
 
-DeterministicEventQueue and EventRuleRouter provide sequenced FIFO events, phase-boundary dispatch, stable handler priority, one atomic action batch per event, and retry when a handler batch fails. Events emitted while dispatching are deferred to the next dispatch call. Automatic dependency indexing, event coalescing and subscriptions across every legacy rule/module remain outstanding. LineageJournal remains a separate historical evidence log, not an event bus; lifetime metrics and lineage projections are derived from that journal.
+DeterministicEventQueue and EventRuleRouter provide sequenced FIFO events, phase-boundary dispatch, stable handler priority, one atomic action batch per event, and retry when a handler batch fails. Events emitted while dispatching are deferred to the next dispatch call. Automatic dependency indexing covers committed EntityStore property/state/material actions. It is not yet wired to every direct physics write or legacy rule callback. LineageJournal remains a separate historical evidence log, not an event bus; lifetime metrics and lineage projections are derived from that journal.
 
 ## 5. State ownership and lifecycle
 
 - EntityStore owns identity, property dictionaries, lifecycle state, typed material quantity inventories and typed relations.
 - EnergyEngine owns energy and typed quantity changes.
 - FieldGrid owns field reservoirs; energy-valued fields are mutated through EnergyEngine flux authority.
-- StateOwner is the preferred facade for biology modules.
+- StateOwner is the preferred facade for biology modules. EntityStore also guards declared biological payload keys with transaction-only setters and deep-frozen nested values; EnergyEngine is the exclusive writer for runtime entity energy. Unprotected generic payload keys remain extensible.
 - LifecycleEngine validates transitions between nascent, growing, mature, reproducing, dormant, senescent and dead. The life stage is separate from containment state.
 - A contained biological cell remains biologically active; molecular constituents may be bound and inactive as independent agents.
 
@@ -64,3 +64,8 @@ Automated tests cover:
 - experiment interventions and descriptive statistics.
 
 Not yet covered: automatic event dependency indexing across every legacy module, global conflict reduction, whole-tick rollback, distributional hypothesis tests, large blind replicate campaigns, browser stress tests and cross-platform floating-point equivalence. The current blind harness, seeded bootstrap intervals and generic event router are implemented and tested.
+
+
+## 8. New physiology and developmental semantics
+
+EnergyEngine converts energy-unit substrate quantities into entity energy through `convertQuantity`; efficiency loss is accounted as heat when a spatial heat field is available, otherwise as external output. Membrane transport applies permeability, selectivity, optional channel conductance and passive concentration gradients. Resource-limited growth consumes declared precursor quantities, while fission partitions biomass, energy and typed materials in the replication transaction. Locus-based gene expression and field-gradient developmental policies are implemented but bounded; full kinetic regulation and reaction-diffusion morphogenesis remain future work. See FEATURES.md for the test evidence and exact boundaries.
