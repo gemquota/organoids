@@ -1,0 +1,11 @@
+import {readFileSync} from "node:fs";
+import {spawnSync} from "node:child_process";
+const html=readFileSync(new URL("../accretion.html",import.meta.url),"utf8");
+const match=html.match(/<script type="module">([\s\S]*?)<\/script>/);
+if(!match)throw Error("accretion.html has no inline module");
+const result=spawnSync(process.execPath,["--check","--input-type=module"],{input:match[1],encoding:"utf8"});
+if(result.stdout)process.stdout.write(result.stdout);
+if(result.stderr)process.stderr.write(result.stderr);
+if(result.error)throw result.error;
+if(result.status!==0)process.exit(result.status||1);
+console.log("Inline browser module syntax is valid.");

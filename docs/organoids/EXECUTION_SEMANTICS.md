@@ -1,70 +1,66 @@
-# Organoids Rule and Execution Semantics
+# Execution Semantics
 
-**Status:** confirmed hybrid rule architecture, with the concrete defaults below proposed as the implementation contract.
-**Parent specification:** SPECIFICATION.md
+**Snapshot:** 15 November 2026  
+**Design authority:** docs/organoids/SPECIFICATION.md  
+**Implementation evidence:** accretion.html and src/emergence.js; see SOURCE_MAPPED_AUDIT.md.
 
-## 1. Rule representation
+## 1. Rule representation and order
 
-A rule is declarative data, not an arbitrary callback bundle. Its record identifies:
-- A stable rule identity.
-- An execution phase and deterministic priority/order.
-- A predicate operation identifier and serialisable arguments.
-- An effect operation identifier and serialisable arguments.
-- Optional event/dependency declarations.
-- Optional domain/owner metadata.
+GolfCore stores named predicate/effect registrations and orders rules by phase, priority and stable registration order. RuleEngine separately evaluates declarative chemical reaction records. Both use the existing EntityStore transaction boundary for committed changes.
 
-Predicate and effect implementations are registered by domain modules. GolfCore stores and schedules rule descriptions; it does not contain physics, chemistry or biology laws.
+The two evaluators remain separate because general property effects and multi-reactant chemical transformations have different semantics. They share entity identity, state and transaction primitives.
 
-Rules are promoted to full entities only when they need independent identity, lifecycle, state or relationships beyond their rule record.
+## 2. Read and commit boundaries
 
-## 2. Evaluation model
+- GolfCore stages property patches for a rule and commits them through EntityStore.
+- RuleEngine selects reactants/catalysts, checks conditions and energy budgets, then commits one reaction batch.
+- AtomicExecutor asks registered modules to prepare action arrays before committing the combined array as one EntityStore transaction.
+- A failed action batch rolls back the state covered by EntityStore.transact.
+- Later rules/phases observe earlier successful commits according to the scheduler's ordered sequential semantics.
 
-- Rules execute in ascending phase, then priority, then stable registration order.
-- Each rule evaluation reads a stable snapshot of the entity set and authoritative state at the start of that rule evaluation.
-- Predicates inspect the snapshot and may not mutate authoritative state.
-- Effects produce proposed changes, not immediate mutations.
-- Proposed changes are validated as one transaction for that rule evaluation.
-- A valid transaction commits atomically. An invalid transaction is rejected entirely.
-- Later rules observe earlier committed transactions. Entities created during a rule evaluation are not added to that rule's snapshot; they become visible to subsequent evaluations after commit.
-
-This gives deterministic sequencing without requiring every rule to read one global frame snapshot. The rule is the transaction boundary.
+This is per-rule/per-module atomicity, not whole-tick atomicity. A failed later phase does not undo earlier committed phases.
 
 ## 3. Conflict policy
 
-- A transaction containing an invalid target, invalid payload or violated declared constraint is rejected.
-- Conflicting writes to the same entity/property within one transaction are rejected unless the operation explicitly declares a deterministic reducer.
-- Across transactions, ordering is determined by phase, priority and stable registration order. Later transactions therefore see earlier commits; this is intentional sequential semantics, not accidental array iteration.
-- Domain-specific constraints are supplied by the owning module.
-- No implicit last-write-wins behaviour is allowed inside a single transaction.
+AtomicExecutor's ModuleContractRegistry rejects duplicate declared write ownership. AtomicExecutor also rejects duplicate writes to the same entity/property within a staged batch. EntityStore transaction action validation rejects invalid actions and failed preconditions; the transaction is rolled back as a unit.
 
-## 4. Event-triggered evaluation
+Legacy GolfCore commit rejects duplicate entity writes in one staged commit. The runtime does not yet implement a universal property-level conflict reducer or a global dependency-aware conflict graph.
 
-- Rules may declare the event types or state dependencies that activate them.
-- Events are emitted only by successful commits.
-- Events are queued and processed at defined phase boundaries, never recursively during a mutation.
-- Event processing is deterministic: FIFO within a phase, with stable event identity/sequence.
-- Duplicate events may be coalesced only when the event contract explicitly declares them equivalent.
-- Rules without event dependencies may run on scheduled simulation phases.
+## 4. Event and lineage semantics
 
-This avoids missed updates and uncontrolled recursive cascades while preserving event-driven efficiency.
+EntityStore maintains immutable relationship event history and active relationship projections. RuleEngine emits reaction events only after a successful reaction transaction. LineageJournal records immutable, sequenced biological formation, lifecycle, replication, differentiation and morphogenesis events.
 
-## 5. Randomness and reproducibility
+DeterministicEventQueue and EventRuleRouter provide sequenced FIFO events, phase-boundary dispatch, stable handler priority, one atomic action batch per event, and retry when a handler batch fails. Events emitted while dispatching are deferred to the next dispatch call. Automatic dependency indexing, event coalescing and subscriptions across every legacy rule/module remain outstanding. LineageJournal remains a separate historical evidence log, not an event bus; lifetime metrics and lineage projections are derived from that journal.
 
-Random choices are obtained from an explicit seeded simulation context, not ambient global randomness, once deterministic experiments are required. A run records its seed and relevant configuration. The same seed, configuration and execution order should reproduce the same choices within the same supported numerical/runtime envelope.
+## 5. State ownership and lifecycle
 
-## 6. Ownership and state visibility
+- EntityStore owns identity, property dictionaries, lifecycle state, typed material quantity inventories and typed relations.
+- EnergyEngine owns energy and typed quantity changes.
+- FieldGrid owns field reservoirs; energy-valued fields are mutated through EnergyEngine flux authority.
+- StateOwner is the preferred facade for biology modules.
+- LifecycleEngine validates transitions between nascent, growing, mature, reproducing, dormant, senescent and dead. The life stage is separate from containment state.
+- A contained biological cell remains biologically active; molecular constituents may be bound and inactive as independent agents.
 
-Predicates and effects access state through declared entity payloads, shared state containers and relations. Intrinsic state remains locally owned; shared state has explicit ownership/reference relationships; derived state is recomputed from declared inputs; transient state expires at its lifecycle boundary.
+The facade does not yet prevent all direct writes to public legacy entity objects. Such writes are outside the transactional and accounting guarantees.
 
-## 7. Required tests
+## 6. Randomness and reproducibility
 
-- Rule ordering is stable.
-- Predicates cannot mutate authoritative state.
-- Invalid transactions leave all state unchanged.
-- Conflicting writes are rejected or use an explicitly declared reducer.
-- Later rules observe earlier committed changes.
-- Newly created entities become visible only at the specified boundary.
-- Events are emitted only after successful commits.
-- Event queue ordering and coalescing are deterministic.
-- Seeded runs reproduce expected state transitions.
-- Domain-specific predicates/effects can be replaced without changing GolfCore.
+SeededRandom supplies a serialisable deterministic stream. ExperimentHarness records the seed, runtime configuration, interventions, samples, committed reaction events and lineage snapshot; RuleEngine reaction events have monotonic sequence numbers and are folded into the lineage journal. A repeated run requires the same factory, initial state, seed, rule order and numerical/runtime envelope; the configure callback is run before interventions and stepping.
+
+The existing RuleEngine accepts an injected random function; the harness supplies a seeded function when constructing the runtime. The live interactive demo uses its own seeded biological module for initial positions and aggregation setup.
+
+## 7. Tests
+
+Automated tests cover:
+- stable GolfCore ordering and transactional commits;
+- reaction atomicity and energy accounting;
+- lifecycle transition validation and rollback;
+- module contract validation and atomic action preparation;
+- aggregation, molecular formation and polymerisation;
+- autocatalytic network construction;
+- membrane/protocell assembly;
+- replication, mutation, growth, reproduction and lineage;
+- colony composition, differentiation and morphogenesis;
+- experiment interventions and descriptive statistics.
+
+Not yet covered: automatic event dependency indexing across every legacy module, global conflict reduction, whole-tick rollback, distributional hypothesis tests, large blind replicate campaigns, browser stress tests and cross-platform floating-point equivalence. The current blind harness, seeded bootstrap intervals and generic event router are implemented and tested.

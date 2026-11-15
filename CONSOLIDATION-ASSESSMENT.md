@@ -1,55 +1,100 @@
-# Organoids consolidation assessment
+# Organoids Consolidation Assessment
 
-## Architecture and lineage
+**Snapshot:** 15 November 2026  
+**Implementation branch:** feat/four-stage-emergence-completion  
+**Audit basis:** live source and tests; see docs/organoids/SOURCE_MAPPED_AUDIT.md.
 
-`main` is the original 976-character particle prototype. `architecture/golfcore-foundation` is its direct architectural continuation: a 677-character generic kernel for entities, relations, predicate/effect rules, ordered execution and atomic staged commits. `biology-entity-registry` is an independent exploratory UI/model branch, not the implementation lineage.
+## 1. Consolidated architecture
 
-`feat/unified-emergence-substrate` is the implementation base. It expanded into a reusable simulation engine but initially displaced rather than fully subsuming GolfCore. The generic predicate/effect kernel is now restored as `GolfCore`, exposed as `runtime.core`. Its original state payload maps to entity `properties`; typed relations remain owned by EntityStore.
+The runtime has one authoritative owner for each shared concern:
 
-## Implemented substrate
+| Concern | Owner | Consumers |
+|---|---|---|
+| Entity identity, properties, lifecycle state and typed relations | EntityStore | GolfCore, reactions, biology |
+| Energy and energy-valued material flux | EnergyEngine | reactions, growth, reproduction, aggregation |
+| Scalar fields and field transport | FieldGrid | EnergyEngine, scheduler, experiments |
+| Neighbour lookup | SpatialIndex | InteractionEngine, EmergenceProgression |
+| Graph analysis | GraphEngine | TopologyEngine, biology |
+| Composition/assembly | TopologyEngine and EntityStore | molecular, colony and organism assembly |
+| Declarative reactions | RuleEngine | autocatalytic network policies |
+| Ordered execution | GolfCore and Scheduler | runtime rules and phases |
+| Biological policy and experiments | src/emergence.js | runtime owners above |
 
-| Layer | Contract |
-|---|---|
-| GolfCore | Named predicates/effects, ordered phase/priority rules, staged property patches, atomic commit |
-| EntityStore | Entity lifecycle, recursive containment, typed links, adjacency indexes, snapshots, journalled transactions |
-| SpatialIndex | Uniform-grid neighbour lookup |
-| PairEngine | Shared attraction/repulsion and positional constraint solver; legacy API aliases |
-| FieldGrid | Typed scalar fields, diffusion, decay, gradients, advection, boundary sampling and cell-level rollback journal |
-| EnergyEngine | Source, transfer, conversion, dissipation, field exchange, typed quantities and inventory audit |
-| GraphEngine | Typed neighbourhoods, connected components, cycle checks, assembly and division; topology alias |
-| RuleEngine | Data-defined reactions, reactants, catalysts, conditions, rates, energy costs and product events |
-| Scheduler | Ordered core, reaction and field-transport phases |
+The progression module does not create a parallel entity store, energy ledger, spatial index, graph solver or scheduler.
 
-## GolfCore reconciliation
+## 2. Post-completion simplification review
 
-Entity and relation primitives are covered by EntityStore and typed links. General predicate/effect registries, rule ordering and arbitrary staged patches were missing; biological reaction rules were not an equivalent replacement. The restored core validates entity identity, rejects duplicate entity writes, and commits through EntityStore transactions. Core execution runs before domain reactions.
+### Kept separate because semantics differ
 
-## Important limits
+- InteractionEngine and ConstraintEngine: force accumulation changes velocity; constraint projection corrects geometry.
+- GraphEngine and TopologyEngine: graph queries are read-only analysis; topology changes composition.
+- EntityStore containment state and biological lifeStage: a cell can be bound within a colony while still alive and active.
+- EnergyEngine reservoirs and lineage history: lineage is evidence, not conserved physical inventory.
+- RuleEngine reaction policies and GolfCore general predicates/effects: both use transactions but solve different rule domains.
 
-- Transactions cover engine-managed entities, relationships, fields, energy ledger and events. Arbitrary external side effects and complete per-operation schema validation are not transactional.
-- Energy audits cover EnergyEngine-routed flows and require an explicit baseline. Direct external mutation is invisible.
-- Diffusion uses conservative no-flux neighbour exchange. Interpolation-based advection is not strictly conservative; field source/sink accounting and vector/tensor fields remain future work.
-- Boundary metadata currently controls advection sampling; diffusion uses no-flux exchange.
-- RuleEngine is a domain reaction system, distinct from GolfCore's general execution rules.
-- The browser prototype is a standalone inline copy of the reference engine. Keep both synchronised.
+### Reused instead of duplicated
 
-## Demonstrated behaviour
+- Molecular formation uses EntityStore composition and EnergyEngine transfer.
+- Polymerisation uses the same composition/bond primitives.
+- Membrane and protocell assembly use EntityStore and the same entity contracts.
+- Replication uses the shared entity creation, energy transfer and typed lineage relation.
+- Colony formation delegates to TopologyEngine.
+- Morphogenesis uses the existing ConstraintEngine.
+- Experiments use the runtime's seeded random source, EnergyEngine field operations and the same lineage journal.
 
-The page demonstrates particle motion, pair interactions, energy flux, dissipation and aggregation into molecules. Aggregation still lives in the demo callback rather than a reusable contact/adhesion transformation. Polymers, autocatalytic networks, membranes, protocells, replication, heredity, signalling, differentiation and colonies are not demonstrated end-to-end.
+### Simplification opportunities retained as explicit boundaries
 
-## Next progression
+- StateOwner is a facade over existing owners, not another storage layer. Full encapsulation of legacy public entity payloads remains future work.
+- ModuleContractRegistry and AtomicExecutor are orchestration contracts over EntityStore.transact, not a second transaction engine.
+- LineageJournal ancestor/descendant maps and lifetime metrics are projections of immutable event history. They are query/statistics projections, not duplicate truth.
+- EmergenceProgression metrics are diagnostics. If long-running experiments need durable counters, derive them from event history or periodically reconcile them rather than treating both as authoritative.
+- The current UI uses reusable aggregation and molecular formation. The bespoke merge loop has been removed.
 
-1. Express aggregation as reusable contact/adhesion triggers and transactional transformations.
-2. Add material schemas and capability fragments with units, defaults and validation.
-3. Extend transactional topology for fusion, fission and division with explicit material/energy policies.
-4. Add deterministic seeded execution, event replay and phase-failure semantics.
-5. Instrument pair candidates, graph work, transaction sizes and field operations before further optimisation.
-6. Expand the demonstration through polymers, membranes, protocells, metabolism, replication and multicellular organisation.
+## 3. Transaction and execution assessment
 
-## Verification boundaries
+EntityStore.transact is the shared atomic action boundary. It restores affected entity/property identities, relationship projections, engine-managed field cells, energy-ledger values and supplied event arrays when an action fails. Lifecycle state is now part of that same action batch.
 
-GitHub Actions run 137 passed all 32 tests and `node --check emergence.js` after GolfCore recovery. Browser rendering, sustained-load stability, complete energy/matter conservation and full biological progression are not claimed as verified.
+AtomicExecutor stages module action arrays, rejects duplicate entity/property writes and commits them together. ModuleContractRegistry validates required runtime services and enforces exclusive declared write ownership. DeterministicEventQueue/EventRuleRouter provide phase-aware FIFO dispatch and retry failed event batches.
 
-## Measurement discipline
+This is not whole-tick atomicity. GolfCore, RuleEngine and field transport execute as ordered phases with their own mutation boundaries. External side effects and direct public-object writes are not rollback-safe. The system must not advertise stronger guarantees than this.
 
-Report actual characters and non-whitespace characters for matching file scopes. Keep estimates separate. The former 710/1,925 figures were planning estimates, not measured implementation sizes.
+## 4. Four-stage review
+
+| Stage | Consolidated mechanisms | Status |
+|---|---|---|
+| Substrate | EntityStore, energy/field owners, GolfCore, module contracts, StateOwner, AtomicExecutor, lifecycle | Implemented with public-state and whole-tick limitations |
+| Emergence | contact aggregation, bonds, molecular components, polymers, autocatalytic network assembly, membranes, protocells | Implemented primitives; no selective transport/metabolism |
+| Biology | sequence replication/mutation, lineage, growth, reproduction, colonies, differentiation, morphogenesis | Implemented primitives; no gene regulation or ecological model |
+| Evidence | seeded experiments, perturbations, interventions, reaction/biological histories, bootstrap statistics, blind coded arms | Implemented and tested; larger parameter sweeps and stronger inference remain |
+
+## 5. Scientific and behavioural limits
+
+The current system demonstrates executable transformations, not a validated origin-of-life model. A lipid ring is a geometric membrane abstraction; protocell permeability is metadata until transport mechanisms are added; genome sequences are copied strings; growth is an explicit biomass increment; differentiation is an assigned phenotype; morphogenesis uses an explicit radial/bilateral layout. These are honest primitives on which more realistic models can be built.
+
+## 6. Verification gates
+
+The final branch must have:
+1. All Node tests passing on its final head.
+2. Runtime module syntax validated by CI.
+3. Tests for energy inventory, transactional rollback, lifecycle, heredity, membrane formation and lineage.
+4. A browser smoke test confirming dynamic module load and reusable aggregation.
+5. Updated source maps and status docs tied to the same branch.
+
+Node CI is not browser verification. Browser and sustained-load results remain unverified until exercised.
+
+## 7. Net assessment
+
+The main architectural gain is not merely a larger feature count. The same entity, relation, energy, field, topology and transaction primitives now support chemistry-like assembly and biological progression without introducing competing foundational stores. The remaining work is concentrated in stronger state encapsulation, event dispatch, realistic membrane/metabolic behaviour, gene regulation, emergent development and deeper statistical experiments.
+
+
+## 8. Final transaction and abstraction pass
+
+The final review found and corrected several partial-commit paths rather than merely documenting them:
+
+- EntityStore transaction journals now preserve typed material quantity values and unit metadata, in addition to entity state, fields and energy ledger.
+- StateOwner material changes, material transfers and removals now use the canonical transaction boundary.
+- TopologyEngine assembly, contact-bond batches, autocatalytic network assembly, membrane/protocell construction, replication with daughter membrane, growth, polymerisation, differentiation and morphogenesis use atomic action batches at their natural operation boundary.
+- Failed replication restores its seeded random stream; failed membrane/protocell assembly leaves no orphan lipids or partial containers.
+- RuleEngine reaction events have stable sequence numbers and are captured in lineage histories during experiments.
+- The obsolete direct bond helper was removed. Progression metrics are derived from LineageJournal lifetime counts/totals instead of a second mutable counter object.
+- No parallel material store, lineage database, topology solver or energy ledger was introduced.
