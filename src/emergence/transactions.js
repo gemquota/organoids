@@ -16,10 +16,10 @@ export class RuntimeTickTransaction {
     this.busy=true;store.beginChangeBatch();
     try{const value=operation();if(value&&typeof value.then==="function")throw Error("Tick transactions must be synchronous");store.commitChangeBatch();this.sequence++;return{ok:true,value,sequence:this.sequence,label}}
     catch(error){
-      store.rollbackChangeBatch();
+      store.rollbackChangeBatch();store._mutationDepth++;
       for(const[id,entity]of entities){
         const saved=snapshot.entities.find(x=>x.id===id);if(!saved)continue;
-        for(const key of Object.keys(entity.properties))delete entity.properties[key];
+        for(const key of Object.keys(entity.properties))if(!store.protectedProperties.get(entity.type)?.has(key))delete entity.properties[key];
         Object.assign(entity.properties,copy(saved.properties));
         entity.state=saved.state;entity.energy=saved.energy;entity.parent=saved.parent;
         entity.children.splice(0,entity.children.length,...saved.children);
@@ -37,7 +37,7 @@ export class RuntimeTickTransaction {
       r.energy.restoreLedger(ledger);r.scheduler.time=scheduler.time;r.scheduler.tick=scheduler.tick;
       if(r.constraints)r.constraints.constraints=constraints;
       if(r.rules?.events){r.rules.events.splice(0,r.rules.events.length,...ruleEvents);if(ruleSequence!==undefined)r.rules.sequence=ruleSequence}
-      for(let i=this.participants.length-1;i>=0;i--)this.participants[i].restore(participantStates[i]);
+      for(let i=this.participants.length-1;i>=0;i--)this.participants[i].restore(participantStates[i]);store._mutationDepth--;
       throw error;
     }finally{this.busy=false}
   }
