@@ -126,3 +126,26 @@ The full module topology and boundary rules are in [MODULARITY.md](MODULARITY.md
 ### Quantified modularization result
 
 The public compatibility entry is 38 bytes. The 19 implementation files under `src/emergence/` total 41,629 bytes; with the 38-byte compatibility entry, the full modular source totals 41,667 bytes. The largest focused leaf is `experiments.js` at 6,476 bytes, with statistical calculations isolated in `statistics.js` at 2,370 bytes. The composition root is 4,472 bytes. The extraction increases total source bytes modestly because imports, exports and explicit module boundaries have a cost. This is an intentional trade for cohesion and independent change boundaries, not a compression claim.
+
+
+## 8. Remaining-boundaries consolidation pass
+
+The follow-on implementation added the missing capabilities by extending existing authorities:
+
+- **Ownership:** declared biological payload keys now use EntityStore transaction-only setters and deeply immutable nested values. Runtime entity energy uses a private EntityStore capability bound to EnergyEngine. This protects semantic state without freezing arbitrary generic payloads.
+- **Dependency indexing:** EntityStore emits committed property/state/material change records. DependencyEventIndex indexes subscriptions by entity type and property. Tick-level batches defer notifications until commit and discard them on rollback. Direct physics writes remain outside this index.
+- **Whole-tick rollback:** RuntimeTickTransaction checkpoints the existing store, fields, ledger, scheduler, constraints, rule events and progression participants. It restores existing entity objects in place, preserving references. The experiment harness uses it; the browser animation loop does not yet.
+- **Physiology:** EnergyEngine.convertQuantity converts energy-unit substrate to entity energy with efficiency loss routed to heat/output. Membrane transport uses permeability, selectivity, channels and concentration gradients. No parallel chemical/energy reservoir was introduced.
+- **Genetics and development:** locus expression maps signals to traits; field gradients influence differentiation and morphogenetic movement. The models remain simpler than transcription kinetics and reaction-diffusion development.
+- **Growth and fission:** growth can require precursor inventories, and fission partitions biomass, energy and typed materials in the replication transaction.
+- **Experiments:** factorial campaigns enumerate parameter combinations and seeded replicates; the existing blind and bootstrap systems are reused.
+
+### Further simplification findings
+
+1. Change notifications are emitted by EntityStore itself, not separately by StateOwner, avoiding duplicate notification paths.
+2. Energy-bearing substrate conversion is an EntityStore action delegated to EnergyEngine, so the same transaction journal rolls back both material and energy changes.
+3. Tick rollback composes checkpoint participants instead of teaching the runtime about biology-specific journal classes.
+4. The feature catalogue now owns all feature status, source mapping, verification evidence and backlog counts. STATUS.md, ROADMAP.md and SOURCE_MAPPED_AUDIT.md are pointer documents, eliminating competing tables and stale snapshots.
+5. The current incomplete count is 14 (13 bounded, 1 unverified); the catalogue proposes 21 additional features, exactly 50% more.
+
+The remaining scope and precise boundaries are maintained in [FEATURES.md](FEATURES.md).
