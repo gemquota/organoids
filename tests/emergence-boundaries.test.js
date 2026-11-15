@@ -52,12 +52,12 @@ test("whole-tick transaction restores entity, field, scheduler and lineage state
   const r=createRuntime({width:20,height:20,cols:4,rows:4}),b=new EmergenceProgression(r),cell=b.create("cell",{genome:{sequence:"A"},x:2,y:2,vx:1,vy:0});
   r.fields.define("morphogen",0,{unit:"concentration",diffusion:.5});
   r.fields.add("morphogen",5,5,4);
-  const before=r.fields.total("morphogen"),time=r.scheduler.time,tick=r.scheduler.tick;
+  const before=r.fields.total("morphogen"),time=r.scheduler.time,tick=r.scheduler.tick,notifications=[];b.dependencies.subscribe({entityType:"cell",property:"biomass"},change=>notifications.push(change.value));
   r.scheduler.add("injected-failure",()=>{r.store.transact([{op:"set",id:cell.id,key:"biomass",value:99}]);b.lineage.record("should-rollback",{entity:cell.id});throw Error("injected tick failure")},99);
   assert.throws(()=>b.tickTransaction.run(()=>r.step(1)),/injected tick failure/);
   assert.equal(cell.properties.x,2);assert.equal(cell.properties.biomass,1);assert.equal(r.fields.total("morphogen"),before);
   assert.equal(r.scheduler.time,time);assert.equal(r.scheduler.tick,tick);
-  assert.equal(b.lineage.count("should-rollback"),0);
+  assert.equal(b.lineage.count("should-rollback"),0);assert.deepEqual(notifications,[]);
 });
 
 test("fission partitions biomass, energy and material inventories atomically",()=>{
@@ -105,6 +105,7 @@ test("factorial experiment campaigns enumerate parameter combinations with disti
 test("declared biological payloads reject bypass writes but remain transactionally writable",()=>{
   const r=createRuntime(),b=new EmergenceProgression(r),cell=b.create("cell",{genome:{sequence:"AC"},biomass:2});
   assert.throws(()=>{cell.properties.genome={sequence:"TT"}},/owned by an EntityStore transaction/);
+  assert.throws(()=>{cell.properties.genome.sequence="TT"},/read only|Cannot assign/);
   b.owner.patch(cell.id,{genome:{sequence:"TT"}});
   assert.equal(cell.properties.genome.sequence,"TT");
   const failed=r.store.transact([{op:"set",id:cell.id,key:"biomass",value:8},{op:"remove",id:999}]);
