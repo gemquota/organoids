@@ -13,9 +13,10 @@ export class RuntimeTickTransaction {
     const participantStates=this.participants.map(p=>p.snapshot()),ledger=copy(r.energy.ledger),scheduler={time:r.scheduler.time,tick:r.scheduler.tick};
     const constraints=copy(r.constraints?.constraints||[]),ruleEvents=copy(r.rules?.events||[]);
     const ruleSequence=r.rules?.sequence,eventsLength=r.rules?.events?.length;
-    this.busy=true;
-    try{const value=operation();this.sequence++;return{ok:true,value,sequence:this.sequence,label}}
+    this.busy=true;store.beginChangeBatch();
+    try{const value=operation();if(value&&typeof value.then==="function")throw Error("Tick transactions must be synchronous");store.commitChangeBatch();this.sequence++;return{ok:true,value,sequence:this.sequence,label}}
     catch(error){
+      store.rollbackChangeBatch();
       for(const[id,entity]of entities){
         const saved=snapshot.entities.find(x=>x.id===id);if(!saved)continue;
         for(const key of Object.keys(entity.properties))delete entity.properties[key];
