@@ -45,7 +45,10 @@ test("dependency index dispatches only matching entity-property subscriptions",(
   b.dependencies.subscribe({entityType:"particle",property:"phenotype"},()=>seen.push("wrong"));
   r.store.transact([{op:"set",id:cell.id,key:"phenotype",value:"boundary"}]);
   assert.deepEqual(seen,["boundary"]);
-  assert.equal(b.dependencies.size,2);
+  const moving=b.create("cell",{genome:{sequence:"A"},x:1,y:1,vx:1,vy:0}),positions=[];
+  b.dependencies.subscribe({entityType:"cell",property:"x"},change=>positions.push(change.value));
+  r.step(1);assert.equal(moving.properties.x,2);assert.deepEqual(positions,[2]);
+  assert.equal(b.dependencies.size,3);
 });
 
 test("whole-tick transaction restores entity, field, scheduler and lineage state after failure",()=>{
