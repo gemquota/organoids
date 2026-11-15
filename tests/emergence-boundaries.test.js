@@ -43,7 +43,7 @@ test("dependency index dispatches only matching entity-property subscriptions",(
   const seen=[],r=createRuntime(),b=new EmergenceProgression(r),cell=b.create("cell",{genome:{sequence:"A"}});
   b.dependencies.subscribe({entityType:"cell",property:"phenotype"},change=>seen.push(change.value));
   b.dependencies.subscribe({entityType:"particle",property:"phenotype"},()=>seen.push("wrong"));
-  b.owner.patch(cell.id,{phenotype:"boundary"});
+  r.store.transact([{op:"set",id:cell.id,key:"phenotype",value:"boundary"}]);
   assert.deepEqual(seen,["boundary"]);
   assert.equal(b.dependencies.size,2);
 });
@@ -53,9 +53,9 @@ test("whole-tick transaction restores entity, field, scheduler and lineage state
   r.fields.define("morphogen",0,{unit:"concentration",diffusion:.5});
   r.fields.add("morphogen",5,5,4);
   const before=r.fields.total("morphogen"),time=r.scheduler.time,tick=r.scheduler.tick;
-  r.scheduler.add("injected-failure",()=>{cell.properties.x=999;b.lineage.record("should-rollback",{entity:cell.id});throw Error("injected tick failure")},99);
+  r.scheduler.add("injected-failure",()=>{r.store.transact([{op:"set",id:cell.id,key:"biomass",value:99}]);b.lineage.record("should-rollback",{entity:cell.id});throw Error("injected tick failure")},99);
   assert.throws(()=>b.tickTransaction.run(()=>r.step(1)),/injected tick failure/);
-  assert.equal(cell.properties.x,2);assert.equal(r.fields.total("morphogen"),before);
+  assert.equal(cell.properties.x,2);assert.equal(cell.properties.biomass,1);assert.equal(r.fields.total("morphogen"),before);
   assert.equal(r.scheduler.time,time);assert.equal(r.scheduler.tick,tick);
   assert.equal(b.lineage.count("should-rollback"),0);
 });
@@ -100,4 +100,14 @@ test("factorial experiment campaigns enumerate parameter combinations with disti
   const campaign=await h.factorial({config:{steps:0},factors:{resource:["carbon","nitrogen"],rate:[1,2]},replicates:2,seed:40,applyParameters:(runtime,biology,parameters)=>biology.create("particle",{x:parameters.rate,y:0,resource:parameters.resource})});
   assert.equal(campaign.arms.length,4);assert.ok(campaign.arms.every(arm=>arm.runs.length===2));
   assert.deepEqual(campaign.arms.flatMap(arm=>arm.runs.map(run=>run.seed)),[40,41,42,43,44,45,46,47]);
+});
+
+test("declared biological payloads reject bypass writes but remain transactionally writable",()=>{
+  const r=createRuntime(),b=new EmergenceProgression(r),cell=b.create("cell",{genome:{sequence:"AC"},biomass:2});
+  assert.throws(()=>{cell.properties.genome={sequence:"TT"}},/owned by an EntityStore transaction/);
+  b.owner.patch(cell.id,{genome:{sequence:"TT"}});
+  assert.equal(cell.properties.genome.sequence,"TT");
+  const failed=r.store.transact([{op:"set",id:cell.id,key:"biomass",value:8},{op:"remove",id:999}]);
+  assert.equal(failed.ok,false);assert.equal(cell.properties.biomass,2);
+  assert.throws(()=>{cell.properties.biomass=9},/owned by an EntityStore transaction/);
 });
