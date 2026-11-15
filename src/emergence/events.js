@@ -15,18 +15,19 @@ export class EventRuleRouter {
 }
 
 export class DependencyEventIndex {
-  constructor(){this.subscriptions=new Map();this.byType=new Map();this.sequence=0;this.errors=[]}
-  attach(store){if(typeof store?.subscribeChanges!=="function")throw Error("EntityStore change notifications are required");return store.subscribeChanges(change=>this.publish(change))}
+  constructor(){this.subscriptions=new Map();this.byType=new Map();this.sequence=0;this.errors=[];this.store=null;this.detachStore=null}
+  attach(store){if(typeof store?.subscribeChanges!=="function")throw Error("EntityStore change notifications are required");this.store=store;this._bind();return this}
+  _bind(){if(this.store&&!this.detachStore&&this.size)this.detachStore=this.store.subscribeChanges(change=>this.publish(change))}
   subscribe({entityType="*",property="*",phase=0}={},handler){
     if(typeof handler!=="function")throw Error("A dependency handler is required");
     const id=++this.sequence,entry={id,entityType,property,phase,handler};
     this.subscriptions.set(id,entry);
     const key=entityType+"\u0000"+property;
     if(!this.byType.has(key))this.byType.set(key,new Set());
-    this.byType.get(key).add(id);
+    this.byType.get(key).add(id);this._bind();
     return()=>this.unsubscribe(id);
   }
-  unsubscribe(id){const entry=this.subscriptions.get(id);if(!entry)return false;this.subscriptions.delete(id);const key=entry.entityType+"\u0000"+entry.property,set=this.byType.get(key);set?.delete(id);if(!set?.size)this.byType.delete(key);return true}
+  unsubscribe(id){const entry=this.subscriptions.get(id);if(!entry)return false;this.subscriptions.delete(id);const key=entry.entityType+"\u0000"+entry.property,set=this.byType.get(key);set?.delete(id);if(!set?.size)this.byType.delete(key);if(!this.size&&this.detachStore){this.detachStore();this.detachStore=null}return true}
   publish(change){
     const keys=[change.entityType+"\u0000"+change.property,change.entityType+"\u0000*", "*\u0000"+change.property,"*\u0000*"];
     const ids=new Set(keys.flatMap(key=>[...(this.byType.get(key)||[])]));
