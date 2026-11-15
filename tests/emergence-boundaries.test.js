@@ -111,4 +111,6 @@ test("declared biological payloads reject bypass writes but remain transactional
   const failed=r.store.transact([{op:"set",id:cell.id,key:"biomass",value:8},{op:"remove",id:999}]);
   assert.equal(failed.ok,false);assert.equal(cell.properties.biomass,2);
   assert.throws(()=>{cell.properties.biomass=9},/owned by an EntityStore transaction/);
+  assert.throws(()=>{cell.energy=99},/owned by EnergyEngine flux operations/);
+  r.energy.source(cell,1);assert.equal(cell.energy,1);
 });
