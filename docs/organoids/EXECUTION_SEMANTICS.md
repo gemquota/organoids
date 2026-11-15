@@ -24,13 +24,13 @@ EntityStore actions remain per-operation atomic. `RuntimeTickTransaction` adds a
 
 AtomicExecutor's ModuleContractRegistry rejects duplicate declared write ownership. AtomicExecutor also rejects duplicate writes to the same entity/property within a staged batch. EntityStore transaction action validation rejects invalid actions and failed preconditions; the transaction is rolled back as a unit.
 
-Legacy GolfCore commit rejects duplicate entity writes in one staged commit. The runtime does not implement a universal property-level conflict reducer. `DependencyEventIndex` indexes transactional EntityStore changes by entity type/property; direct unguarded physics writes and arbitrary external mutation are not indexed. Declared read sets remain metadata rather than enforced access control.
+Legacy GolfCore commit rejects duplicate entity writes in one staged commit. The runtime does not implement a universal property-level conflict reducer. `DependencyEventIndex` indexes transactional EntityStore changes by entity type/property; runtime physics position/velocity updates are indexed by the step boundary; arbitrary direct external mutation remains unindexed. Declared read sets remain metadata rather than enforced access control.
 
 ## 4. Event and lineage semantics
 
 EntityStore maintains immutable relationship event history and active relationship projections. RuleEngine emits reaction events only after a successful reaction transaction. LineageJournal records immutable, sequenced biological formation, lifecycle, replication, differentiation and morphogenesis events.
 
-DeterministicEventQueue and EventRuleRouter provide sequenced FIFO events, phase-boundary dispatch, stable handler priority, one atomic action batch per event, and retry when a handler batch fails. Events emitted while dispatching are deferred to the next dispatch call. Automatic dependency indexing covers committed EntityStore property/state/material actions. It is not yet wired to every direct physics write or legacy rule callback. LineageJournal remains a separate historical evidence log, not an event bus; lifetime metrics and lineage projections are derived from that journal.
+DeterministicEventQueue and EventRuleRouter provide sequenced FIFO events, phase-boundary dispatch, stable handler priority, one atomic action batch per event, and retry when a handler batch fails. Events emitted while dispatching are deferred to the next dispatch call. Automatic dependency indexing covers committed EntityStore property/state/material actions. It is not yet wired to arbitrary direct writes outside EntityStore transactions and the runtime physics step. LineageJournal remains a separate historical evidence log, not an event bus; lifetime metrics and lineage projections are derived from that journal.
 
 ## 5. State ownership and lifecycle
 
