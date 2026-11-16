@@ -1,9 +1,9 @@
 # Organoids: canonical feature catalogue, verification and roadmap
 
 **Canonical project record:** this document supersedes separate feature-status tables, progress snapshots, source-mapped status summaries and duplicated roadmaps.  
-**Current implementation branch:** `feat/remaining-emergence-boundaries`  
-**Base:** `main`, after PR #5 and PR #6 were merged.  
-**Snapshot:** 15 November 2026
+**Current implementation:** `main` (PR #7 merged; commit `a9c96c2233eec88e5c85798447b1062b387b7ad5`)  
+**Base:** `main`, after PR #5, PR #6 and PR #7 were merged.  
+**Snapshot:** 16 November 2026
 
 This is the single authoritative catalogue for implemented capabilities, their source ownership, test evidence, limitations, audit history and proposed next features. Architecture and execution-semantics documents remain technical specifications; they must not maintain competing completion counts.
 
@@ -83,7 +83,7 @@ A method name, UI label, documentation statement or passing syntax check is not 
 
 All 26 rows marked **Implemented / tested** above were checked against their authoritative source and a named automated behavioural test. The 14 remaining rows are not silently promoted to complete: 13 are explicitly bounded and one remains unverified. The new boundary tests cover transaction-only protected payload writes, nested genome immutability, indexed notifications, tick rollback with deferred notifications, membrane selectivity/transport, conserved substrate conversion, gene expression, resource-limited growth, fission, field-driven development and factorial campaigns.
 
-**Current CI evidence:** final branch run is recorded in the branch's GitHub Actions history. GitHub Actions run 43722968245 on commit 5a07e7cf73694a6466e62e1342819cd27d4785d6 passed 108/108 tests (0 failures). This run includes runtime physics dependency notifications, lazy listener binding, energy-bearing quantity sources/sinks and fission conservation.
+**Current CI evidence:** GitHub Actions run [43723093293](https://github.com/gemquota/organoids/actions/runs/43723093293) on final PR #7 head `2d3f39bf2aa3815017cc341b4368e320f0849e58` passed 108/108 tests (0 failures); the inline browser module syntax check also passed. This run includes runtime physics dependency notifications, lazy listener binding, energy-bearing quantity sources/sinks and fission conservation. Browser rendering and sustained-load validation remain unverified.
 
 ### Current module map
 
@@ -125,8 +125,8 @@ tests/
 - **PR #5 head:** historical head `d0b2059784bce916daf183b73acd3d381ca91ed1`; `accretion.html` was 35,243 characters / 34,563 non-whitespace. It introduced the transaction/performance/energy-flux improvements and updated the inline runtime tests, but did not implement the four-stage biology or experiment harness.
 - **PR #5 merge:** merge commit `39f9e00cfcfdaab8d00e911df42735f46fa7336c`. PR #5 is merged, not open.
 - **PR #6 merge:** merge commit `89a41f4c1c5fe0a29132cc72edd9c99a62c849a4`. It adds the four-stage progression and modular source structure to main.
-- **Current main after PR #6:** `accretion.html` is 36,472 characters / 35,756 non-whitespace. The historical PR #5 head remains independently identifiable as a separate source snapshot; it is an ancestor in the merged history, not a second active base branch.
-- The current remaining-boundaries branch extends the merged mainline and must not be described as already merged.
+- **Main immediately after PR #6 (before PR #7):** `accretion.html` was 36,472 characters / 35,756 non-whitespace. The historical PR #5 head remains independently identifiable as a separate source snapshot; it is an ancestor in the merged history, not a second active base branch.
+- **Current main after PR #7:** `accretion.html` is 43,034 characters / 42,196 non-whitespace. PR #7 was squash-merged as `a9c96c2233eec88e5c85798447b1062b387b7ad5`; the ownership, transaction, physiology, genetics, organismal and development boundary work is now on `main`.
 
 ### Historical feature/status documentation
 
