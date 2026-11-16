@@ -1,0 +1,74 @@
+name: Deploy Organoids to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'accretion.html'
+      - 'emergent-life-atlas.html'
+      - 'src/**'
+      - 'docs/**'
+      - 'README.md'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Assemble static site
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _site/src _site/experiments
+          cp accretion.html _site/index.html
+          cp emergent-life-atlas.html _site/emergent-life-atlas.html
+          cp -R src/. _site/src/
+          touch _site/.nojekyll
+          cat > _site/experiments/index.html <<'HTML'
+          <!doctype html>
+          <html lang="en">
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width,initial-scale=1">
+          <meta name="theme-color" content="#071014">
+          <title>Organoids · Experiments</title>
+          <style>
+          *{box-sizing:border-box}body{margin:0;padding:clamp(24px,6vw,72px);font:16px/1.6 system-ui,sans-serif;background:#071014;color:#d8eeeb;max-width:900px}h1{color:#9ce5d9}a{color:#8ce2d5}.item{display:block;padding:18px;margin:14px 0;border:1px solid #31575a;border-radius:12px;background:#102328;text-decoration:none}.muted{color:#91aaa8}
+          </style>
+          <h1>Organoids experiments</h1>
+          <p class="muted">Standalone browser experiences published from the Organoids repository.</p>
+          <a class="item" href="../"><strong>Main simulation</strong><br>Particle accretion and emergence runtime.</a>
+          <a class="item" href="../emergent-life-atlas.html"><strong>Emergent Life Atlas</strong><br>Visual catalogue of forms and possible transitions.</a>
+          <p class="muted">The reusable seeded experiment harness is implemented as <code>src/emergence/experiments.js</code> and is exercised by the automated test suite; it is a library module rather than a standalone browser page.</p>
+          <p><a href="https://github.com/gemquota/organoids">Source repository</a> · <a href="https://github.com/gemquota/organoids/blob/main/docs/organoids/FEATURES.md">Feature catalogue</a></p>
+          </html>
+          HTML
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
