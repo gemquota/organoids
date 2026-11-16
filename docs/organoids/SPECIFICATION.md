@@ -62,7 +62,7 @@ The intended emergence ladder is particles → structures → compounds → prot
 ## 11. Implementation gate audit
 
 1. **Source reconciliation:** accretion.html is the authoritative shared runtime; the obsolete standalone emergence.js path is not used by the current build. The separate source audit compares main and PR #5 independently.
-2. **Contract-to-source mapping:** completed in FEATURES.md and SOURCE_MAPPED_AUDIT.md; state encapsulation across legacy public objects remains partial.
+2. **Contract-to-source mapping:** completed in FEATURES.md; state encapsulation across legacy public objects remains partial.
 3. **GolfCore operations and size:** measured at 552 ASCII bytes; validated entity commits are owned by EntityStore.
 4. **Entity/state/relation/transformation semantics:** implemented with typed relationships, lifecycle separation, transactional property/material operations and documented ownership limits.
 5. **Rule model:** the approved declarative hybrid is implemented through GolfCore, RuleEngine, deterministic event routing and ordered scheduler phases; automatic dependency indexing remains incomplete.
