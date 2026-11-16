@@ -10,7 +10,19 @@ The GitHub Pages site is deployed from `main`.
 - **[Emergent Life Atlas](https://gemquota.github.io/organoids/emergent-life-atlas.html)** — a standalone visual atlas of forms and transitions.
 - **[Experiment index](https://gemquota.github.io/organoids/experiments/)** — a directory of the separately hosted interactive experiences and their supporting material.
 
-The current repository contains two standalone browser experiences: `accretion.html` and `emergent-life-atlas.html`. The reusable experiment harness is a JavaScript module under `src/emergence/experiments.js`, not a third standalone page. The Pages workflow publishes the runtime modules alongside the main simulation so its dynamic import resolves correctly.
+The current Organoids repository contains two standalone browser experiences: `accretion.html` and `emergent-life-atlas.html`. The reusable experiment harness is a JavaScript module under `src/emergence/experiments.js`, not a third standalone page. The Pages workflow publishes the runtime modules alongside the main simulation so its dynamic import resolves correctly.
+
+### Earlier evolutionary-ecology experiments
+
+These browser experiments remain hosted from the earlier evolutionary-ecology repository. They are linked as research lineage, not copied into this repository:
+
+- [Evolutionary ecology simulation](https://gemquota.github.io/boids/)
+- [Emergence lab](https://gemquota.github.io/boids/emergence-lab.html)
+- [Plant lab](https://gemquota.github.io/boids/plant-lab.html)
+- [Vision lab](https://gemquota.github.io/boids/vision-lab.html)
+- [Minimal vision lab](https://gemquota.github.io/boids/vision-minimal.html)
+
+The original repository's GitHub Pages deployment completed successfully on 16 November 2026. These links preserve access to the additional experiments without importing its implementation or dependencies into Organoids.
 
 ## Project records
 
