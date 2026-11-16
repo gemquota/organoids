@@ -1,7 +1,7 @@
 # Organoids Architecture
 
-**Status:** consolidated target architecture; current implementation mapping is recorded in FEATURES.md and SOURCE_MAPPED_AUDIT.md.
-**Decision basis:** user-confirmed selections from the nine-question architecture review, 14 November 2026.
+**Status:** consolidated target architecture; current implementation mapping and verification evidence are recorded exclusively in FEATURES.md.
+**Decision basis:** user-confirmed selections from the nine-question architecture review, 14 November 2026. Current source and test status is tracked in FEATURES.md.
 
 ## 1. Architectural objective
 
