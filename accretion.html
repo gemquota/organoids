@@ -28,10 +28,10 @@ const debugPanel=document.querySelector('#debugConsole'),debugOutput=document.qu
 const debugLines=[];let debugEnabled=true;
 try{debugEnabled=localStorage.getItem('organoids.debugConsole')!=='off'}catch{}
 debugToggle.checked=debugEnabled;debugPanel.hidden=!debugEnabled;
-function log(level,message,data){const stamp=new Date().toLocaleTimeString();const detail=data===undefined?'': ' '+(typeof data==='string'?data:JSON.stringify(data));debugLines.push('['+stamp+'] '+level.toUpperCase().padEnd(5)+' '+message+detail);if(debugLines.length>400)debugLines.shift();debugOutput.textContent=debugLines.join('\\n');debugOutput.scrollTop=debugOutput.scrollHeight}
+function log(level,message,data){const stamp=new Date().toLocaleTimeString();const detail=data===undefined?'': ' '+(typeof data==='string'?data:JSON.stringify(data));debugLines.push('['+stamp+'] '+level.toUpperCase().padEnd(5)+' '+message+detail);if(debugLines.length>400)debugLines.shift();debugOutput.textContent=debugLines.join('\n');debugOutput.scrollTop=debugOutput.scrollHeight}
 document.querySelector('#settingsToggle').addEventListener('click',()=>settings.classList.toggle('open'));
 debugToggle.addEventListener('change',()=>{debugEnabled=debugToggle.checked;debugPanel.hidden=!debugEnabled;try{localStorage.setItem('organoids.debugConsole',debugEnabled?'on':'off')}catch{};log('info','Debug console '+(debugEnabled?'enabled':'disabled'))});
-function copyDebug(){const payload=debugLines.join('\\n');if(navigator.clipboard?.writeText){navigator.clipboard.writeText(payload).then(()=>{debugHint.textContent='COPIED ✓';setTimeout(()=>debugHint.textContent='TAP TO COPY',1400)}).catch(()=>{debugHint.textContent='COPY FAILED'})}else{debugHint.textContent='CLIPBOARD UNAVAILABLE'}}
+function copyDebug(){const payload=debugLines.join('\n');if(navigator.clipboard?.writeText){navigator.clipboard.writeText(payload).then(()=>{debugHint.textContent='COPIED ✓';setTimeout(()=>debugHint.textContent='TAP TO COPY',1400)}).catch(()=>{debugHint.textContent='COPY FAILED'})}else{debugHint.textContent='CLIPBOARD UNAVAILABLE'}}
 debugPanel.addEventListener('click',copyDebug);debugPanel.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();copyDebug()}});
 addEventListener('error',e=>log('error',e.message||'Window error',{file:e.filename,line:e.lineno}));
 addEventListener('unhandledrejection',e=>log('error','Unhandled promise rejection',String(e.reason)));
