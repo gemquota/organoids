@@ -1,0 +1,3 @@
+# This repository is a JavaScript/Node.js project.
+# It currently has no Python runtime dependencies.
+# Keep this file empty of packages unless Python tooling is added.
