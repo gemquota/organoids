@@ -13,3 +13,27 @@ export class EventRuleRouter {
   on(type,handler,priority=0){if(typeof handler!=="function")throw Error("Event handler must be a function");if(!this.handlers.has(type))this.handlers.set(type,[]);this.handlers.get(type).push({handler,priority,order:this.order++});this.handlers.get(type).sort((a,b)=>a.priority-b.priority||a.order-b.order);return this}
   dispatch(phase=0){if(this.dispatching)throw Error("Nested event dispatch is not permitted");this.dispatching=true;let processed=0;try{const batch=this.queue.peek(phase);for(const event of batch){const actions=[];for(const item of this.handlers.get(event.type)||[]){const proposed=item.handler(event,{runtime:this.runtime,phase});if(proposed==null)continue;if(!Array.isArray(proposed))throw Error("Event handlers must return action arrays");actions.push(...proposed)}if(actions.length)this.executor.execute(actions,{label:"event:"+event.type});this.queue.acknowledge(event.sequence);processed++}return processed}finally{this.dispatching=false}}
 }
+
+export class DependencyEventIndex {
+  constructor(){this.subscriptions=new Map();this.byType=new Map();this.sequence=0;this.errors=[];this.store=null;this.detachStore=null}
+  attach(store){if(typeof store?.subscribeChanges!=="function")throw Error("EntityStore change notifications are required");this.store=store;this._bind();return this}
+  _bind(){if(this.store&&!this.detachStore&&this.size)this.detachStore=this.store.subscribeChanges(change=>this.publish(change))}
+  subscribe({entityType="*",property="*",phase=0}={},handler){
+    if(typeof handler!=="function")throw Error("A dependency handler is required");
+    const id=++this.sequence,entry={id,entityType,property,phase,handler};
+    this.subscriptions.set(id,entry);
+    const key=entityType+"\u0000"+property;
+    if(!this.byType.has(key))this.byType.set(key,new Set());
+    this.byType.get(key).add(id);this._bind();
+    return()=>this.unsubscribe(id);
+  }
+  unsubscribe(id){const entry=this.subscriptions.get(id);if(!entry)return false;this.subscriptions.delete(id);const key=entry.entityType+"\u0000"+entry.property,set=this.byType.get(key);set?.delete(id);if(!set?.size)this.byType.delete(key);if(!this.size&&this.detachStore){this.detachStore();this.detachStore=null}return true}
+  publish(change){
+    const keys=[change.entityType+"\u0000"+change.property,change.entityType+"\u0000*", "*\u0000"+change.property,"*\u0000*"];
+    const ids=new Set(keys.flatMap(key=>[...(this.byType.get(key)||[])]));
+    const matches=[...ids].map(id=>this.subscriptions.get(id)).filter(Boolean).sort((a,b)=>a.phase-b.phase||a.id-b.id);
+    const results=[];for(const item of matches)results.push(item.handler(Object.freeze({...change,sequence:++this.sequence})));
+    return results.length;
+  }
+  get size(){return this.subscriptions.size}
+}

@@ -1,100 +1,55 @@
-# Organoids Implementation Log
+# Organoids implementation history
 
-## 14 November 2026: GolfCore foundation prototype
+This file is a chronological engineering log, not a live status catalogue. Current feature state, source maps, test evidence, limitations and roadmap are maintained exclusively in [FEATURES.md](FEATURES.md).
 
-**Repository:** [gemquota/organoids](https://github.com/gemquota/organoids)  
-**Branch:** `architecture/golfcore-foundation`  
-**Pull request:** [#2 - Introduce GolfCore foundation and transactional rule kernel](https://github.com/gemquota/organoids/pull/2)  
-**State:** open draft PR; not merged to `main`.
+## 14 November 2026: GolfCore foundation
 
-### Implemented in the branch
+- Established the minimal entity/state/relation/operation execution model.
+- Added declarative predicate/effect rules, deterministic ordering and staged commits.
+- Migrated the particle prototype to generic entities.
+- Kept domain physics outside the minimal evaluator.
 
-- Added a 677-character GolfCore block (669 non-whitespace characters).
-- Added generic entity records with a minimal `id` / `type` header and extensible `s` payload.
-- Added generic relations.
-- Added declarative rule registration using predicate/effect operation registries.
-- Added deterministic rule ordering by phase, priority and registration order.
-- Rule evaluation reads a per-rule entity-array snapshot and stages effects.
-- Added atomic commit/reject for staged effects, including invalid-target and duplicate-entity rejection.
-- Migrated the particle records to the generic entity representation.
-- Expressed particle drift through the rule evaluator.
-- Retained pairwise particle interaction as specialised domain logic.
-- Recorded particle absorption as a relation and used atomic commit for mass-weighted merging.
-- Added `tests/core.test.js` using Node's built-in test runner.
+## 15 November 2026: substrate reconciliation (PR #5)
 
-### Verification performed
+**PR:** [#5 Optimize accretion transport and runtime allocation](https://github.com/gemquota/organoids/pull/5)  
+**Merge commit:** `39f9e00cfcfdaab8d00e911df42735f46fa7336c`
 
-- 7 GolfCore tests passed.
-- Full inline simulation JavaScript passed `node --check`.
-- Browser rendering, frame rate and runtime behaviour have not yet been verified.
-- The tests exercise the kernel contract, not the full particle simulation or browser environment.
+- Reconciled the substrate with current mainline.
+- Improved entity relationship projections and transaction journals.
+- Consolidated energy flux authority and accounting.
+- Separated interaction forces from geometric constraints and graph analysis from topology.
+- Reused field and spatial-query buffers and improved reaction candidate indexing.
+- Removed obsolete CommonJS tests and the invalid inline syntax-check workflow step.
+- PR #5 was reviewed and merged into main.
 
-### Character counts
+## 15 November 2026: four-stage emergence and modularization (PR #6)
 
-| Artifact | Before | After |
-|---|---:|---:|
-| `accretion.html` characters | 976 | 1,987 |
-| `accretion.html` non-whitespace | 942 | 1,922 |
-| GolfCore block characters | n/a | 677 |
-| GolfCore block non-whitespace | n/a | 669 |
-| `tests/core.test.js` characters | n/a | 2,337 |
-| `tests/core.test.js` non-whitespace | n/a | 2,126 |
+**PR:** [#6 Complete four-stage emergence and modularize progression](https://github.com/gemquota/organoids/pull/6)  
+**Merge commit:** `89a41f4c1c5fe0a29132cc72edd9c99a62c849a4`
 
-The source change is an architectural foundation, not completion of the full specification. Generic state ownership, shared state containers, event queues, seeded randomness, replaceable physics/chemistry/biology modules and emergence experiments remain outstanding.
+- Implemented substrate ownership facade, lifecycle, contracts, atomic module execution and deterministic events.
+- Implemented aggregation, molecular formation, polymerisation, autocatalytic network assembly, membranes and protocells.
+- Implemented replication, heredity, growth, reproduction, colonies, differentiation and morphogenesis.
+- Added seeded experiments, interventions, lineage, blind protocols and statistical analysis.
+- Extracted focused modules under `src/emergence/` while preserving `src/emergence.js` as a compatibility entry.
+- Updated the source-mapped audit and architecture documents.
+- PR #6 was rebased onto main, passed CI and merged.
 
+## 15 November 2026: remaining-boundaries implementation
 
-## 15 November 2026: Four-stage emergence implementation
+**Branch:** `feat/remaining-emergence-boundaries`  
+**Base:** merged main after PR #5 and PR #6.
 
-**Branch:** feat/four-stage-emergence-completion  
-**Base:** PR #5 head d0b2059784bce916daf183b73acd3d381ca91ed1  
-**PR #5:** remains open and unmerged.
+- Added transaction-only guards and deep immutability for declared biological payload keys.
+- Bound runtime entity energy writes to EnergyEngine through a private EntityStore capability.
+- Added EntityStore change notifications, indexed dependency subscriptions and commit-deferred notification batches.
+- Added whole-tick runtime checkpoint/rollback and integrated it into experimental runs.
+- Added energy-bearing quantity source/sink accounting, internal material transfer and substrate conversion with heat/output accounting.
+- Added selective membrane transport with permeability, selectivity, channel and gradient controls.
+- Added locus-based gene expression and signal-weighted phenotype traits.
+- Added resource-limited growth and fission with biomass, energy and material partition.
+- Added field-driven differentiation and gradient-following morphogenetic movement.
+- Added factorial experiment campaigns.
+- Added focused behavioural tests and consolidated duplicate status/roadmap/audit tables into FEATURES.md.
 
-### Added source
-
-- Added src/emergence.js with typed material contracts, a StateOwner facade, lifecycle transitions, module contract validation and AtomicExecutor.
-- Added reusable contact aggregation, bond-component molecular formation, polymerisation, autocatalytic network assembly/rule registration, lipid-ring membrane assembly and protocell formation.
-- Added seeded sequence replication/mutation, growth, lifecycle-gated reproduction, daughter membrane reassembly, colony composition, differentiation and radial/bilateral morphogenesis.
-- Added LineageJournal and ExperimentHarness for seeded runs, interventions, replicate sweeps and descriptive statistics.
-- Integrated the reusable aggregation/molecular-formation path into accretion.html and removed the bespoke merge callback.
-- Added tests/emergence-progression.test.js and refreshed the feature catalogue, status, source audit, execution semantics, emergence architecture and consolidation assessment.
-
-### Important boundaries
-
-- The StateOwner facade is the preferred write path but does not yet encapsulate every public object in the legacy runtime.
-- AtomicExecutor provides atomic module action batches, not whole-tick rollback.
-- Membranes are discrete lipid rings; permeability is not yet a selective transport model.
-- Genome inheritance is sequence copying with seeded mutation; no gene expression model exists.
-- Differentiation and morphogenesis are explicit policies, not emergent developmental regulation.
-- Blind emergence tests, bootstrap intervals and browser stress testing remain future work.
-
-### Verification
-
-Intermediate CI runs exposed and corrected two integration issues: the inline engine test extractor needed to stop before the dynamic browser-module bootstrap, and biological cells needed to remain lifecycle-active while compositionally bound in a colony. The final test result must be recorded against the final branch head after all documentation updates. Browser rendering remains unverified until exercised in a browser.
-
-
-### Execution and measurement refinement
-
-- Added DeterministicEventQueue and EventRuleRouter with sequenced immutable events, phase-aware FIFO delivery, stable handler ordering, per-event atomic action batches, deferred recursive emissions and retry after failed commits.
-- Added seeded bootstrap confidence intervals for sample means and between-group differences, quartiles and type-diversity metrics.
-- Tightened AtomicExecutor to reject duplicate writes to the same entity/property and ModuleContractRegistry to enforce exclusive declared write ownership.
-- Removed duplicated mutable progression counters: the metrics surface is now derived from the canonical LineageJournal counts/totals.
-- Extended experiment snapshots with lineage parent/child projections and pending event queue state.
-- Added regression coverage for all of the above.
-
-
-### Final transaction and lineage pass
-
-- Extended EntityStore.transact rollback to preserve typed material quantities and unit metadata.
-- Routed StateOwner material changes, material transfers and removals through the same transaction boundary.
-- Made topology assembly, membrane/protocell construction, autocatalytic network assembly, replication with daughter membrane, growth, aggregation and morphogenesis atomic at their operation boundaries.
-- Added rollback coverage for failed protocell assembly, topology composition, replication, lifecycle state and material transfers.
-- Added monotonic RuleEngine reaction event IDs and captured committed reactions in experiment lineage histories.
-- Removed the now-unused direct bond helper and made progression counters derived projections of the canonical lineage journal.
-
-
-### Blind experiment and GolfCore contract completion
-
-- Added randomized coded experiment arms with preregistered metric names and a sealed condition key that is revealed only through an explicit method.
-- Added blind-result analysis by opaque arm code and verified treatment effects without exposing condition labels before reveal.
-- Reduced the GolfCore evaluator to 552 ASCII bytes by moving validated staged commits into EntityStore.commitChanges; the evaluator retains ordered predicate/effect execution.
-- Updated the architecture/specification gate audit with the measured core footprint and current blind-experiment implementation.
+The implementation deliberately retains bounded labels where universal legacy ownership, browser-loop rollback, fluid membrane mechanics, kinetic gene regulation or reaction-diffusion development have not been delivered. See FEATURES.md for the exact completion audit and current test run.

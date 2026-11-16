@@ -1,7 +1,7 @@
 # Modularity and module-contract architecture
 
 **Snapshot:** 15 November 2026  
-**Implementation branch:** `feat/four-stage-emergence-completion`  
+**Implementation branch:** `feat/remaining-emergence-boundaries`  
 **Compatibility entry:** `src/emergence.js`
 
 ## Intent
@@ -23,21 +23,24 @@ src/
     contracts.js               entity schemas + module contracts
     lineage.js                 append-oriented ancestry/event history
     lifecycle.js               legal state transitions and ageing
-    events.js                  deterministic queue + event router
+    events.js                  deterministic queue, router and dependency index
+    transactions.js             whole-tick checkpoint and rollback
     ownership.js               validated state/energy/relation facade
     execution.js               atomic module batch executor
     progression.js             composition root and public facade
     aggregation.js             contact detection and bond components
     molecular.js               molecules, polymers and catalytic networks
     membranes.js               membrane plans and protocell assembly
-    heredity.js                replication and mutation
+    physiology.js              selective transport and metabolic flux
+    heredity.js                replication, mutation and partition
+    genetics.js                locus expression and regulation
     organismal.js              biomass growth and reproduction
     development.js             colonies, differentiation and morphogenesis
     experiments.js             seeded protocols and interventions
     statistics.js              descriptive and bootstrap summaries
 ```
 
-The six nested progression domains are a deliberately small meta-module family. Their exported method sets are attached to the `EmergenceProgression` facade once at module load. They share the same runtime, owner, lifecycle, lineage and transaction authorities; they do not own shadow stores or duplicate biological state.
+The eight nested progression domains are a deliberately small meta-module family. Their exported method sets are attached to the `EmergenceProgression` facade once at module load. They share the same runtime, owner, lifecycle, lineage and transaction authorities; they do not own shadow stores or duplicate biological state.
 
 ## Semantic boundaries
 
@@ -94,3 +97,16 @@ The six nested progression domains are a deliberately small meta-module family. 
 ## Deliberately not claimed
 
 This is modular source architecture, not a claim that all future biology is implemented. Selective membrane transport, metabolism, gene regulation, whole-tick rollback, large-scale parameter campaigns, and browser/load validation remain separate engineering work. The modules provide places to add those capabilities without reopening a monolith.
+
+
+## Remaining-boundaries module extensions
+
+The current focused module family also includes:
+
+- `transactions.js`: whole-tick checkpoint and rollback coordinator.
+- `physiology.js`: selective membrane transport and energy-bearing substrate conversion.
+- `genetics.js`: locus definition, signal-weighted expression and phenotype trait mapping.
+
+The EntityStore now protects declared biological payload keys with transaction-only setters and deeply immutable nested values. Runtime entity energy is guarded by a private store capability bound to EnergyEngine. The dependency index subscribes to committed transactional property/state/material changes; tick-level change batches are delivered only after successful commit and discarded on rollback.
+
+The current module topology is intentionally not a claim of universal ownership. Unprotected generic payloads remain extensible, runtime physics position/velocity updates are indexed at the step boundary; arbitrary direct writes outside those authorities are not indexed, and the browser animation loop is not yet wrapped by RuntimeTickTransaction. The canonical capability boundaries are in [FEATURES.md](FEATURES.md).

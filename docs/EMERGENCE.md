@@ -93,3 +93,17 @@ A reproducible run requires the same seed, initial state, runtime configuration,
 ## 9. Design boundary
 
 Prefer the existing EntityStore, EnergyEngine, FieldGrid, GraphEngine, TopologyEngine, RuleEngine and Scheduler whenever their semantics fit. New modules should add domain policy and orchestration, not duplicate foundational stores or solvers. Preserve separate abstractions where the semantics differ: interaction forces are not positional constraints; graph analysis is not topology mutation; lifecycle stage is not containment state; lineage history is not a physical reservoir.
+
+
+## 4. Modular boundaries added after the four-stage implementation
+
+`src/emergence.js` is the stable compatibility entry for focused modules under `src/emergence/`.
+
+- **DependencyEventIndex:** indexes committed EntityStore property/state/material changes by entity type and property. Tick-level notifications are deferred until commit.
+- **RuntimeTickTransaction:** checkpoints entity/link/field/ledger/scheduler/constraint/rule/lineage state and rolls back failed experiment ticks.
+- **Physiology:** selective membrane transport and energy-bearing substrate conversion through EnergyEngine.
+- **GeneRegulatoryEngine:** locus definition, signal-weighted expression and phenotype trait mapping.
+- **Organismal/development policies:** resource-limited growth, fission partitioning, field-driven differentiation and gradient-following morphogenesis.
+- **ExperimentHarness:** seeded runs, interventions, replicate and factorial campaigns, blind protocols and statistical summaries.
+
+These are bounded simulation models, not complete biochemical or developmental fidelity. See [organoids/FEATURES.md](organoids/FEATURES.md) for the canonical source map, test evidence, limitations and proposed roadmap.
