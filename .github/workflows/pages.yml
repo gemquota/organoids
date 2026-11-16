@@ -59,6 +59,12 @@ jobs:
           <p class="muted">Standalone browser experiences published from the Organoids repository.</p>
           <a class="item" href="../"><strong>Main simulation</strong><br>Particle accretion and emergence runtime.</a>
           <a class="item" href="../emergent-life-atlas.html"><strong>Emergent Life Atlas</strong><br>Visual catalogue of forms and possible transitions.</a>
+          <h2>Earlier evolutionary-ecology experiments</h2>
+          <a class="item" href="https://gemquota.github.io/boids/"><strong>Evolutionary ecology simulation</strong><br>Earlier integrated simulation.</a>
+          <a class="item" href="https://gemquota.github.io/boids/emergence-lab.html"><strong>Emergence lab</strong><br>Standalone emergence experiments.</a>
+          <a class="item" href="https://gemquota.github.io/boids/plant-lab.html"><strong>Plant lab</strong><br>Plant and ecological experiments.</a>
+          <a class="item" href="https://gemquota.github.io/boids/vision-lab.html"><strong>Vision lab</strong><br>Vision and sensory experiments.</a>
+          <a class="item" href="https://gemquota.github.io/boids/vision-minimal.html"><strong>Minimal vision lab</strong><br>Minimal vision prototype.</a>
           <p class="muted">The reusable seeded experiment harness is implemented as <code>src/emergence/experiments.js</code> and is exercised by the automated test suite; it is a library module rather than a standalone browser page.</p>
           <p><a href="https://github.com/gemquota/organoids">Source repository</a> · <a href="https://github.com/gemquota/organoids/blob/main/docs/organoids/FEATURES.md">Feature catalogue</a></p>
           </html>
