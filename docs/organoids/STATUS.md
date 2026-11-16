@@ -12,3 +12,5 @@ This file is retained as a compatibility pointer. It intentionally contains no i
 - The catalogue distinguishes fully tested capabilities from bounded implementations and unverified browser work. The final PR #7 CI run passed 108/108 tests and the inline syntax check; browser rendering and sustained-load behaviour remain unverified.
 
 See FEATURES.md for the authoritative current snapshot. Do not copy status tables into this file.
+
+- The 161-item evolutionary ecology requirements checklist is preserved separately in [EVOLUTION_BACKLOG.md](EVOLUTION_BACKLOG.md); its historical 115/161 count is not the Organoids completion count.
