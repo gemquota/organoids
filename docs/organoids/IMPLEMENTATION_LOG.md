@@ -53,3 +53,14 @@ This file is a chronological engineering log, not a live status catalogue. Curre
 - Added focused behavioural tests and consolidated duplicate status/roadmap/audit tables into FEATURES.md.
 
 The implementation deliberately retains bounded labels where universal legacy ownership, browser-loop rollback, fluid membrane mechanics, kinetic gene regulation or reaction-diffusion development have not been delivered. See FEATURES.md for the exact completion audit and current test run.
+
+
+## 16 November 2026: ownership boundaries and documentation reconciliation (PR #7)
+
+**Merge commit:** `a9c96c2233eec88e5c85798447b1062b387b7ad5`
+
+- Merged the remaining ownership, transaction, physiology, genetics, organismal and development boundaries into main.
+- Final PR #7 CI passed 108/108 tests and the inline module syntax check.
+- Browser rendering and sustained-load validation remain explicit release gates.
+- Reconciled the current implementation catalogue and separated it from the inherited 161-item evolutionary ecology requirements checklist.
+- Removed stale branch-era and duplicate audit/status snapshots; current feature evidence lives in FEATURES.md.
