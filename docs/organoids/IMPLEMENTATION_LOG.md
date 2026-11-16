@@ -35,10 +35,10 @@ This file is a chronological engineering log, not a live status catalogue. Curre
 - Updated the source-mapped audit and architecture documents.
 - PR #6 was rebased onto main, passed CI and merged.
 
-## 15 November 2026: remaining-boundaries implementation
+## 15 November 2026: remaining-boundaries implementation (pre-merge branch)
 
 **Branch:** `feat/remaining-emergence-boundaries`  
-**Base:** merged main after PR #5 and PR #6.
+**Base:** merged main after PR #5 and PR #6. This work was subsequently merged by PR #7 on 16 November 2026.
 
 - Added transaction-only guards and deep immutability for declared biological payload keys.
 - Bound runtime entity energy writes to EnergyEngine through a private EntityStore capability.
