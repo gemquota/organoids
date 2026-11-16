@@ -200,3 +200,10 @@ These proposals are not marked implemented. They are a ranked design backlog, wi
 - Do not create a second owner for state already governed by an existing engine.
 - Add one focused test for each new contract and an integration test for each cross-module transaction.
 - Record exact commit SHA, CI run and test totals after the final implementation commit.
+
+
+## 10. Related evolutionary ecology requirements
+
+The earlier evolutionary ecology workstream contains a separate **161-item** checklist covering genetics, neuroevolution, population genetics, ecology, experimentation, observatory tooling and release validation. Its original source snapshot recorded **115 checked / 46 unchecked (71.4%)** on 16 November 2026.
+
+That checklist is preserved in [EVOLUTION_BACKLOG.md](EVOLUTION_BACKLOG.md), including its original checkbox state and source attribution. Those completion marks are historical upstream claims, not Organoids implementation evidence. Organoids must independently re-express adopted mechanisms and verify them against this repository's source, tests, persistence and browser behaviour. The 161-item requirements lineage and this 40-capability emergence-engine catalogue describe different scopes and must never be added together or substituted for one another.
