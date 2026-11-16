@@ -1,7 +1,7 @@
 # Modularity and module-contract architecture
 
-**Snapshot:** 15 November 2026  
-**Implementation branch:** `feat/remaining-emergence-boundaries`  
+**Snapshot:** 16 November 2026  
+**Implementation branch:** `main` (PR #7 merged)  
 **Compatibility entry:** `src/emergence.js`
 
 ## Intent
