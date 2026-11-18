@@ -16,12 +16,13 @@ test("atlas application script parses",()=>{
 
 test("atlas registry has unique, populated entries",()=>{
   const ids=registry.entries.map(entry=>entry.id);
-  assert.equal(ids.length,20);
+  assert.equal(ids.length,25);
   assert.equal(new Set(ids).size,ids.length);
   for(const entry of registry.entries){
     assert.ok(entry.name && entry.summary && entry.structure);
     assert.ok(entry.form);
     assert.ok(Array.isArray(entry.cap));
+    assert.ok(Array.isArray(entry.next));
   }
 });
 
@@ -53,4 +54,11 @@ test("the atlas exposes one entity selector and a visible result count",()=>{
 test("unregistered transition targets are identified as future forms",()=>{
   assert.ok(script.includes("not yet in this catalogue"));
   assert.ok(script.includes("const unknown=e.next.filter"));
+});
+
+test("batch one adds distinct cellular and tissue organisations",()=>{
+  const ids=new Set(registry.entries.map(entry=>entry.id));
+  for(const id of ["prokaryotic-cell","eukaryotic-cell","endosymbiotic-cell","differentiated-colony","epithelial-tissue"]) assert.ok(ids.has(id),`Missing ${id}`);
+  const forms=new Set(registry.entries.map(entry=>entry.form));
+  for(const form of ["prokaryote","eukaryote","endosymbiont","differentiated-colony","epithelium"]) assert.ok(forms.has(form),`Missing morphology ${form}`);
 });
