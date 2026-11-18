@@ -19,6 +19,7 @@ aside{padding:16px;border-right:1px solid var(--line);min-width:0}
 label{display:block;font-size:12px;color:var(--muted)}
 input,select{width:100%;background:var(--panel2);color:inherit;border:1px solid #31575a;border-radius:7px;padding:10px;margin:5px 0 12px}
 nav{display:grid;gap:5px}
+.list-count{font-size:12px;color:var(--muted);margin:0 0 8px}
 .item{width:100%;text-align:left;background:var(--panel);border:1px solid var(--line);color:inherit;padding:9px 10px;border-radius:7px;cursor:pointer}
 .item small{display:block;color:var(--muted);font-size:11px}
 button:hover{border-color:var(--accent)}
@@ -119,6 +120,7 @@ function select(id){
 function render(){
  const q=$("search").value.trim().toLowerCase(),stage=$("stage").value;
  const list=E.filter(e=>(!stage||e.stage===stage)&&(!q||[e.name,e.summary,e.structure,e.energy,e.growth,e.division,...e.cap].join(" ").toLowerCase().includes(q)));
+ $("list-count").textContent=list.length+" of "+E.length+" entries";
  $("nav").innerHTML=list.map(e=>'<button type="button" class="item" data-id="'+e.id+'" aria-current="'+(e.id===active)+'">'+esc(e.name)+'<small>'+esc(e.stage)+'</small></button>').join("")||'<p class="hint">No matching entries.</p>'; document.querySelectorAll("#nav [data-id]").forEach(b=>b.addEventListener("click",()=>select(b.dataset.id)));
  if(!list.some(e=>e.id===active)){if(list.length)select(list[0].id);else{$("nav").innerHTML='<p class="hint">No matching entries.</p>'}}
 }
