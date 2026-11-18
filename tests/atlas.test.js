@@ -45,5 +45,5 @@ test("both specimen navigation and cards are wired to selection",()=>{
 
 test("emergence stack contains six ordered levels",()=>{
   assert.equal(registry.levels.length,6);
-  assert.deepEqual(registry.levels.map(level=>level.n),[0,1,2,3,4,5]);
+  assert.deepEqual(Array.from(registry.levels,level=>level.n),[0,1,2,3,4,5]);
 });
