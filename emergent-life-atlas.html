@@ -64,7 +64,7 @@ dt{color:var(--muted)}dd{margin:0;overflow-wrap:anywhere}
 </aside>
 <section class="content" aria-live="polite">
 <div id="detail">
-<div class="specimen"><svg class="art" viewBox="0 0 480 480" role="img" aria-label="Specimen illustration"><circle cx="240" cy="240" r="86" fill="#5bcd bc" opacity=".18" stroke="#83e2d2" stroke-width="3"/></svg><div><h2 id="name">Select a specimen</h2><p class="summary" id="summary">Browse the registry to inspect forms and capabilities.</p><div class="tags" id="tags"></div><dl id="facts"></dl></div></div>
+<div class="specimen"><svg class="art" viewBox="0 0 480 480" role="img" aria-label="Specimen illustration"><circle cx="240" cy="240" r="86" fill="rgba(91,205,188,.18)" opacity=".18" stroke="#83e2d2" stroke-width="3"/></svg><div><h2 id="name">Select a specimen</h2><p class="summary" id="summary">Browse the registry to inspect forms and capabilities.</p><div class="tags" id="tags"></div><dl id="facts"></dl></div></div>
 </div>
 <div class="cards" id="cards"></div>
 </section>
@@ -153,7 +153,7 @@ function render(){
  const list=E.filter(e=>(!stage||e.stage===stage)&&(!q||[e.name,e.summary,e.structure,e.energy,e.growth,e.division,...e.cap].join(" ").toLowerCase().includes(q)));
  $("nav").innerHTML=list.map(e=>'<button type="button" class="item" data-id="'+e.id+'" aria-current="'+(e.id===active)+'">'+esc(e.name)+'<small>'+esc(e.stage)+'</small></button>').join("")||'<p class="hint">No matching entries.</p>';
  $("cards").innerHTML=list.map(e=>'<button type="button" class="card" data-id="'+e.id+'"><b>'+esc(e.name)+'</b><small>'+esc(e.stage)+' · '+esc(e.cap.slice(0,2).join(" / "))+'</small></button>').join("");
- $("nav").querySelectorAll("[data-id],#cards [data-id]").forEach(b=>b.addEventListener("click",()=>select(b.dataset.id)));
+ document.querySelectorAll("#nav [data-id],#cards [data-id]").forEach(b=>b.addEventListener("click",()=>select(b.dataset.id)));
  if(!list.some(e=>e.id===active)){if(list.length)select(list[0].id);else{$("cards").innerHTML="";$("nav").innerHTML='<p class="hint">No matching entries.</p>'}}
 }
 $("search").addEventListener("input",render);$("stage").addEventListener("change",render);
