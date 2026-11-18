@@ -7,7 +7,7 @@ const html=readFileSync(new URL("../emergent-life-atlas.html",import.meta.url),"
 const script=html.match(/<script>([\\s\\S]*?)<\\/script>/)?.[1];
 assert.ok(script,"Atlas must contain its application script");
 
-const registrySource=script.slice(0,script.indexOf("function renderLevels()"));
+const registrySource=script.slice(0,script.indexOf("const $=id=>"));
 const registry=vm.runInNewContext(`${registrySource};({entries:E,levels:LEVELS})`);
 
 test("atlas application script parses",()=>{
