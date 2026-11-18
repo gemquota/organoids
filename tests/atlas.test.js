@@ -4,7 +4,7 @@ import {readFileSync} from "node:fs";
 import vm from "node:vm";
 
 const html=readFileSync(new URL("../emergent-life-atlas.html",import.meta.url),"utf8");
-const script=html.match(/<script>([\\s\\S]*?)<\\/script>/)?.[1];
+const script=html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
 assert.ok(script,"Atlas must contain its application script");
 
 const registrySource=script.slice(0,script.indexOf("const $=id=>"));
