@@ -14,18 +14,12 @@ header{padding:18px clamp(14px,3vw,30px);border-bottom:1px solid var(--line);dis
 h1{font-size:18px;letter-spacing:.14em;margin:0;color:var(--accent)}
 header small,.muted,.hint{color:var(--muted)}
 .intro{max-width:980px;padding:14px clamp(14px,3vw,30px);color:var(--muted)}
-.levels{padding:0 clamp(14px,3vw,30px) 16px;border-bottom:1px solid var(--line)}
-.levels h2{font-size:15px;margin:0 0 8px;color:var(--accent)}
-.levelgrid{display:grid;grid-template-columns:repeat(6,minmax(145px,1fr));gap:7px;overflow-x:auto;padding:2px 1px 8px}
-.level{min-width:145px;text-align:left;background:var(--panel);border:1px solid var(--line);color:inherit;border-radius:8px;padding:10px;cursor:pointer}
-.level strong,.level small{display:block}.level strong{font-size:12px;color:var(--accent)}.level small{font-size:12px;color:var(--muted);margin-top:3px}
-.level[aria-pressed=true],.item[aria-current=true]{border-color:var(--accent);background:#17383b}
-.leveldetail{min-height:44px;color:#b8d8d3;padding:4px 0}
 main{display:grid;grid-template-columns:minmax(220px,290px) minmax(0,1fr);gap:0;min-height:60vh}
 aside{padding:16px;border-right:1px solid var(--line);min-width:0}
 label{display:block;font-size:12px;color:var(--muted)}
 input,select{width:100%;background:var(--panel2);color:inherit;border:1px solid #31575a;border-radius:7px;padding:10px;margin:5px 0 12px}
 nav{display:grid;gap:5px}
+.list-count{font-size:12px;color:var(--muted);margin:0 0 8px}
 .item{width:100%;text-align:left;background:var(--panel);border:1px solid var(--line);color:inherit;padding:9px 10px;border-radius:7px;cursor:pointer}
 .item small{display:block;color:var(--muted);font-size:11px}
 button:hover{border-color:var(--accent)}
@@ -39,10 +33,6 @@ h2{font-size:clamp(21px,3vw,28px);line-height:1.2;margin:2px 0 8px;color:#a6e9dc
 .tag{border:1px solid #386366;border-radius:99px;padding:3px 8px;color:#a9d9d2;font-size:12px}
 dl{display:grid;grid-template-columns:minmax(105px,130px) minmax(0,1fr);gap:9px 12px;margin:0}
 dt{color:var(--muted)}dd{margin:0;overflow-wrap:anywhere}
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:9px;margin-top:22px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:11px;text-align:left;color:inherit;cursor:pointer;min-width:0}
-.card b,.card small{display:block}.card small{color:var(--muted);margin-top:3px;font-size:12px}
-.empty{padding:18px;border:1px dashed var(--line);border-radius:9px;color:var(--muted)}
 @media(max-width:760px){main{grid-template-columns:1fr}aside{border-right:0;border-bottom:1px solid var(--line);padding:12px 14px;max-height:none}nav{grid-template-columns:repeat(auto-fill,minmax(145px,1fr));max-height:220px;overflow:auto}.specimen{grid-template-columns:minmax(0,1fr)}.art{max-width:380px;margin:auto}.content{padding:14px}}
 @media(min-width:761px){aside{position:sticky;top:0;align-self:start;max-height:calc(100vh - 1px);overflow:auto}}
 @media(prefers-reduced-motion:no-preference){button{transition:border-color .12s ease,background .12s ease}}
@@ -51,22 +41,17 @@ dt{color:var(--muted)}dd{margin:0;overflow-wrap:anywhere}
 <body>
 <header><h1>ORGANOIDS / LIFE ATLAS</h1><small>Forms · capabilities · possible transitions</small></header>
 <div class="intro">A browsable catalogue of biological and pre-biological organisational patterns. Entries describe reusable forms, not a single ladder that every lineage must follow.</div>
-<section class="levels" aria-labelledby="levels-title">
-<h2 id="levels-title">A conceptual emergence stack · Levels 0–5</h2>
-<div class="levelgrid" id="levelgrid"></div>
-<div class="leveldetail" id="leveldetail" aria-live="polite">Select a level to inspect its role.</div>
-</section>
 <main>
 <aside>
 <label for="search">Find an entity</label><input id="search" type="search" placeholder="Name, structure or capability">
-<label for="stage">Organisation</label><select id="stage"><option value="">All organisations</option></select>
-<nav id="nav" aria-label="Specimen list"></nav>
+<label for="stage">Category</label><select id="stage"><option value="">All categories</option></select>
+<p class="list-count" id="list-count" aria-live="polite"></p>
+<nav id="nav" aria-label="Choose a specimen"></nav>
 </aside>
 <section class="content" aria-live="polite">
 <div id="detail">
 <div class="specimen"><svg class="art" viewBox="0 0 480 480" role="img" aria-label="Specimen illustration"><circle cx="240" cy="240" r="86" fill="rgba(91,205,188,.18)" opacity=".18" stroke="#83e2d2" stroke-width="3"/></svg><div><h2 id="name">Select a specimen</h2><p class="summary" id="summary">Browse the registry to inspect forms and capabilities.</p><div class="tags" id="tags"></div><dl id="facts"></dl></div></div>
 </div>
-<div class="cards" id="cards"></div>
 </section>
 </main>
 <script>
@@ -93,14 +78,6 @@ const E=[
 {id:"ecosystem",name:"Ecological community",stage:"Ecologies",form:"ecosystem",summary:"Interacting populations linked by resource flows, competition, predation, cooperation and environmental feedback.",structure:"Multi-species interaction network",energy:"External energy input and trophic transfer",growth:"Population and habitat dynamics",division:"Not applicable; community assembly and succession",cap:["trophic interaction","competition","symbiosis","succession"],next:[]}
 ];
 
-const LEVELS=[
-{n:0,title:"Underlying quantum system",short:"Fundamental degrees of freedom",detail:"A hypothetical substrate described by fundamental quantum degrees of freedom. These need not be particles, spacetime points or conventional fields; their mathematical nature is left open.",examples:"Candidate abstractions: quantum states, operators, amplitudes, constraints and microscopic update rules.",bridge:"Collective relationships among these degrees of freedom may produce robust correlations, symmetries and network-like organisation."},
-{n:1,title:"Collective organisation",short:"Correlations · networks · topology",detail:"Many underlying degrees of freedom organise collectively. Correlations, entanglement patterns, symmetries, graph structure and topological invariants may become more useful than tracking each microscopic component.",examples:"Candidate abstractions: entanglement networks, symmetry sectors, tensor networks, order parameters and topological phases.",bridge:"Collective regularities can support effective variables and long-wavelength descriptions that behave like fields and geometry."},
-{n:2,title:"Emergent fields",short:"Effective gauge and matter fields",detail:"At suitable scales, collective behaviour may admit an effective description in terms of gauge fields, matter fields and geometric relationships. These are emergent descriptive degrees of freedom in this hypothetical stack.",examples:"Candidate abstractions: effective gauge connections, scalar and spinor fields, curvature-like relations and effective spacetime geometry.",bridge:"Stable configurations and localised disturbances of effective fields can behave as persistent particle-like objects."},
-{n:3,title:"Stable excitations",short:"Solitons · defects · particle-like modes",detail:"Some field configurations may be dynamically stable or protected by topology. They can behave as localised, persistent excitations rather than dispersing waves.",examples:"Candidate abstractions: solitons, vortices, skyrmions, domain walls, monopole-like defects and topological modes.",bridge:"Interactions and bound states among stable excitations may produce the effective constituents of composite matter."},
-{n:4,title:"Composite matter",short:"Quarks · leptons · nuclei · atoms · molecules",detail:"Stable excitations and their interactions form composite structures. In known physics, quarks bind into hadrons, nuclei combine with electrons to form atoms, and atoms form molecules. Leptons include elementary particles such as electrons, not composites of quarks.",examples:"Candidate abstractions: particle species, quantum numbers, bound states, nuclei, atoms, chemical bonds and molecular networks.",bridge:"Large collections of interacting matter support chemistry, thermodynamics, self-organisation and eventually biological processes."},
-{n:5,title:"Complex systems",short:"Chemistry · biology · cognition · life",detail:"Matter organises into non-equilibrium systems with feedback, information processing, metabolism, heredity, evolution and cognition. Life is not a guaranteed outcome: it requires specific conditions and organisation.",examples:"Candidate abstractions: reaction networks, compartments, protocells, cells, tissues, organisms, nervous systems, populations and ecosystems.",bridge:"The Emergent Life Atlas lives primarily here, while retaining links to the lower-level physical constraints and resources."}
-];
 const $=id=>document.getElementById(id);
 const stages=[...new Set(E.map(e=>e.stage))];
 for(const stage of stages){const option=document.createElement("option");option.value=stage;option.textContent=stage;$("stage").append(option)}
@@ -126,13 +103,6 @@ function specimenArt(form){
  else{s=circle(240,240,80)+line("M 190 240 Q 240 160 290 240 Q 240 320 190 240",4)}
  return '<svg class="art" viewBox="0 0 480 480" role="img" aria-label="'+esc(form)+' morphology illustration"><defs><radialGradient id="glow"><stop stop-color="#24585a"/><stop offset="1" stop-color="#081316"/></radialGradient></defs><rect width="480" height="480" rx="14" fill="url(#glow)"/>'+s+'</svg>';
 }
-function renderLevels(){
- const host=$("levelgrid"),detail=$("leveldetail");
- host.innerHTML=LEVELS.map(l=>'<button type="button" class="level" data-level="'+l.n+'" aria-pressed="'+(l.n===5)+'"><strong>LEVEL '+l.n+' · '+esc(l.title)+'</strong><small>'+esc(l.short)+'</small></button>').join("");
- const show=n=>{const l=LEVELS.find(x=>x.n===n);if(!l)return;host.querySelectorAll("[data-level]").forEach(b=>b.setAttribute("aria-pressed",String(+b.dataset.level===n)));detail.innerHTML='<b>'+esc(l.title)+'</b> · '+esc(l.detail)+' <span class="muted">'+esc(l.examples)+'</span>'};
- host.addEventListener("click",event=>{const b=event.target.closest("[data-level]");if(b)show(+b.dataset.level)});
- show(5);
-}
 function select(id){
  const e=E.find(v=>v.id===id);if(!e)return;active=id;
  $("name").textContent=e.name;$("summary").textContent=e.summary;
@@ -151,13 +121,12 @@ function select(id){
 function render(){
  const q=$("search").value.trim().toLowerCase(),stage=$("stage").value;
  const list=E.filter(e=>(!stage||e.stage===stage)&&(!q||[e.name,e.summary,e.structure,e.energy,e.growth,e.division,...e.cap].join(" ").toLowerCase().includes(q)));
- $("nav").innerHTML=list.map(e=>'<button type="button" class="item" data-id="'+e.id+'" aria-current="'+(e.id===active)+'">'+esc(e.name)+'<small>'+esc(e.stage)+'</small></button>').join("")||'<p class="hint">No matching entries.</p>';
- $("cards").innerHTML=list.map(e=>'<button type="button" class="card" data-id="'+e.id+'"><b>'+esc(e.name)+'</b><small>'+esc(e.stage)+' · '+esc(e.cap.slice(0,2).join(" / "))+'</small></button>').join("");
- document.querySelectorAll("#nav [data-id],#cards [data-id]").forEach(b=>b.addEventListener("click",()=>select(b.dataset.id)));
- if(!list.some(e=>e.id===active)){if(list.length)select(list[0].id);else{$("cards").innerHTML="";$("nav").innerHTML='<p class="hint">No matching entries.</p>'}}
+ $("list-count").textContent=list.length+" of "+E.length+" entries";
+ $("nav").innerHTML=list.map(e=>'<button type="button" class="item" data-id="'+e.id+'" aria-current="'+(e.id===active)+'">'+esc(e.name)+'<small>'+esc(e.stage)+'</small></button>').join("")||'<p class="hint">No matching entries.</p>'; document.querySelectorAll("#nav [data-id]").forEach(b=>b.addEventListener("click",()=>select(b.dataset.id)));
+ if(!list.some(e=>e.id===active)){if(list.length)select(list[0].id);else{$("nav").innerHTML='<p class="hint">No matching entries.</p>'}}
 }
 $("search").addEventListener("input",render);$("stage").addEventListener("change",render);
-renderLevels();select(active);
+select(active);
 </script>
 </body>
 </html>
