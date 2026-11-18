@@ -1,29 +1,74 @@
 <!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#071014">
 <title>ORGANOIDS · Emergent Life Atlas</title>
 <style>
-:root{color-scheme:dark;font:14px system-ui;background:#071014;color:#d8eeeb}
-*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 70% 0,#15343a,#071014 65%)}
-header{padding:18px 22px;border-bottom:1px solid #25464b;display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
-h1{font-size:18px;letter-spacing:.16em;margin:0;color:#9ce5d9}header small,.muted{color:#83a9a6}
-main{display:grid;grid-template-columns:minmax(230px,290px) 1fr;min-height:calc(100vh - 60px)}
-aside{border-right:1px solid #25464b;padding:14px;max-height:calc(100vh - 60px);overflow:auto}
-input,select{width:100%;background:#102328;color:#d8eeeb;border:1px solid #31575a;border-radius:7px;padding:9px;margin:5px 0 12px}
-nav{display:grid;gap:5px}.item{background:#102328;border:1px solid #25464b;color:inherit;text-align:left;padding:9px;border-radius:7px;cursor:pointer}.item[aria-current=true]{border-color:#72d9c9;background:#17383b}
-section{padding:18px;min-width:0}.top{display:grid;grid-template-columns:minmax(220px,360px) 1fr;gap:18px;align-items:start}
-canvas{width:100%;aspect-ratio:1;background:radial-gradient(circle,#16363b,#081316 72%);border:1px solid #25464b;border-radius:12px}
-h2{margin:0 0 6px;font-size:22px;color:#a6e9dc}.tag{display:inline-block;border:1px solid #386366;border-radius:99px;padding:3px 8px;margin:3px 4px 3px 0;color:#a9d9d2;font-size:12px}
-dl{display:grid;grid-template-columns:110px 1fr;gap:8px;margin:14px 0}dt{color:#82aaa5}dd{margin:0}
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-top:20px}.card{background:#0e2024;border:1px solid #25464b;border-radius:9px;padding:11px;cursor:pointer}.card:hover{border-color:#72d9c9}.card b{display:block;margin-bottom:4px}.card small{color:#83a9a6}
-@media(max-width:720px){main{grid-template-columns:1fr}aside{max-height:32vh;border-right:0;border-bottom:1px solid #25464b}.top{grid-template-columns:1fr 1fr}section{padding:12px}}@media(max-width:480px){.top{grid-template-columns:1fr}}
-
-.levels{padding:18px 22px;border-bottom:1px solid #25464b}.levels h2{font-size:16px;margin:0 0 5px}.levels p{max-width:950px;color:#83a9a6;margin:4px 0 12px}.levelgrid{display:grid;grid-template-columns:repeat(6,minmax(150px,1fr));gap:8px;overflow-x:auto}.level{min-width:150px;text-align:left;background:#102328;border:1px solid #31575a;color:inherit;border-radius:8px;padding:11px;cursor:pointer}.level strong{display:block;color:#9ce5d9;margin-bottom:5px}.level small{color:#91b6b1;line-height:1.4;display:block}.level[aria-pressed=true]{border-color:#72d9c9;background:#17383b}.leveldetail{margin-top:10px;color:#b8d8d3;min-height:38px}
-@media(max-width:900px){.levelgrid{grid-template-columns:repeat(6,170px)}}
+:root{color-scheme:dark;font:15px/1.5 system-ui,sans-serif;background:#071014;color:#d8eeeb;--panel:#0d2024;--panel2:#10282c;--line:#25464b;--muted:#91b5b0;--accent:#8de1d2}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 75% 0,#15343a 0,#071014 62%)}
+button,input,select{font:inherit}
+header{padding:18px clamp(14px,3vw,30px);border-bottom:1px solid var(--line);display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+h1{font-size:18px;letter-spacing:.14em;margin:0;color:var(--accent)}
+header small,.muted,.hint{color:var(--muted)}
+.intro{max-width:980px;padding:14px clamp(14px,3vw,30px);color:var(--muted)}
+.levels{padding:0 clamp(14px,3vw,30px) 16px;border-bottom:1px solid var(--line)}
+.levels h2{font-size:15px;margin:0 0 8px;color:var(--accent)}
+.levelgrid{display:grid;grid-template-columns:repeat(6,minmax(145px,1fr));gap:7px;overflow-x:auto;padding:2px 1px 8px}
+.level{min-width:145px;text-align:left;background:var(--panel);border:1px solid var(--line);color:inherit;border-radius:8px;padding:10px;cursor:pointer}
+.level strong,.level small{display:block}.level strong{font-size:12px;color:var(--accent)}.level small{font-size:12px;color:var(--muted);margin-top:3px}
+.level[aria-pressed=true],.item[aria-current=true]{border-color:var(--accent);background:#17383b}
+.leveldetail{min-height:44px;color:#b8d8d3;padding:4px 0}
+main{display:grid;grid-template-columns:minmax(220px,290px) minmax(0,1fr);gap:0;min-height:60vh}
+aside{padding:16px;border-right:1px solid var(--line);min-width:0}
+label{display:block;font-size:12px;color:var(--muted)}
+input,select{width:100%;background:var(--panel2);color:inherit;border:1px solid #31575a;border-radius:7px;padding:10px;margin:5px 0 12px}
+nav{display:grid;gap:5px}
+.item{width:100%;text-align:left;background:var(--panel);border:1px solid var(--line);color:inherit;padding:9px 10px;border-radius:7px;cursor:pointer}
+.item small{display:block;color:var(--muted);font-size:11px}
+button:hover{border-color:var(--accent)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.content{padding:clamp(14px,2.5vw,26px);min-width:0}
+.specimen{display:grid;grid-template-columns:minmax(220px, min(38vw,390px)) minmax(0,1fr);gap:22px;align-items:start}
+.art{width:100%;aspect-ratio:1;border:1px solid var(--line);border-radius:12px;background:radial-gradient(circle,#16363b,#081316 72%);display:block}
+h2{font-size:clamp(21px,3vw,28px);line-height:1.2;margin:2px 0 8px;color:#a6e9dc}
+.summary{color:var(--muted);margin:0 0 14px}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 16px}
+.tag{border:1px solid #386366;border-radius:99px;padding:3px 8px;color:#a9d9d2;font-size:12px}
+dl{display:grid;grid-template-columns:minmax(105px,130px) minmax(0,1fr);gap:9px 12px;margin:0}
+dt{color:var(--muted)}dd{margin:0;overflow-wrap:anywhere}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:9px;margin-top:22px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:11px;text-align:left;color:inherit;cursor:pointer;min-width:0}
+.card b,.card small{display:block}.card small{color:var(--muted);margin-top:3px;font-size:12px}
+.empty{padding:18px;border:1px dashed var(--line);border-radius:9px;color:var(--muted)}
+@media(max-width:760px){main{grid-template-columns:1fr}aside{border-right:0;border-bottom:1px solid var(--line);padding:12px 14px;max-height:none}nav{grid-template-columns:repeat(auto-fill,minmax(145px,1fr));max-height:220px;overflow:auto}.specimen{grid-template-columns:minmax(0,1fr)}.art{max-width:380px;margin:auto}.content{padding:14px}}
+@media(min-width:761px){aside{position:sticky;top:0;align-self:start;max-height:calc(100vh - 1px);overflow:auto}}
+@media(prefers-reduced-motion:no-preference){button{transition:border-color .12s ease,background .12s ease}}
 </style>
-<header><h1>ORGANOIDS / LIFE ATLAS</h1><small>Data-driven morphologies · composable biological capabilities · non-linear emergence</small></header>
-<section class="levels"><h2>Hypothetical emergence stack · Levels 0–5</h2><p>An illustrative architecture connecting a speculative underlying quantum description to collective organisation, effective fields, stable excitations, composite matter and complex systems. This is a conceptual framework, not an established account of how our universe is actually organised.</p><div class="levelgrid" id="levelgrid"></div><div class="leveldetail" id="leveldetail">Select a level to inspect its role and its relationship to the next layer.</div></section>
-<main><aside><label for="search">Find an entity</label><input id="search" placeholder="Search names, structures, functions…"><label for="stage">Organisation</label><select id="stage"><option value="">All levels</option></select><nav id="nav"></nav></aside>
-<section><div class="top"><canvas id="specimen" width="480" height="480"></canvas><div><h2 id="name">Select a specimen</h2><p class="muted" id="summary">Browse the registry. Each entry describes a reusable organisational pattern, not a fixed species.</p><div id="tags"></div><dl id="facts"></dl></div></div><div class="cards" id="cards"></div></section></main>
+</head>
+<body>
+<header><h1>ORGANOIDS / LIFE ATLAS</h1><small>Forms · capabilities · possible transitions</small></header>
+<div class="intro">A browsable catalogue of biological and pre-biological organisational patterns. Entries describe reusable forms, not a single ladder that every lineage must follow.</div>
+<section class="levels" aria-labelledby="levels-title">
+<h2 id="levels-title">A conceptual emergence stack · Levels 0–5</h2>
+<div class="levelgrid" id="levelgrid"></div>
+<div class="leveldetail" id="leveldetail" aria-live="polite">Select a level to inspect its role.</div>
+</section>
+<main>
+<aside>
+<label for="search">Find an entity</label><input id="search" type="search" placeholder="Name, structure or capability">
+<label for="stage">Organisation</label><select id="stage"><option value="">All organisations</option></select>
+<nav id="nav" aria-label="Specimen list"></nav>
+</aside>
+<section class="content" aria-live="polite">
+<div id="detail">
+<div class="specimen"><svg class="art" viewBox="0 0 480 480" role="img" aria-label="Specimen illustration"><circle cx="240" cy="240" r="86" fill="#5bcd bc" opacity=".18" stroke="#83e2d2" stroke-width="3"/></svg><div><h2 id="name">Select a specimen</h2><p class="summary" id="summary">Browse the registry to inspect forms and capabilities.</p><div class="tags" id="tags"></div><dl id="facts"></dl></div></div>
+</div>
+<div class="cards" id="cards"></div>
+</section>
+</main>
 <script>
 const E=[
 {id:"vesicle",name:"Lipid vesicle",stage:"Compartments",form:"sphere",summary:"A membrane-bounded compartment formed by amphiphilic self-assembly.",structure:"Lipid bilayer enclosing an aqueous volume",energy:"No inherent metabolism; can host reactions",growth:"Membrane incorporation",division:"Budding, fission under suitable conditions",cap:["compartmentalisation","selective permeability"],next:["protocell","multivesicle"]},
@@ -56,27 +101,63 @@ const LEVELS=[
 {n:4,title:"Composite matter",short:"Quarks · leptons · nuclei · atoms · molecules",detail:"Stable excitations and their interactions form composite structures. In known physics, quarks bind into hadrons, nuclei combine with electrons to form atoms, and atoms form molecules. Leptons include elementary particles such as electrons, not composites of quarks.",examples:"Candidate abstractions: particle species, quantum numbers, bound states, nuclei, atoms, chemical bonds and molecular networks.",bridge:"Large collections of interacting matter support chemistry, thermodynamics, self-organisation and eventually biological processes."},
 {n:5,title:"Complex systems",short:"Chemistry · biology · cognition · life",detail:"Matter organises into non-equilibrium systems with feedback, information processing, metabolism, heredity, evolution and cognition. Life is not a guaranteed outcome: it requires specific conditions and organisation.",examples:"Candidate abstractions: reaction networks, compartments, protocells, cells, tissues, organisms, nervous systems, populations and ecosystems.",bridge:"The Emergent Life Atlas lives primarily here, while retaining links to the lower-level physical constraints and resources."}
 ];
-function renderLevels(){
-const host=$("levelgrid"),detail=$("leveldetail");
-host.innerHTML=LEVELS.map(l=>'<button class="level" data-level="'+l.n+'" aria-pressed="false"><strong>LEVEL '+l.n+' · '+l.title+'</strong><small>'+l.short+'</small></button>').join("");
-host.querySelectorAll("[data-level]").forEach(b=>b.onclick=()=>{let l=LEVELS[+b.dataset.level];host.querySelectorAll(".level").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));detail.innerHTML='<b>'+l.title+'</b><br>'+l.detail+'<br><span class="muted">'+l.examples+'</span><br><span class="muted">↳ '+l.bridge+'</span>'});
+const $=id=>document.getElementById(id);
+const stages=[...new Set(E.map(e=>e.stage))];
+for(const stage of stages){const option=document.createElement("option");option.value=stage;option.textContent=stage;$("stage").append(option)}
+let active=E[0]?.id ?? null;
+const esc=value=>String(value).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function specimenArt(form){
+ const stroke="#83e2d2",fill="rgba(91,205,188,.2)";
+ const circle=(x,y,r)=>'<circle cx="'+x+'" cy="'+y+'" r="'+r+'" fill="'+fill+'" stroke="'+stroke+'" stroke-width="3"/>';
+ const line=(d,w=4)=>'<path d="'+d+'" fill="none" stroke="'+stroke+'" stroke-width="'+w+'" stroke-linecap="round" stroke-linejoin="round"/>';
+ let s="";
+ if(["sphere","cell","droplet"].includes(form)){s=circle(240,240,form==="droplet"?88:82)+circle(240,240,64);for(let i=0;i<12;i++){const a=i*Math.PI/6;s+=circle(240+Math.cos(a)*82,240+Math.sin(a)*82,5)}}
+ else if(form==="micelle"){s=circle(240,240,84);for(let i=0;i<24;i++){const a=i*Math.PI/12;s+=line("M "+(240+Math.cos(a)*75)+" "+(240+Math.sin(a)*75)+" l "+(Math.cos(a)*22)+" "+(Math.sin(a)*22),3)}}
+ else if(form==="rod"){s='<rect x="105" y="188" width="270" height="104" rx="52" fill="'+fill+'" stroke="'+stroke+'" stroke-width="4"/>';for(let i=0;i<6;i++)s+=circle(145+i*38,240,5)}
+ else if(form==="spiral"){let d="";for(let i=0;i<260;i++){const t=i/259*Math.PI*5,r=8+i*.42;d+=(i?" L ":"M ")+(240+Math.cos(t)*r)+" "+(240+Math.sin(t)*r)}s=line(d,6)}
+ else if(form==="flagellum"){s=circle(220,240,58)+line("M 265 240 C 330 150 380 320 430 205",5)}
+ else if(form==="amoeba"){s='<path d="M160 220 Q125 155 190 142 Q220 90 260 150 Q340 115 335 195 Q390 250 320 282 Q300 360 235 320 Q160 365 155 290 Q105 260 160 220Z" fill="'+fill+'" stroke="'+stroke+'" stroke-width="4"/>'+circle(245,235,22)}
+ else if(form==="network"){for(let i=0;i<9;i++){const a=i*Math.PI*2/9,x=240+Math.cos(a)*112,y=240+Math.sin(a)*112;s+=line("M 240 240 L "+x+" "+y,3)+circle(x,y,12)}s+=circle(240,240,22)}
+ else if(form==="filament"||form==="branch"){for(let k=0;k<(form==="filament"?1:6);k++){let d="";for(let i=0;i<60;i++){const t=i/59,x=70+t*340,y=240+Math.sin(t*12+k*.8)*18+(form==="branch"?k*24-60:0);d+=(i?" L ":"M ")+x+" "+y}s+=line(d,form==="filament"?10:5)}}
+ else if(form==="cluster"||form==="colony"){for(let i=0;i<22;i++){const a=i*2.399,r=Math.sqrt(i)*27;s+=circle(240+Math.cos(a)*r,240+Math.sin(a)*r,form==="colony"?13:17)}}
+ else if(form==="organoid"){for(let i=0;i<42;i++){const a=i*2.399,r=Math.sqrt(i)*16;s+=circle(240+Math.cos(a)*r,240+Math.sin(a)*r,10)}s+=circle(240,240,35)}
+ else if(form==="radial"||form==="bilateral"){if(form==="radial"){for(let i=0;i<12;i++){const a=i*Math.PI/6;s+=line("M 240 240 L "+(240+Math.cos(a)*145)+" "+(240+Math.sin(a)*145),7)}}else{s+=line("M 240 95 Q 120 150 155 240 Q 120 330 240 385 Q 360 330 325 240 Q 360 150 240 95Z",6)+line("M 240 105 L 240 375",3)}s+=circle(240,240,28)}
+ else if(form==="ecosystem"){for(let i=0;i<12;i++){const a=i*2.4,r=35+(i%3)*42,x=240+Math.cos(a)*r,y=240+Math.sin(a)*r;s+=line("M 240 240 L "+x+" "+y,2)+circle(x,y,13)}}
+ else{s=circle(240,240,80)+line("M 190 240 Q 240 160 290 240 Q 240 320 190 240",4)}
+ return '<svg class="art" viewBox="0 0 480 480" role="img" aria-label="'+esc(form)+' morphology illustration"><defs><radialGradient id="glow"><stop stop-color="#24585a"/><stop offset="1" stop-color="#081316"/></radialGradient></defs><rect width="480" height="480" rx="14" fill="url(#glow)"/>'+s+'</svg>';
 }
-
-const $=id=>document.getElementById(id),stages=[...new Set(E.map(e=>e.stage))];
-stages.forEach(s=>{let o=document.createElement("option");o.value=s;o.textContent=s;$("stage").append(o)});
-let active=E[0].id;
-function draw(e){let c=$("specimen"),x=c.getContext("2d"),w=c.width,h=c.height;x.clearRect(0,0,w,h);x.save();x.translate(w/2,h/2);x.strokeStyle="#83e2d2";x.fillStyle="rgba(91,205,188,.18)";x.lineWidth=3;
-const dot=(a,b,r=5)=>{x.beginPath();x.arc(a,b,r,0,7);x.fill();x.stroke()};
-if(e.form==="sphere"||e.form==="cell"||e.form==="micelle"||e.form==="droplet"){dot(0,0,e.form==="micelle"?55:85);if(e.form!=="micelle"){x.beginPath();x.arc(0,0,67,0,7);x.stroke();for(let i=0;i<12;i++){let a=i*Math.PI/6;dot(Math.cos(a)*85,Math.sin(a)*85,4)}}}
-if(e.form==="rod"){x.beginPath();x.roundRect(-105,-42,210,84,42);x.fill();x.stroke();for(let i=-2;i<=2;i++)dot(i*34,0,3)}
-if(e.form==="spiral"||e.form==="flagellum"){x.beginPath();for(let i=0;i<240;i++){let t=i/239*Math.PI*5,r=8+i*.25;x.lineTo(Math.cos(t)*r,Math.sin(t)*r)}x.stroke();if(e.form==="flagellum"){x.beginPath();x.moveTo(0,0);x.quadraticCurveTo(100,-100,150,20);x.stroke()}}
-if(e.form==="amoeba"||e.form==="cluster"||e.form==="colony"){for(let i=0;i<(e.form==="amoeba"?1:18);i++){let a=i*2.4,r=e.form==="amoeba"?0:Math.sqrt(i)*20;dot(Math.cos(a)*r,Math.sin(a)*r, e.form==="amoeba"?65:13)}}
-if(e.form==="filament"||e.form==="branch"){for(let k=0;k<(e.form==="filament"?1:7);k++){x.beginPath();for(let i=0;i<100;i++){let t=i/99;x.lineTo((t-.5)*230,Math.sin(t*12+k)*18+(e.form==="branch"?k*12:0))}x.stroke()}}
-if(e.form==="organoid"){for(let i=0;i<34;i++){let a=i*2.399,r=Math.sqrt(i)*13;dot(Math.cos(a)*r,Math.sin(a)*r,10)}x.beginPath();x.arc(0,0,28,0,7);x.stroke()}
-if(e.form==="radial"||e.form==="bilateral"){for(let i=0;i<8;i++){let a=i*Math.PI/4;x.beginPath();x.moveTo(0,0);x.lineTo(Math.cos(a)*105,Math.sin(a)*105);x.stroke()}dot(0,0,25)}
-if(e.form==="ecosystem"){for(let i=0;i<12;i++){let a=i*2.4,r=30+(i%3)*35;dot(Math.cos(a)*r,Math.sin(a)*r,10);x.beginPath();x.moveTo(0,0);x.lineTo(Math.cos(a)*r,Math.sin(a)*r);x.stroke()}}
-x.restore()}
-function select(id){active=id;let e=E.find(v=>v.id===id);$("name").textContent=e.name;$("summary").textContent=e.summary;$("tags").innerHTML=e.cap.map(t=>'<span class="tag">'+t+'</span>').join("");$("facts").innerHTML=[["Structure",e.structure],["Energy",e.energy],["Growth",e.growth],["Division",e.division],["Potential transitions",e.next.join(", ")||"—"]].map(([a,b])=>'<dt>'+a+'</dt><dd>'+b+'</dd>').join("");draw(e);render()}
-function render(){let q=$("search").value.toLowerCase(),s=$("stage").value;let list=E.filter(e=>(!s||e.stage===s)&&(!q||(e.name+" "+e.summary+" "+e.cap.join(" ")).toLowerCase().includes(q)));$("nav").innerHTML=list.map(e=>'<button class="item" data-id="'+e.id+'" aria-current="'+(e.id===active)+'">'+e.name+'<small style="display:block">'+e.stage+'</small></button>').join("");$("cards").innerHTML=list.map(e=>'<div class="card" data-id="'+e.id+'"><b>'+e.name+'</b><small>'+e.stage+' · '+e.cap.slice(0,2).join(" / ")+'</small></div>').join("");document.querySelectorAll("[data-id]").forEach(n=>n.onclick=()=>select(n.dataset.id))}
-$("search").oninput=render;$("stage").onchange=render;renderLevels();select(active);
+function renderLevels(){
+ const host=$("levelgrid"),detail=$("leveldetail");
+ host.innerHTML=LEVELS.map(l=>'<button type="button" class="level" data-level="'+l.n+'" aria-pressed="'+(l.n===5)+'"><strong>LEVEL '+l.n+' · '+esc(l.title)+'</strong><small>'+esc(l.short)+'</small></button>').join("");
+ const show=n=>{const l=LEVELS.find(x=>x.n===n);if(!l)return;host.querySelectorAll("[data-level]").forEach(b=>b.setAttribute("aria-pressed",String(+b.dataset.level===n)));detail.innerHTML='<b>'+esc(l.title)+'</b> · '+esc(l.detail)+' <span class="muted">'+esc(l.examples)+'</span>'};
+ host.addEventListener("click",event=>{const b=event.target.closest("[data-level]");if(b)show(+b.dataset.level)});
+ show(5);
+}
+function select(id){
+ const e=E.find(v=>v.id===id);if(!e)return;active=id;
+ $("name").textContent=e.name;$("summary").textContent=e.summary;
+ $("tags").innerHTML=e.cap.map(t=>'<span class="tag">'+esc(t)+'</span>').join("");
+ const known=e.next.map(id=>E.find(v=>v.id===id)).filter(Boolean);
+ const unknown=e.next.filter(id=>!E.some(v=>v.id===id));
+ const facts=[["Structure",e.structure],["Energy",e.energy],["Growth",e.growth],["Division",e.division]];
+ if(known.length)facts.push(["Related entries",known.map(v=>v.name).join(", ")]);
+ if(unknown.length)facts.push(["Possible later forms",unknown.map(esc).join(", ")+" (not yet in this catalogue)"]);
+ $("facts").innerHTML=facts.map(([a,b])=>'<dt>'+esc(a)+'</dt><dd>'+esc(b)+'</dd>').join("");
+ $("art-slot")?.remove();
+ $("detail").querySelector(".art")?.remove();
+ $("detail").querySelector(".specimen")?.insertAdjacentHTML("afterbegin",specimenArt(e.form));
+ render();
+}
+function render(){
+ const q=$("search").value.trim().toLowerCase(),stage=$("stage").value;
+ const list=E.filter(e=>(!stage||e.stage===stage)&&(!q||[e.name,e.summary,e.structure,e.energy,e.growth,e.division,...e.cap].join(" ").toLowerCase().includes(q)));
+ $("nav").innerHTML=list.map(e=>'<button type="button" class="item" data-id="'+e.id+'" aria-current="'+(e.id===active)+'">'+esc(e.name)+'<small>'+esc(e.stage)+'</small></button>').join("")||'<p class="hint">No matching entries.</p>';
+ $("cards").innerHTML=list.map(e=>'<button type="button" class="card" data-id="'+e.id+'"><b>'+esc(e.name)+'</b><small>'+esc(e.stage)+' · '+esc(e.cap.slice(0,2).join(" / "))+'</small></button>').join("");
+ $("nav").querySelectorAll("[data-id],#cards [data-id]").forEach(b=>b.addEventListener("click",()=>select(b.dataset.id)));
+ if(!list.some(e=>e.id===active)){if(list.length)select(list[0].id);else{$("cards").innerHTML="";$("nav").innerHTML='<p class="hint">No matching entries.</p>'}}
+}
+$("search").addEventListener("input",render);$("stage").addEventListener("change",render);
+renderLevels();select(active);
 </script>
+</body>
+</html>
