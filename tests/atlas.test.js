@@ -16,7 +16,7 @@ test("atlas application script parses",()=>{
 
 test("atlas registry has unique, populated entries",()=>{
   const ids=registry.entries.map(entry=>entry.id);
-  assert.equal(ids.length,50);
+  assert.equal(ids.length,75);
   assert.equal(new Set(ids).size,ids.length);
   for(const entry of registry.entries){
     assert.ok(entry.name && entry.summary && entry.structure);
@@ -34,12 +34,24 @@ test("every registered morphology has an SVG renderer path",()=>{
   assert.ok(!script.includes("getContext("),"Atlas must not depend on canvas rendering");
 });
 
+test("every entry has an emergence level and levels 0–11 are populated",()=>{
+  for(const entry of registry.entries) assert.ok(Number.isInteger(entry.level)&&entry.level>=0&&entry.level<=11,entry.id+" has invalid level");
+  for(let level=0;level<=11;level++) assert.ok(registry.entries.some(entry=>entry.level===level),"Missing level "+level);
+  for(const [level,stage] of [[0,"Fields"],[1,"Particles"],[2,"Composite particles"],[3,"Atoms"],[4,"Molecules"]]) assert.ok(registry.entries.some(entry=>entry.level===level&&entry.stage===stage));
+});
+
+test("level and semantic-category filters are independent",()=>{
+  assert.ok(html.includes('id="level"')&&html.includes('id="stage"'));
+  assert.ok(script.includes('(!stage||e.stage===stage)&&(!level||e.level===Number(level))'));
+  assert.ok(script.includes('LEVELS[level].description'));
+});
+
 test("the atlas uses one taxonomy derived from entry categories",()=>{
   const categories=[...new Set(registry.entries.map(entry=>entry.stage))];
   assert.ok(categories.length>0);
   assert.ok(html.includes('id="stage"'));
   assert.ok(html.includes('stages=[...new Set(E.map(e=>e.stage))]'));
-  assert.ok(!html.includes("LEVELS"));
+  assert.ok(html.includes("LEVELS"));
   assert.ok(!html.includes("levelgrid"));
 });
 
