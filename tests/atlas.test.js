@@ -16,7 +16,7 @@ test("atlas application script parses",()=>{
 
 test("atlas registry has unique, populated entries",()=>{
   const ids=registry.entries.map(entry=>entry.id);
-  assert.equal(ids.length,40);
+  assert.equal(ids.length,45);
   assert.equal(new Set(ids).size,ids.length);
   for(const entry of registry.entries){
     assert.ok(entry.name && entry.summary && entry.structure);
@@ -82,4 +82,12 @@ test("batch four adds integrated organism systems",()=>{
   for(const id of ["sensory-network","digestive-system","neural-network","reproductive-system","integrated-organism"]) assert.ok(ids.has(id),`Missing ${id}`);
   const forms=new Set(registry.entries.map(entry=>entry.form));
   for(const form of ["sensory-network","digestive-system","neural-network","reproductive-system","integrated-organism"]) assert.ok(forms.has(form),`Missing morphology ${form}`);
+});
+
+
+test("batch five adds ecological organisation forms",()=>{
+  const ids=new Set(registry.entries.map(entry=>entry.id));
+  for(const id of ["reproductive-population","symbiotic-consortium","microbial-mat","biofilm","trophic-network"]) assert.ok(ids.has(id),`Missing ${id}`);
+  const forms=new Set(registry.entries.map(entry=>entry.form));
+  for(const form of ["breeding-population","symbiotic-consortium","microbial-mat","biofilm","trophic-network"]) assert.ok(forms.has(form),`Missing morphology ${form}`);
 });
