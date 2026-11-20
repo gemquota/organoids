@@ -16,7 +16,7 @@ test("atlas application script parses",()=>{
 
 test("atlas registry has unique, populated entries",()=>{
   const ids=registry.entries.map(entry=>entry.id);
-  assert.equal(ids.length,146);
+  assert.equal(ids.length,200);
   assert.equal(new Set(ids).size,ids.length);
   for(const entry of registry.entries){
     assert.ok(entry.name && entry.summary && entry.structure);
@@ -42,15 +42,19 @@ test("every entry stores an explicit emergence level independent of semantic cat
   assert.ok(!script.includes("const stageLevels="),"Levels must not be derived from semantic categories");
   assert.ok(!script.includes("entry.level=stageLevels"),"Level assignment must be explicit on each entity");
   for(const entry of registry.entries) assert.ok(Number.isInteger(entry.level),entry.id+" must declare its own level");
-  for(let level=0;level<=11;level++) assert.ok(registry.entries.some(entry=>entry.level===level),"Missing level "+level);
+  for(let level=0;level<=12;level++) assert.ok(registry.entries.some(entry=>entry.level===level),"Missing level "+level);
 });
-test("every entry has an emergence level and levels 0–11 are populated",()=>{
-  for(const entry of registry.entries) assert.ok(Number.isInteger(entry.level)&&entry.level>=0&&entry.level<=11,entry.id+" has invalid level");
-  for(let level=0;level<=11;level++) assert.ok(registry.entries.some(entry=>entry.level===level),"Missing level "+level);
-  for(const [level,stage] of [[0,"Fields"],[1,"Particles"],[2,"Composite particles"],[3,"Atoms"],[4,"Molecules"]]) assert.ok(registry.entries.some(entry=>entry.level===level&&entry.stage===stage));
-  assert.ok(registry.entries.filter(entry=>entry.level===4).length>=6,"Level 4 should contain a substantive set of complex molecules");
-  for(const id of ["dna-molecule","rna-molecule","polysaccharide","ribosome"]) assert.ok(registry.entries.some(entry=>entry.id===id&&entry.level===4),`Missing Level 4 form ${id}`);
-  for(const id of ["water-molecule","amino-acid"]) assert.ok(registry.entries.some(entry=>entry.id===id&&entry.level===5),`${id} should remain a simple Level 5 precursor`);
+test("every entry has an emergence level and levels 0–12 are populated",()=>{
+  for(const entry of registry.entries) assert.ok(Number.isInteger(entry.level)&&entry.level>=0&&entry.level<=12,entry.id+" has invalid level");
+  for(let level=0;level<=12;level++) assert.ok(registry.entries.some(entry=>entry.level===level),"Missing level "+level);
+  for(const [level,stage] of [[0,"Fields"],[1,"Particles"],[2,"Composite particles"],[3,"Atoms"],[4,"Molecules"],[12,"Biosphere"]]) assert.ok(registry.entries.some(entry=>entry.level===level&&entry.stage===stage));
+  assert.ok(registry.entries.filter(entry=>entry.level===2).length>=15,"Level 2 should include a broad set of composite particles");
+  assert.ok(registry.entries.filter(entry=>entry.level===3).length>=20,"Level 3 should include a broad set of atoms");
+  assert.ok(registry.entries.filter(entry=>entry.level===4).length>=20,"Level 4 should contain a substantive set of complex molecules and proteins");
+  assert.ok(registry.entries.filter(entry=>entry.level===5).length>=15,"Level 5 should include a substantive set of prebiotic building blocks");
+  for(const id of ["dna-molecule","rna-molecule","polysaccharide","ribosome","hemoglobin","collagen","actin","tubulin","antibody","atp-synthase"]) assert.ok(registry.entries.some(entry=>entry.id===id&&entry.level===4),`Missing Level 4 form ${id}`);
+  for(const id of ["water-molecule","amino-acid","short-peptide","ribozymic-rna","thioester","pyrophosphate"]) assert.ok(registry.entries.some(entry=>entry.id===id&&entry.level===5),`${id} should be a Level 5 prebiotic building block`);
+  for(const id of ["planetary-biosphere","global-microbiome","ocean-biosphere","terrestrial-biosphere","biosphere-geosphere-coupling"]) assert.ok(registry.entries.some(entry=>entry.id===id&&entry.level===12),`Missing Level 12 form ${id}`);
 });
 
 test("level and semantic-category filters are independent",()=>{
