@@ -6,6 +6,7 @@ on:
     paths:
       - 'accretion.html'
       - 'emergent-life-atlas.html'
+      - 'assets/**'
       - 'src/**'
       - 'docs/**'
       - 'README.md'
@@ -45,10 +46,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p _site/src _site/experiments
+          mkdir -p _site/src _site/experiments _site/assets
           cp accretion.html _site/index.html
           cp emergent-life-atlas.html _site/emergent-life-atlas.html
           cp -R src/. _site/src/
+          cp -R assets/. _site/assets/
           touch _site/.nojekyll
           cat > _site/experiments/index.html <<'HTML'
           <!doctype html>
