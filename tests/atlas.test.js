@@ -16,7 +16,7 @@ test("atlas application script parses",()=>{
 
 test("atlas registry has unique, populated entries",()=>{
   const ids=registry.entries.map(entry=>entry.id);
-  assert.equal(ids.length,79);
+  assert.equal(ids.length,146);
   assert.equal(new Set(ids).size,ids.length);
   for(const entry of registry.entries){
     assert.ok(entry.name && entry.summary && entry.structure);
@@ -26,14 +26,24 @@ test("atlas registry has unique, populated entries",()=>{
   }
 });
 
-test("every registered morphology has an SVG renderer path",()=>{
-  const renderer=script.slice(script.indexOf("function specimenArt(form)"),script.indexOf("function select(id)"));
-  const forms=[...new Set(registry.entries.map(entry=>entry.form))];
-  for(const form of forms) assert.ok(renderer.includes('"'+form+'"'),`Missing SVG renderer coverage for ${form}`);
-  assert.ok(renderer.includes("else{s=circle"),"Unknown forms must have a visible fallback illustration");
+test("every entity has its own dedicated SVG symbol",()=>{
+  const sprite=readFileSync(new URL("../assets/atlas/entities.svg",import.meta.url),"utf8");
+  const symbols=[...sprite.matchAll(/<symbol id="entity-([^"]+)"/g)].map(match=>match[1]);
+  const ids=registry.entries.map(entry=>entry.id);
+  assert.equal(symbols.length,ids.length);
+  assert.equal(new Set(symbols).size,symbols.length);
+  for(const id of ids) assert.ok(symbols.includes(id),`Missing dedicated SVG symbol for ${id}`);
+  assert.ok(script.includes('specimenArt(e)'),"Selected entity must render its own specimen");
+  assert.ok(script.includes('assets/atlas/entities.svg#entity-'),"Specimens must reference the SVG sprite");
   assert.ok(!script.includes("getContext("),"Atlas must not depend on canvas rendering");
 });
 
+test("every entry stores an explicit emergence level independent of semantic category",()=>{
+  assert.ok(!script.includes("const stageLevels="),"Levels must not be derived from semantic categories");
+  assert.ok(!script.includes("entry.level=stageLevels"),"Level assignment must be explicit on each entity");
+  for(const entry of registry.entries) assert.ok(Number.isInteger(entry.level),entry.id+" must declare its own level");
+  for(let level=0;level<=11;level++) assert.ok(registry.entries.some(entry=>entry.level===level),"Missing level "+level);
+});
 test("every entry has an emergence level and levels 0–11 are populated",()=>{
   for(const entry of registry.entries) assert.ok(Number.isInteger(entry.level)&&entry.level>=0&&entry.level<=11,entry.id+" has invalid level");
   for(let level=0;level<=11;level++) assert.ok(registry.entries.some(entry=>entry.level===level),"Missing level "+level);
