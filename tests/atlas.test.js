@@ -44,7 +44,7 @@ test("every entry stores an explicit emergence level independent of semantic cat
   for(const entry of registry.entries) assert.ok(Number.isInteger(entry.level),entry.id+" must declare its own level");
   for(let level=0;level<=12;level++) assert.ok(registry.entries.some(entry=>entry.level===level),"Missing level "+level);
 });
-test("every entry has an emergence level and levels 0–11 are populated",()=>{
+test("every entry has an emergence level and levels 0–12 are populated",()=>{
   for(const entry of registry.entries) assert.ok(Number.isInteger(entry.level)&&entry.level>=0&&entry.level<=12,entry.id+" has invalid level");
   for(let level=0;level<=12;level++) assert.ok(registry.entries.some(entry=>entry.level===level),"Missing level "+level);
   for(const [level,stage] of [[0,"Fields"],[1,"Particles"],[2,"Composite particles"],[3,"Atoms"],[4,"Molecules"],[12,"Biosphere"]]) assert.ok(registry.entries.some(entry=>entry.level===level&&entry.stage===stage));
