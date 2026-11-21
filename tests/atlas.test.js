@@ -16,7 +16,7 @@ test("atlas application script parses",()=>{
 
 test("atlas registry has unique, populated entries",()=>{
   const ids=registry.entries.map(entry=>entry.id);
-  assert.equal(ids.length,200);
+  assert.equal(ids.length,242);
   assert.equal(new Set(ids).size,ids.length);
   for(const entry of registry.entries){
     assert.ok(entry.name && entry.summary && entry.structure);
@@ -42,11 +42,11 @@ test("every entry stores an explicit emergence level independent of semantic cat
   assert.ok(!script.includes("const stageLevels="),"Levels must not be derived from semantic categories");
   assert.ok(!script.includes("entry.level=stageLevels"),"Level assignment must be explicit on each entity");
   for(const entry of registry.entries) assert.ok(Number.isInteger(entry.level),entry.id+" must declare its own level");
-  for(let level=0;level<=12;level++) assert.ok(registry.entries.some(entry=>entry.level===level),"Missing level "+level);
+  for(let level=0;level<=15;level++) assert.ok(registry.entries.some(entry=>entry.level===level),"Missing level "+level);
 });
 test("every entry has an emergence level and levels 0–12 are populated",()=>{
-  for(const entry of registry.entries) assert.ok(Number.isInteger(entry.level)&&entry.level>=0&&entry.level<=12,entry.id+" has invalid level");
-  for(let level=0;level<=12;level++) assert.ok(registry.entries.some(entry=>entry.level===level),"Missing level "+level);
+  for(const entry of registry.entries) assert.ok(Number.isInteger(entry.level)&&entry.level>=0&&entry.level<=15,entry.id+" has invalid level");
+  for(let level=0;level<=15;level++) assert.ok(registry.entries.some(entry=>entry.level===level),"Missing level "+level);
   for(const [level,stage] of [[0,"Fields"],[1,"Particles"],[2,"Composite particles"],[3,"Atoms"],[4,"Molecules"],[12,"Biosphere"]]) assert.ok(registry.entries.some(entry=>entry.level===level&&entry.stage===stage));
   assert.ok(registry.entries.filter(entry=>entry.level===2).length>=15,"Level 2 should include a broad set of composite particles");
   assert.ok(registry.entries.filter(entry=>entry.level===3).length>=20,"Level 3 should include a broad set of atoms");
@@ -127,4 +127,25 @@ test("batch six adds spatial ecology and habitat structures",()=>{
   for(const id of ["habitat-patch","metapopulation","migration-corridor","successional-community","disturbance-mosaic"]) assert.ok(ids.has(id),`Missing ${id}`);
   const forms=new Set(registry.entries.map(entry=>entry.form));
   for(const form of ["habitat-patch","metapopulation","migration-corridor","successional-community","disturbance-mosaic"]) assert.ok(forms.has(form),`Missing morphology ${form}`);
+});
+
+test("cosmic context levels 13–15 are populated with distinct planetary, stellar and galactic systems",()=>{
+  const levels=registry.entries.reduce((map,entry)=>(map[entry.level]=(map[entry.level]||[]).concat(entry),map),{});
+  assert.equal(levels[13].length,12);
+  assert.equal(levels[14].length,15);
+  assert.equal(levels[15].length,15);
+  for(const [level,stage] of [[13,"Planetary systems"],[14,"Stellar systems"],[15,"Galactic systems"]]){
+    assert.ok(levels[level].every(entry=>entry.stage===stage));
+  }
+  for(const id of ["coupled-earth-system","planetary-energy-balance","planetary-system","protoplanetary-disk","habitable-zone-system","molecular-cloud-complex","interstellar-medium","galaxy"]){
+    assert.ok(registry.entries.some(entry=>entry.id===id),`Missing cosmic context entity ${id}`);
+  }
+});
+test("cosmic context entities have dedicated SVG symbols and descriptive system properties",()=>{
+  const sprite=readFileSync(new URL("../assets/atlas/entities.svg",import.meta.url),"utf8");
+  for(const entry of registry.entries.filter(entry=>entry.level>=13)){
+    assert.ok(sprite.includes(`<symbol id="entity-${entry.id}"`),`Missing SVG symbol for ${entry.id}`);
+    assert.ok(entry.summary.length>40 && entry.structure.length>20);
+    assert.ok(entry.cap.length>=3);
+  }
 });
