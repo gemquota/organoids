@@ -41,7 +41,7 @@ test("every entity has its own dedicated SVG symbol",()=>{
 test("every entry stores an explicit emergence level independent of semantic category",()=>{
   assert.ok(!script.includes("const stageLevels="),"Levels must not be derived from semantic categories");
   assert.ok(!script.includes("entry.level=stageLevels"),"Level assignment must be explicit on each entity");
-  for(const entry of registry.entries) assert.ok(Number.isInteger(entry.level),entry.id+" must declare its own level");
+  for(const entry of registry.entries){assert.ok(Number.isInteger(entry.level),entry.id+" must declare its own level");assert.ok(entry.kind,"Missing kind for "+entry.id);assert.ok(["established","strongly-supported","likely","possible","speculative","conceptual"].includes(entry.epistemicStatus),"Invalid evidence status for "+entry.id);}
   for(let level=0;level<=30;level++) assert.ok(registry.entries.some(entry=>entry.level===level),"Missing level "+level);
 });
 test("every entry has an emergence level and levels 0–12 are populated",()=>{
@@ -171,4 +171,19 @@ test("cosmological hypothesis frontier extends through meta-cosmology and ontolo
 });
 test("higher cosmological levels are explicitly distinguished from established physical structures",()=>{
  for(const entry of registry.entries.filter(entry=>entry.level>=22)) assert.ok(entry.epistemic || /hypothetical|speculative|proposal|interpretation|philosophical|abstract|theoretical/i.test(entry.summary),entry.id+" needs an epistemic qualification");
+});
+
+test("epistemic status is an independent filter and visible on entries",()=>{
+  assert.ok(html.includes('id="epistemic"'));
+  assert.ok(script.includes('(!status||e.epistemicStatus===status)'));
+  assert.ok(script.includes('e.epistemicStatus)'));
+  assert.ok(script.includes('["Evidence status",e.epistemicStatus]'));
+  for(const status of ["established","strongly-supported","likely","possible","speculative","conceptual"]) assert.ok(registry.entries.some(entry=>entry.epistemicStatus===status) || status==="strongly-supported" || status==="likely");
+});
+test("physical entities are distinguished from cosmological models and abstractions",()=>{
+  assert.ok(registry.entries.filter(entry=>entry.level<=21).every(entry=>entry.kind==="physical-entity"));
+  assert.ok(registry.entries.filter(entry=>entry.level>=22&&entry.level<=27).every(entry=>entry.kind==="cosmological-model"));
+  assert.ok(registry.entries.filter(entry=>entry.level===28).every(entry=>entry.kind==="mathematical-abstraction"));
+  assert.ok(registry.entries.filter(entry=>entry.level===29).every(entry=>entry.kind==="meta-model"));
+  assert.ok(registry.entries.filter(entry=>entry.level===30).every(entry=>entry.kind==="conceptual-construct"));
 });
