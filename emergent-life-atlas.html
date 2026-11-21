@@ -6,47 +6,61 @@
 <meta name="theme-color" content="#071014">
 <title>ORGANOIDS · Emergent Life Atlas</title>
 <style>
-:root{color-scheme:dark;font:15px/1.5 system-ui,sans-serif;background:#071014;color:#d8eeeb;--panel:#0d2024;--panel2:#10282c;--line:#25464b;--muted:#91b5b0;--accent:#8de1d2}
+:root{color-scheme:dark;font:15px/1.55 "Avenir Next",Avenir,system-ui,sans-serif;background:#111613;color:#e8e3d5;--panel:#1a211d;--panel2:#222b25;--line:#414d40;--muted:#a9ad98;--accent:#e8a65e;--acid:#c3d68a;--paper:#e8e3d5;--mono:ui-monospace,SFMono-Regular,Consolas,monospace}
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 75% 0,#15343a 0,#071014 62%)}
-button,input,select{font:inherit}
-header{padding:18px clamp(14px,3vw,30px);border-bottom:1px solid var(--line);display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
-h1{font-size:18px;letter-spacing:.14em;margin:0;color:var(--accent)}
+body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 84% -10%,#354333 0,#19231d 36%,#101512 78%);background-attachment:fixed}
+button,input{font:inherit}
+header{position:relative;padding:25px clamp(16px,4vw,48px) 21px;border-bottom:1px solid var(--line);display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;background:linear-gradient(90deg,#1a211ddd,#141b17dd)}
+header:after{content:"FIELD REGISTER  /  00—30";margin-left:auto;color:var(--muted);font:10px var(--mono);letter-spacing:.16em}
+h1{font:600 clamp(19px,2.3vw,27px)/1.1 Georgia,serif;letter-spacing:.075em;margin:0;color:var(--paper)}
 header small,.muted,.hint{color:var(--muted)}
-.intro{max-width:980px;padding:14px clamp(14px,3vw,30px);color:var(--muted)}
-main{display:grid;grid-template-columns:minmax(220px,290px) minmax(0,1fr);gap:0;min-height:60vh}
-aside{padding:16px;border-right:1px solid var(--line);min-width:0}
-label{display:block;font-size:12px;color:var(--muted)}
-input,select{width:100%;background:var(--panel2);color:inherit;border:1px solid #31575a;border-radius:7px;padding:10px;margin:5px 0 12px}
-nav{display:grid;gap:5px}
-.list-count{font-size:12px;color:var(--muted);margin:0 0 8px}
-.item{width:100%;text-align:left;background:var(--panel);border:1px solid var(--line);color:inherit;padding:9px 10px;border-radius:7px;cursor:pointer}
-.item small{display:block;color:var(--muted);font-size:11px}
+.intro{max-width:1120px;padding:17px clamp(16px,4vw,48px) 19px;color:#c4c3ad;font:14px/1.7 Georgia,serif;border-bottom:1px solid #414d4088}
+main{display:grid;grid-template-columns:minmax(265px,340px) minmax(0,1fr);min-height:calc(100vh - 145px)}
+aside{padding:18px 17px 28px;border-right:1px solid var(--line);min-width:0;background:#141b17bb}
+label,.filter-title{display:block;font:10px/1.4 var(--mono);letter-spacing:.13em;text-transform:uppercase;color:var(--accent)}
+input[type=search]{width:100%;background:#0e1411;color:inherit;border:1px solid #58634f;border-radius:2px;padding:11px 12px;margin:7px 0 18px}
+.filter-block{border-top:1px solid var(--line);padding:13px 0 15px}
+.filter-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px}
+.filter-actions{display:flex;gap:10px}
+.filter-actions button{background:none;border:0;color:var(--muted);font:10px var(--mono);text-decoration:underline;text-underline-offset:3px;padding:2px;cursor:pointer}
+.filter-actions button:hover{color:var(--accent)}
+.check-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 9px}
+.check-grid.level-grid{grid-template-columns:repeat(2,minmax(0,1fr));max-height:220px;overflow:auto;padding-right:4px}
+.check-option{display:flex;align-items:center;gap:7px;min-width:0;color:#d4d2c2;font-size:12px;letter-spacing:0;text-transform:none;font-family:inherit;cursor:pointer;padding:3px 1px}
+.check-option input{accent-color:var(--accent);width:14px;height:14px;flex:0 0 auto;margin:0}
+.check-option span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hint{font-size:11px;margin:7px 0 0;line-height:1.5}
+.list-count{font:11px var(--mono);color:var(--acid);margin:16px 0 9px;padding-top:10px;border-top:1px solid var(--line)}
+nav{display:grid;gap:6px}
+.item{width:100%;text-align:left;background:linear-gradient(100deg,#202922,#19211c);border:1px solid #394638;color:inherit;padding:10px 11px;border-radius:2px;cursor:pointer;position:relative}
+.item[aria-current=true]{border-color:var(--accent);background:#2a3024;box-shadow:inset 3px 0 var(--accent)}
+.item small{display:block;color:var(--muted);font:10px/1.5 var(--mono);margin-top:3px}
 button:hover{border-color:var(--accent)}
-button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.content{padding:clamp(14px,2.5vw,26px);min-width:0}
-.specimen{display:grid;grid-template-columns:minmax(220px, min(38vw,390px)) minmax(0,1fr);gap:22px;align-items:start}
-.art{width:100%;aspect-ratio:1;border:1px solid var(--line);border-radius:12px;background:radial-gradient(circle,#16363b,#081316 72%);display:block}
-h2{font-size:clamp(21px,3vw,28px);line-height:1.2;margin:2px 0 8px;color:#a6e9dc}
-.summary{color:var(--muted);margin:0 0 14px}
-.tags{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 16px}
-.tag{border:1px solid #386366;border-radius:99px;padding:3px 8px;color:#a9d9d2;font-size:12px}
-dl{display:grid;grid-template-columns:minmax(105px,130px) minmax(0,1fr);gap:9px 12px;margin:0}
-dt{color:var(--muted)}dd{margin:0;overflow-wrap:anywhere}
-@media(max-width:760px){main{grid-template-columns:1fr}aside{border-right:0;border-bottom:1px solid var(--line);padding:12px 14px;max-height:none}nav{grid-template-columns:repeat(auto-fill,minmax(145px,1fr));max-height:220px;overflow:auto}.specimen{grid-template-columns:minmax(0,1fr)}.art{max-width:380px;margin:auto}.content{padding:14px}}
-@media(min-width:761px){aside{position:sticky;top:0;align-self:start;max-height:calc(100vh - 1px);overflow:auto}}
-@media(prefers-reduced-motion:no-preference){button{transition:border-color .12s ease,background .12s ease}}
+button:focus-visible,input:focus-visible{outline:2px solid var(--acid);outline-offset:2px}
+.content{padding:clamp(18px,4vw,48px);min-width:0}
+.specimen{display:grid;grid-template-columns:minmax(230px,min(38vw,430px)) minmax(0,1fr);gap:clamp(20px,3vw,38px);align-items:start}
+.art{width:100%;aspect-ratio:1;border:1px solid #58634f;border-radius:2px;background:radial-gradient(circle,#46513a,#171e19 72%);display:block;box-shadow:0 16px 48px #0005}
+h2{font:500 clamp(26px,3.6vw,42px)/1.12 Georgia,serif;margin:0 0 12px;color:var(--paper)}
+.summary{color:#c4c3ad;margin:0 0 18px;font:16px/1.65 Georgia,serif}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 22px}
+.tag{border:1px solid #687453;border-radius:2px;padding:4px 8px;color:var(--acid);font:10px var(--mono);letter-spacing:.04em}
+dl{display:grid;grid-template-columns:minmax(110px,145px) minmax(0,1fr);gap:11px 15px;margin:0;padding-top:15px;border-top:1px solid var(--line)}
+dt{color:var(--accent);font:10px/1.5 var(--mono);text-transform:uppercase;letter-spacing:.08em}
+dd{margin:0;overflow-wrap:anywhere;color:#dedacb;font-size:13px}
+@media(max-width:760px){main{grid-template-columns:1fr}aside{border-right:0;border-bottom:1px solid var(--line);padding:15px 16px}.check-grid.level-grid{max-height:150px}.specimen{grid-template-columns:minmax(0,1fr)}.art{max-width:390px;margin:0 auto 8px}.content{padding:18px}.check-grid{grid-template-columns:repeat(2,minmax(0,1fr))}header:after{margin-left:0}}
+@media(min-width:761px){aside{position:sticky;top:0;align-self:start;max-height:100vh;overflow:auto}}
+@media(prefers-reduced-motion:no-preference){button,.item{transition:border-color .14s ease,background .14s ease,box-shadow .14s ease}}
 </style>
 </head>
 <body>
-<header><h1>ORGANOIDS / LIFE ATLAS</h1><small>Forms · capabilities · possible transitions</small></header>
-<div class="intro">A browsable catalogue of physical organisation, biological forms and cosmological ideas. Level describes physical scale; category describes the kind of entry; evidence status describes its epistemic standing. Models and abstractions are not larger physical objects.</div>
+<header><h1>ORGANOIDS / EMERGENCE ATLAS</h1><small>Field guide to organised matter, living systems and cosmic models</small></header>
+<div class="intro">A field register of organised matter, living systems and cosmological ideas. Browse by scale, by form, or by how firmly an idea is grounded. The axes are independent: a hypothesis is not a bigger kind of matter simply because it sounds ambitious.</div>
 <main>
 <aside>
 <label for="search">Find an entity</label><input id="search" type="search" placeholder="Name, structure or capability">
-<label for="level">Emergence level</label><select id="level"><option value="">All levels</option></select><p class="hint" id="level-description">Choose a level to inspect its entities.</p>
-<label for="stage">Semantic category</label><select id="stage"><option value="">All categories</option></select>
-<label for="epistemic">Evidence status</label><select id="epistemic"><option value="">All evidence statuses</option><option value="established">Established</option><option value="strongly-supported">Strongly supported</option><option value="likely">Likely</option><option value="possible">Possible</option><option value="speculative">Speculative</option><option value="conceptual">Conceptual</option></select>
+<section class="filter-block"><div class="filter-head"><span class="filter-title">Emergence level</span><div class="filter-actions"><button type="button" data-all="level">All</button><button type="button" data-none="level">None</button></div></div><div id="level-filters" class="check-grid level-grid"></div><p class="hint" id="level-description">All levels included.</p></section>
+<section class="filter-block"><div class="filter-head"><span class="filter-title">Semantic category</span><div class="filter-actions"><button type="button" data-all="stage">All</button><button type="button" data-none="stage">None</button></div></div><div id="stage-filters" class="check-grid"></div></section>
+<section class="filter-block"><div class="filter-head"><span class="filter-title">Evidence status</span><div class="filter-actions"><button type="button" data-all="status">All</button><button type="button" data-none="status">None</button></div></div><div id="status-filters" class="check-grid"></div></section>
 <p class="list-count" id="list-count" aria-live="polite"></p>
 <nav id="nav" aria-label="Choose a specimen"></nav>
 </aside>
@@ -397,13 +411,19 @@ const LEVELS={0:{label:"Fields",description:"Fundamental fields and field degree
 for(const entry of E){if(!Number.isInteger(entry.level)||entry.level<0||entry.level>30)throw new Error("Invalid emergence level: "+entry.id);}
 
 const $=id=>document.getElementById(id);
-const stages=[...new Set(E.map(e=>e.stage))];
-for(const [value,level] of Object.entries(LEVELS)){const option=document.createElement("option");option.value=value;option.textContent="Level "+value+" · "+level.label;$("level").append(option)}
-for(const stage of stages){const option=document.createElement("option");option.value=stage;option.textContent=stage;$("stage").append(option)}
+const stages=[...new Set(E.map(e=>e.stage))].sort((a,b)=>a.localeCompare(b));
+const statusLabels={established:"Established",possible:"Possible",speculative:"Speculative",conceptual:"Conceptual"};
+const statusValues=Object.keys(statusLabels);
+const selected={level:new Set(Object.keys(LEVELS)),stage:new Set(stages),status:new Set(statusValues)};
+function buildChecks(target,group,items,gridClass=""){
+ const root=$(target);root.className="check-grid "+gridClass;
+ root.innerHTML=items.map(([value,label,count])=>'<label class="check-option"><input type="checkbox" data-group="'+group+'" value="'+esc(value)+'" checked><span>'+esc(label)+(count===undefined?"":' <small>('+count+')</small>')+'</span></label>').join("");
+ root.querySelectorAll("input").forEach(input=>input.addEventListener("change",()=>{if(input.checked)selected[group].add(input.value);else selected[group].delete(input.value);render()}));
+}
 let active=E[0]?.id ?? null;
 const esc=value=>String(value).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function specimenArt(entry){
- return '<svg class="art" viewBox="0 0 480 480" role="img" aria-label="'+esc(entry.name)+' illustration"><defs><radialGradient id="glow"><stop stop-color="#24585a"/><stop offset="1" stop-color="#081316"/></radialGradient></defs><rect width="480" height="480" rx="14" fill="url(#glow)"/><use href="assets/atlas/entities.svg#entity-'+esc(entry.id)+'" xlink:href="assets/atlas/entities.svg#entity-'+esc(entry.id)+'"/></svg>';
+ return '<svg class="art" viewBox="0 0 480 480" role="img" aria-label="'+esc(entry.name)+' illustration"><defs><radialGradient id="glow"><stop stop-color="#65734b"/><stop offset="1" stop-color="#171e19"/></radialGradient></defs><rect width="480" height="480" rx="14" fill="url(#glow)"/><use href="assets/atlas/entities.svg#entity-'+esc(entry.id)+'" xlink:href="assets/atlas/entities.svg#entity-'+esc(entry.id)+'"/></svg>';
 }
 function select(id){
  const e=E.find(v=>v.id===id);if(!e)return;active=id;
@@ -412,7 +432,7 @@ function select(id){
  const known=e.next.map(id=>E.find(v=>v.id===id)).filter(Boolean);
  const unknown=e.next.filter(id=>!E.some(v=>v.id===id));
  const facts=[["Emergence level","Level "+e.level+" · "+LEVELS[e.level].label],["Semantic category",e.stage],["Structure",e.structure],["Energy",e.energy],["Growth",e.growth],["Division",e.division]];
- facts.push(["Entry kind",e.kind],["Evidence status",e.epistemicStatus]);
+ facts.push(["Entry kind",e.kind],["Evidence status",statusLabels[e.epistemicStatus]||e.epistemicStatus]);
  if(known.length)facts.push(["Related entries",known.map(v=>v.name).join(", ")]);
  if(unknown.length)facts.push(["Possible later forms",unknown.map(esc).join(", ")+" (not yet in this catalogue)"]);
  $("facts").innerHTML=facts.map(([a,b])=>'<dt>'+esc(a)+'</dt><dd>'+esc(b)+'</dd>').join("");
@@ -422,14 +442,26 @@ function select(id){
  render();
 }
 function render(){
- const q=$("search").value.trim().toLowerCase(),stage=$("stage").value,level=$("level").value,status=$("epistemic").value;
- const list=E.filter(e=>(!stage||e.stage===stage)&&(!level||e.level===Number(level))&&(!status||e.epistemicStatus===status)&&(!q||[e.name,e.summary,e.structure,e.energy,e.growth,e.division,...e.cap].join(" ").toLowerCase().includes(q)));
- $("level-description").textContent=level?LEVELS[level].description:"Choose a level to inspect its entities; semantic category remains an independent filter.";
- $("list-count").textContent=list.length+" of "+E.length+" entries";
- $("nav").innerHTML=list.map(e=>'<button type="button" class="item" data-id="'+e.id+'" aria-current="'+(e.id===active)+'">'+esc(e.name)+'<small>Level '+e.level+' · '+esc(e.stage)+' · '+esc(e.epistemicStatus)+'</small></button>').join("")||'<p class="hint">No matching entries.</p>'; document.querySelectorAll("#nav [data-id]").forEach(b=>b.addEventListener("click",()=>select(b.dataset.id)));
- if(!list.some(e=>e.id===active)){if(list.length)select(list[0].id);else{$("nav").innerHTML='<p class="hint">No matching entries.</p>'}}
+ const q=$("search").value.trim().toLowerCase();
+ const list=E.filter(e=>selected.level.has(String(e.level))&&selected.stage.has(e.stage)&&selected.status.has(e.epistemicStatus)&&(!q||[e.name,e.summary,e.structure,e.energy,e.growth,e.division,...e.cap].join(" ").toLowerCase().includes(q)));
+ const levelCount=selected.level.size;
+ $("level-description").textContent=levelCount===Object.keys(LEVELS).length?"All emergence levels included.":levelCount?levelCount+" of "+Object.keys(LEVELS).length+" levels selected.":"No levels selected.";
+ $("list-count").textContent=list.length+" / "+E.length+" entries";
+ $("nav").innerHTML=list.map(e=>'<button type="button" class="item" data-id="'+e.id+'" aria-current="'+(e.id===active)+'">'+esc(e.name)+'<small>LEVEL '+e.level+' · '+esc(e.stage)+' · '+esc(statusLabels[e.epistemicStatus]||e.epistemicStatus)+'</small></button>').join("")||'<p class="hint">No matching entries. Re-enable a filter group to restore results.</p>';
+ document.querySelectorAll("#nav [data-id]").forEach(b=>b.addEventListener("click",()=>select(b.dataset.id)));
+ if(!list.some(e=>e.id===active)){if(list.length)select(list[0].id);else{$("name").textContent="No matching specimens";$("summary").textContent="The current combination of filters excludes every entry."; $("tags").innerHTML=""; $("facts").innerHTML="";}}
 }
-$("search").addEventListener("input",render);$("stage").addEventListener("change",render);$("level").addEventListener("change",render);$("epistemic").addEventListener("change",render);
+function setGroup(group,all){
+ selected[group]=new Set(all?(group==="level"?Object.keys(LEVELS):group==="stage"?stages:statusValues):[]);
+ document.querySelectorAll('input[data-group="'+group+'"]').forEach(input=>input.checked=selected[group].has(input.value));
+ render();
+}
+document.querySelectorAll("[data-all]").forEach(button=>button.addEventListener("click",()=>setGroup(button.dataset.all,true)));
+document.querySelectorAll("[data-none]").forEach(button=>button.addEventListener("click",()=>setGroup(button.dataset.none,false)));
+buildChecks("level-filters","level",Object.entries(LEVELS).map(([value,item])=>[value,"L"+value+" · "+item.label,E.filter(e=>e.level===Number(value)).length]));
+buildChecks("stage-filters","stage",stages.map(stage=>[stage,stage,E.filter(e=>e.stage===stage).length]));
+buildChecks("status-filters","status",statusValues.map(status=>[status,statusLabels[status],E.filter(e=>e.epistemicStatus===status).length]));
+$("search").addEventListener("input",render);
 select(active);
 </script>
 </body>
