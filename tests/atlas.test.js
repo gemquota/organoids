@@ -60,7 +60,7 @@ test("every entry has an emergence level and levels 0–12 are populated",()=>{
 test("level and semantic-category filters are independent",()=>{
   assert.ok(html.includes('id="level-filters"')&&html.includes('id="stage-filters"'));
   assert.ok(script.includes('selected.level.has(String(e.level))&&selected.stage.has(e.stage)'));
-  assert.ok(script.includes('selected.level.size===Object.keys(LEVELS).length'));
+  assert.ok(script.includes('levelCount===Object.keys(LEVELS).length'));
 });
 
 test("the atlas uses one taxonomy derived from entry categories",()=>{
