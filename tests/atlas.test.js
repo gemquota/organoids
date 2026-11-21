@@ -16,7 +16,7 @@ test("atlas application script parses",()=>{
 
 test("atlas registry has unique, populated entries",()=>{
   const ids=registry.entries.map(entry=>entry.id);
-  assert.equal(ids.length,242);
+  assert.equal(ids.length,332);
   assert.equal(new Set(ids).size,ids.length);
   for(const entry of registry.entries){
     assert.ok(entry.name && entry.summary && entry.structure);
@@ -42,10 +42,10 @@ test("every entry stores an explicit emergence level independent of semantic cat
   assert.ok(!script.includes("const stageLevels="),"Levels must not be derived from semantic categories");
   assert.ok(!script.includes("entry.level=stageLevels"),"Level assignment must be explicit on each entity");
   for(const entry of registry.entries) assert.ok(Number.isInteger(entry.level),entry.id+" must declare its own level");
-  for(let level=0;level<=15;level++) assert.ok(registry.entries.some(entry=>entry.level===level),"Missing level "+level);
+  for(let level=0;level<=30;level++) assert.ok(registry.entries.some(entry=>entry.level===level),"Missing level "+level);
 });
 test("every entry has an emergence level and levels 0–12 are populated",()=>{
-  for(const entry of registry.entries) assert.ok(Number.isInteger(entry.level)&&entry.level>=0&&entry.level<=15,entry.id+" has invalid level");
+  for(const entry of registry.entries) assert.ok(Number.isInteger(entry.level)&&entry.level>=0&&entry.level<=30,entry.id+" has invalid level");
   for(let level=0;level<=15;level++) assert.ok(registry.entries.some(entry=>entry.level===level),"Missing level "+level);
   for(const [level,stage] of [[0,"Fields"],[1,"Particles"],[2,"Composite particles"],[3,"Atoms"],[4,"Molecules"],[12,"Biosphere"]]) assert.ok(registry.entries.some(entry=>entry.level===level&&entry.stage===stage));
   assert.ok(registry.entries.filter(entry=>entry.level===2).length>=15,"Level 2 should include a broad set of composite particles");
@@ -148,4 +148,27 @@ test("cosmic context entities have dedicated SVG symbols and descriptive system 
     assert.ok(entry.summary.length>40 && entry.structure.length>20);
     assert.ok(entry.cap.length>=3);
   }
+});
+
+test("cosmic hierarchy continues from galaxies through cosmological horizons and explicitly speculative multiverse proposals",()=>{
+  for(const [level,stage,count] of [[16,"Galaxy groups",6],[17,"Galaxy clusters",6],[18,"Superclusters",6],[19,"Cosmic web",6],[20,"Observable universe",6],[21,"Universe",6],[22,"Multiverse hypotheses",6]]){
+    const entries=registry.entries.filter(entry=>entry.level===level);
+    assert.equal(entries.length,count);
+    assert.ok(entries.every(entry=>entry.stage===stage));
+  }
+  for(const id of ["local-group","galaxy-cluster","laniakea-supercluster","cosmic-filament","observable-universe","universe","multiverse-hypothesis"]) assert.ok(registry.entries.some(entry=>entry.id===id));
+  assert.ok(registry.entries.filter(entry=>entry.level===22).every(entry=>/hypothetical|speculative|interpretation|proposal/i.test(entry.summary)));
+});
+
+test("cosmological hypothesis frontier extends through meta-cosmology and ontological limit concepts",()=>{
+ for(const [level,stage] of [[23,"Inflationary multiverse"],[24,"Vacuum landscapes"],[25,"Higher-dimensional cosmologies"],[26,"Quantum cosmological totality"],[27,"Computational and holographic cosmologies"],[28,"Mathematical and modal reality"],[29,"Meta-cosmological ensembles"],[30,"Ontological limit concepts"]]){
+  const entries=registry.entries.filter(entry=>entry.level===level);
+  assert.equal(entries.length,6);
+  assert.ok(entries.every(entry=>entry.stage===stage));
+  assert.ok(entries.every(entry=>entry.epistemic),"Every hypothesis entry must state its epistemic status");
+ }
+ for(const id of ["eternal-inflation","string-theory-landscape","brane-world","hartle-hawking-no-boundary","simulation-hypothesis","tegmark-level-four","ensemble-of-cosmologies","absolute-infinity","hierarchy-of-meta-hierarchies"]) assert.ok(registry.entries.some(entry=>entry.id===id),`Missing ${id}`);
+});
+test("higher cosmological levels are explicitly distinguished from established physical structures",()=>{
+ for(const entry of registry.entries.filter(entry=>entry.level>=22)) assert.ok(entry.epistemic || /hypothetical|speculative|proposal|interpretation|philosophical|abstract|theoretical/i.test(entry.summary),entry.id+" needs an epistemic qualification");
 });
