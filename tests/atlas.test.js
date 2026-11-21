@@ -41,7 +41,7 @@ test("every entity has its own dedicated SVG symbol",()=>{
 test("every entry stores an explicit emergence level independent of semantic category",()=>{
   assert.ok(!script.includes("const stageLevels="),"Levels must not be derived from semantic categories");
   assert.ok(!script.includes("entry.level=stageLevels"),"Level assignment must be explicit on each entity");
-  for(const entry of registry.entries){assert.ok(Number.isInteger(entry.level),entry.id+" must declare its own level");assert.ok(entry.kind,"Missing kind for "+entry.id);assert.ok(["established","strongly-supported","likely","possible","speculative","conceptual"].includes(entry.epistemicStatus),"Invalid evidence status for "+entry.id);}
+  for(const entry of registry.entries){assert.ok(Number.isInteger(entry.level),entry.id+" must declare its own level");assert.ok(entry.kind,"Missing kind for "+entry.id);assert.ok(["established","possible","speculative","conceptual"].includes(entry.epistemicStatus),"Invalid evidence status for "+entry.id);}
   for(let level=0;level<=30;level++) assert.ok(registry.entries.some(entry=>entry.level===level),"Missing level "+level);
 });
 test("every entry has an emergence level and levels 0–12 are populated",()=>{
@@ -60,13 +60,13 @@ test("every entry has an emergence level and levels 0–12 are populated",()=>{
 test("level and semantic-category filters are independent",()=>{
   assert.ok(html.includes('id="level-filters"')&&html.includes('id="stage-filters"'));
   assert.ok(script.includes('selected.level.has(String(e.level))&&selected.stage.has(e.stage)'));
-  assert.ok(script.includes('LEVELS[level].description'));
+  assert.ok(script.includes('selected.level.size===Object.keys(LEVELS).length'));
 });
 
 test("the atlas uses one taxonomy derived from entry categories",()=>{
   const categories=[...new Set(registry.entries.map(entry=>entry.stage))];
   assert.ok(categories.length>0);
-  assert.ok(html.includes('id="stage"'));
+  assert.ok(html.includes('id="stage-filters"'));
   assert.ok(html.includes('stages=[...new Set(E.map(e=>e.stage))]'));
   assert.ok(html.includes("LEVELS"));
   assert.ok(!html.includes("levelgrid"));
