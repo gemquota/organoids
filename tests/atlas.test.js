@@ -190,3 +190,21 @@ test("physical entities are distinguished from cosmological models and abstracti
   assert.ok(registry.entries.filter(entry=>entry.level===29).every(entry=>entry.kind==="meta-model"));
   assert.ok(registry.entries.filter(entry=>entry.level===30).every(entry=>entry.kind==="conceptual-construct"));
 });
+
+test("evidence status selections dynamically constrain level and category options",()=>{
+  assert.ok(script.includes("function refreshDependentOptions()"));
+  assert.ok(script.includes('selected.status.has(e.epistemicStatus)'));
+  assert.ok(script.includes('input.disabled=count===0'));
+  assert.ok(script.includes('refreshDependentOptions();'));
+});
+test("selected entity detail is pinned above the filters and can collapse",()=>{
+  assert.ok(html.indexOf('id="detail-dock"')<html.indexOf("<main>"));
+  assert.ok(html.includes('id="detail-toggle"'));
+  assert.ok(html.includes('aria-controls="detail"'));
+  assert.ok(html.includes('#detail-dock{position:sticky;top:0'));
+  assert.ok(script.includes('dock.classList.toggle("is-collapsed")'));
+});
+test("each filter group can be minimized independently",()=>{
+  assert.equal((html.match(/<details class="filter-block" open>/g)||[]).length,3);
+  assert.equal((html.match(/<summary><span class="filter-title">/g)||[]).length,3);
+});
