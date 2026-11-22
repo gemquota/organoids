@@ -15,11 +15,34 @@ header:after{content:"FIELD REGISTER  /  00—30";margin-left:auto;color:var(--m
 h1{font:600 clamp(19px,2.3vw,27px)/1.1 Georgia,serif;letter-spacing:.075em;margin:0;color:var(--paper)}
 header small,.muted,.hint{color:var(--muted)}
 .intro{max-width:1120px;padding:17px clamp(16px,4vw,48px) 19px;color:#c4c3ad;font:14px/1.7 Georgia,serif;border-bottom:1px solid #414d4088}
+#detail-dock{position:sticky;top:0;z-index:20;background:#151d18f5;border-bottom:1px solid var(--accent);box-shadow:0 10px 30px #0007;backdrop-filter:blur(14px)}
+.detail-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;padding:10px clamp(16px,4vw,48px);border:0;border-bottom:1px solid #414d4088;background:#202a22;color:var(--acid);text-align:left;cursor:pointer;font:10px var(--mono);letter-spacing:.13em;text-transform:uppercase}
+.detail-toggle:after{content:"COLLAPSE  −";color:var(--muted)}
+#detail-dock.is-collapsed .detail-toggle:after{content:"EXPAND  +"}
+#detail-dock .content{padding:15px clamp(16px,4vw,48px);max-height:min(48vh,430px);overflow:auto}
+#detail-dock.is-collapsed #detail{display:none}
+#detail-dock .specimen{grid-template-columns:minmax(130px,min(19vw,210px)) minmax(0,1fr);gap:22px}
+#detail-dock .art{max-height:210px}
+#detail-dock h2{font-size:clamp(21px,2.5vw,30px);margin-bottom:7px}
+#detail-dock .summary{font-size:13px;margin-bottom:8px}
+#detail-dock .tags{margin:8px 0 12px}
+#detail-dock dl{gap:5px 12px;padding-top:8px}
+#detail-dock dt{font-size:9px}#detail-dock dd{font-size:11px}
 main{display:grid;grid-template-columns:minmax(265px,340px) minmax(0,1fr);min-height:calc(100vh - 145px)}
 aside{padding:18px 17px 28px;border-right:1px solid var(--line);min-width:0;background:#141b17bb}
 label,.filter-title{display:block;font:10px/1.4 var(--mono);letter-spacing:.13em;text-transform:uppercase;color:var(--accent)}
 input[type=search]{width:100%;background:#0e1411;color:inherit;border:1px solid #58634f;border-radius:2px;padding:11px 12px;margin:7px 0 18px}
-.filter-block{border-top:1px solid var(--line);padding:13px 0 15px}
+.filter-block{border-top:1px solid var(--line);padding:11px 0 13px}
+.filter-block>summary{display:flex;align-items:center;gap:8px;cursor:pointer;list-style:none;user-select:none}
+.filter-block>summary::-webkit-details-marker{display:none}
+.filter-block>summary:after{content:"＋";margin-left:auto;color:var(--muted);font:14px var(--mono)}
+.filter-block[open]>summary:after{content:"−"}
+.filter-body{padding-top:10px}
+.filter-tools{display:flex;justify-content:flex-end;gap:10px;margin-bottom:7px}
+.filter-tools button{background:none;border:0;color:var(--muted);font:10px var(--mono);text-decoration:underline;text-underline-offset:3px;padding:2px;cursor:pointer}
+.filter-tools button:hover{color:var(--accent)}
+.check-option.is-unavailable{opacity:.32}
+.check-option input:disabled{cursor:not-allowed}
 .filter-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px}
 .filter-actions{display:flex;gap:10px}
 .filter-actions button{background:none;border:0;color:var(--muted);font:10px var(--mono);text-decoration:underline;text-underline-offset:3px;padding:2px;cursor:pointer}
@@ -47,28 +70,31 @@ h2{font:500 clamp(26px,3.6vw,42px)/1.12 Georgia,serif;margin:0 0 12px;color:var(
 dl{display:grid;grid-template-columns:minmax(110px,145px) minmax(0,1fr);gap:11px 15px;margin:0;padding-top:15px;border-top:1px solid var(--line)}
 dt{color:var(--accent);font:10px/1.5 var(--mono);text-transform:uppercase;letter-spacing:.08em}
 dd{margin:0;overflow-wrap:anywhere;color:#dedacb;font-size:13px}
-@media(max-width:760px){main{grid-template-columns:1fr}aside{border-right:0;border-bottom:1px solid var(--line);padding:15px 16px}.check-grid.level-grid{max-height:150px}.specimen{grid-template-columns:minmax(0,1fr)}.art{max-width:390px;margin:0 auto 8px}.content{padding:18px}.check-grid{grid-template-columns:repeat(2,minmax(0,1fr))}header:after{margin-left:0}}
-@media(min-width:761px){aside{position:sticky;top:0;align-self:start;max-height:100vh;overflow:auto}}
+@media(max-width:760px){#detail-dock .content{max-height:48vh;padding:12px 16px}#detail-dock .specimen{grid-template-columns:105px minmax(0,1fr);gap:13px}#detail-dock .art{max-height:105px}#detail-dock dl{grid-template-columns:100px minmax(0,1fr)}main{grid-template-columns:1fr}aside{border-right:0;border-bottom:1px solid var(--line);padding:15px 16px}.check-grid.level-grid{max-height:150px}.specimen{grid-template-columns:minmax(0,1fr)}.art{max-width:390px;margin:0 auto 8px}.content{padding:18px}.check-grid{grid-template-columns:repeat(2,minmax(0,1fr))}header:after{margin-left:0}}
+@media(min-width:761px){aside{position:relative;align-self:start;max-height:none;overflow:visible}}
 @media(prefers-reduced-motion:no-preference){button,.item{transition:border-color .14s ease,background .14s ease,box-shadow .14s ease}}
 </style>
 </head>
 <body>
 <header><h1>ORGANOIDS / EMERGENCE ATLAS</h1><small>Field guide to organised matter, living systems and cosmic models</small></header>
 <div class="intro">A field register of organised matter, living systems and cosmological ideas. Browse by scale, by form, or by how firmly an idea is grounded. The axes are independent: a hypothesis is not a bigger kind of matter simply because it sounds ambitious.</div>
-<main>
-<aside>
-<label for="search">Find an entity</label><input id="search" type="search" placeholder="Name, structure or capability">
-<section class="filter-block"><div class="filter-head"><span class="filter-title">Emergence level</span><div class="filter-actions"><button type="button" data-all="level">All</button><button type="button" data-none="level">None</button></div></div><div id="level-filters" class="check-grid level-grid"></div><p class="hint" id="level-description">All levels included.</p></section>
-<section class="filter-block"><div class="filter-head"><span class="filter-title">Semantic category</span><div class="filter-actions"><button type="button" data-all="stage">All</button><button type="button" data-none="stage">None</button></div></div><div id="stage-filters" class="check-grid"></div></section>
-<section class="filter-block"><div class="filter-head"><span class="filter-title">Evidence status</span><div class="filter-actions"><button type="button" data-all="status">All</button><button type="button" data-none="status">None</button></div></div><div id="status-filters" class="check-grid"></div></section>
-<p class="list-count" id="list-count" aria-live="polite"></p>
-<nav id="nav" aria-label="Choose a specimen"></nav>
-</aside>
-<section class="content" aria-live="polite">
+<section id="detail-dock" aria-label="Selected entity information">
+<button type="button" class="detail-toggle" id="detail-toggle" aria-expanded="true" aria-controls="detail">SPECIMEN / SELECTED ENTITY</button>
+<div class="content" aria-live="polite">
 <div id="detail">
 <div class="specimen"><svg class="art" viewBox="0 0 480 480" role="img" aria-label="Specimen illustration"><use href="assets/atlas/entities.svg#entity-vesicle" xlink:href="assets/atlas/entities.svg#entity-vesicle"/></svg><div><h2 id="name">Select a specimen</h2><p class="summary" id="summary">Browse the registry to inspect forms and capabilities.</p><div class="tags" id="tags"></div><dl id="facts"></dl></div></div>
 </div>
 </section>
+<main>
+<aside>
+<label for="search">Find an entity</label><input id="search" type="search" placeholder="Name, structure or capability">
+<details class="filter-block" open><summary><span class="filter-title">Emergence level</span></summary><div class="filter-body"><div class="filter-tools"><button type="button" data-all="level">All</button><button type="button" data-none="level">None</button></div><div id="level-filters" class="check-grid level-grid"></div><p class="hint" id="level-description">All emergence levels included.</p></div></details>
+<details class="filter-block" open><summary><span class="filter-title">Semantic category</span></summary><div class="filter-body"><div class="filter-tools"><button type="button" data-all="stage">All</button><button type="button" data-none="stage">None</button></div><div id="stage-filters" class="check-grid "></div></div></details>
+<details class="filter-block" open><summary><span class="filter-title">Evidence status</span></summary><div class="filter-body"><div class="filter-tools"><button type="button" data-all="status">All</button><button type="button" data-none="status">None</button></div><div id="status-filters" class="check-grid "></div></div></details>
+<p class="list-count" id="list-count" aria-live="polite"></p>
+<nav id="nav" aria-label="Choose a specimen"></nav>
+</aside>
+<section class="content" aria-label="Atlas browsing area"><p class="hint">Select a specimen from the filtered register.</p></section>
 </main>
 <script>
 const E=[
@@ -417,8 +443,19 @@ const statusValues=Object.keys(statusLabels);
 const selected={level:new Set(Object.keys(LEVELS)),stage:new Set(stages),status:new Set(statusValues)};
 function buildChecks(target,group,items,gridClass=""){
  const root=$(target);root.className="check-grid "+gridClass;
- root.innerHTML=items.map(([value,label,count])=>'<label class="check-option"><input type="checkbox" data-group="'+group+'" value="'+esc(value)+'" checked><span>'+esc(label)+(count===undefined?"":' <small>('+count+')</small>')+'</span></label>').join("");
+ root.innerHTML=items.map(([value,label,count])=>'<label class="check-option" data-option="'+esc(value)+'"><input type="checkbox" data-group="'+group+'" value="'+esc(value)+'" checked><span>'+esc(label)+(count===undefined?"":' <small data-count>('+count+')</small>')+'</span></label>').join("");
  root.querySelectorAll("input").forEach(input=>input.addEventListener("change",()=>{if(input.checked)selected[group].add(input.value);else selected[group].delete(input.value);render()}));
+}
+function refreshDependentOptions(){
+ const allowed=E.filter(e=>selected.status.has(e.epistemicStatus));
+ for(const [group,field] of [["level",e=>String(e.level)],["stage",e=>e.stage]]){
+  const counts=new Map();for(const entry of allowed){const key=field(entry);counts.set(key,(counts.get(key)||0)+1)}
+  document.querySelectorAll('input[data-group="'+group+'"]').forEach(input=>{
+   const count=counts.get(input.value)||0,label=input.closest(".check-option");
+   input.disabled=count===0;label.classList.toggle("is-unavailable",count===0);
+   const counter=label.querySelector("[data-count]");if(counter)counter.textContent="("+count+")";
+  });
+ }
 }
 let active=E[0]?.id ?? null;
 const esc=value=>String(value).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -445,6 +482,7 @@ function render(){
  const q=$("search").value.trim().toLowerCase();
  const list=E.filter(e=>selected.level.has(String(e.level))&&selected.stage.has(e.stage)&&selected.status.has(e.epistemicStatus)&&(!q||[e.name,e.summary,e.structure,e.energy,e.growth,e.division,...e.cap].join(" ").toLowerCase().includes(q)));
  const levelCount=selected.level.size;
+ refreshDependentOptions();
  $("level-description").textContent=levelCount===Object.keys(LEVELS).length?"All emergence levels included.":levelCount?levelCount+" of "+Object.keys(LEVELS).length+" levels selected.":"No levels selected.";
  $("list-count").textContent=list.length+" / "+E.length+" entries";
  $("nav").innerHTML=list.map(e=>'<button type="button" class="item" data-id="'+e.id+'" aria-current="'+(e.id===active)+'">'+esc(e.name)+'<small>LEVEL '+e.level+' · '+esc(e.stage)+' · '+esc(statusLabels[e.epistemicStatus]||e.epistemicStatus)+'</small></button>').join("")||'<p class="hint">No matching entries. Re-enable a filter group to restore results.</p>';
@@ -458,6 +496,7 @@ function setGroup(group,all){
 }
 document.querySelectorAll("[data-all]").forEach(button=>button.addEventListener("click",()=>setGroup(button.dataset.all,true)));
 document.querySelectorAll("[data-none]").forEach(button=>button.addEventListener("click",()=>setGroup(button.dataset.none,false)));
+$("detail-toggle").addEventListener("click",()=>{const dock=$("detail-dock"),collapsed=dock.classList.toggle("is-collapsed");$("detail-toggle").setAttribute("aria-expanded",String(!collapsed));});
 buildChecks("level-filters","level",Object.entries(LEVELS).map(([value,item])=>[value,"L"+value+" · "+item.label,E.filter(e=>e.level===Number(value)).length]));
 buildChecks("stage-filters","stage",stages.map(stage=>[stage,stage,E.filter(e=>e.stage===stage).length]));
 buildChecks("status-filters","status",statusValues.map(status=>[status,statusLabels[status],E.filter(e=>e.epistemicStatus===status).length]));
