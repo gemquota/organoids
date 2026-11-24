@@ -69,7 +69,7 @@ jobs:
           <h1>Organoids experiments</h1>
           <p class="muted">Standalone browser experiences published from the Organoids repository.</p>
           <a class="item" href="../"><strong>Main simulation</strong><br>Particle accretion and emergence runtime.</a>
-          <a class="item" href="../hitchhikers-guide.html"><strong>Hitchhikers Guide to Emergence</strong><br>Field guide, emergence map, hierarchy explorer and entity register.</a>
+          <a class="item" href="../hitchhikers-guide.html"><strong>Hitchhiker's Guide to Emergence</strong><br>Field guide, emergence map, hierarchy explorer and entity register.</a>
           <a class="item" href="../archive/emergent-life-atlas-exploratory.html"><strong>Archived Emergent Life Atlas</strong><br>Preserved exploratory edition.</a>
           <h2>Earlier evolutionary-ecology experiments</h2>
           <a class="item" href="https://gemquota.github.io/boids/"><strong>Evolutionary ecology simulation</strong><br>Earlier integrated simulation.</a>
