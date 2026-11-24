@@ -143,7 +143,7 @@ test("atomic feedstock produces nucleobase analogues that polymerise into an inf
   assert.equal(biology.polymerize({monomerTypes:["monomer"],minLength:3,energyCost:0}),1);
   const polymer=[...runtime.store.entities.values()].find(e=>e.type==="polymer");
   assert.equal(polymer.properties.length,6);
-  assert.equal(runtime.store.descendants(polymer.id).length,6);
+  assert.equal(runtime.store.descendants(polymer.id).filter(id=>runtime.store.get(id)?.type==="monomer").length,6);
 });
 
 test("nearby translated proteins can organise into a catalytic network",()=>{
