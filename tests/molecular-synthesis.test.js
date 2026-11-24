@@ -208,3 +208,76 @@ test("ribose and phosphoric-acid precursors assemble from C/H/O and P/H/O atoms"
   assert.equal(runtime.store.outgoing(precursor.id,"contains").length,3);
   assert.equal(biology.polymerize({monomerTypes:["monomer"],minLength:2,energyCost:0}),0);
 });
+
+
+test("nucleotide condensation conserves atoms and releases two water molecules",()=>{
+  const runtime=createRuntime(),biology=new EmergenceProgression(runtime,{seed:91});
+  const add=(x,z,count,mass)=>{for(let i=0;i<count;i++)biology.create("atom",{x:x+(i%4)*.02,y:40+Math.floor(i/4)*.02,atomicNumber:z,elementSymbol:({1:"H",6:"C",7:"N",8:"O",15:"P"})[z],mass});};
+  add(10,6,5,12);add(10,8,5,16);add(10,1,10,1);
+  add(40,6,5,12);add(40,1,5,1);add(40,7,5,14);
+  add(70,15,1,31);add(70,8,4,16);add(70,1,3,1);
+  assert.equal(biology.assembleRibose({radius:5}),1);
+  assert.equal(biology.assembleNucleobaseMonomers({radius:5}),1);
+  assert.equal(biology.assemblePhosphoricAcid({radius:5}),1);
+  assert.equal(biology.assembleNucleotidePrecursors({radius:40}),1);
+  assert.equal(biology.condenseNucleotidePrecursors({radius:100}),1);
+  const nucleotide=[...runtime.store.entities.values()].find(e=>e.type==="monomer"&&e.properties.polymerRole==="ribonucleotide");
+  const waters=[...runtime.store.entities.values()].filter(e=>e.type==="water"&&e.properties.reaction==="nucleotide-condensation");
+  assert.ok(nucleotide);
+  assert.equal(nucleotide.properties.formula,"C10H14N5O7P");
+  assert.equal(nucleotide.properties.sugarBackbone,true);
+  assert.equal(nucleotide.properties.phosphateGroups,1);
+  assert.equal(runtime.store.descendants(nucleotide.id).filter(id=>runtime.store.get(id)?.type==="atom").length,37);
+  assert.equal(waters.length,2);
+  assert.deepEqual(waters.map(w=>runtime.store.descendants(w.id).filter(id=>runtime.store.get(id)?.type==="atom").length),[3,3]);
+  assert.equal(runtime.store.descendants(nucleotide.id).filter(id=>runtime.store.get(id)?.type==="atom").length+waters.reduce((n,w)=>n+runtime.store.descendants(w.id).filter(id=>runtime.store.get(id)?.type==="atom").length,0),43);
+  assert.equal([...runtime.store.entities.values()].filter(e=>e.type==="nucleotide-precursor").length,0);
+});
+test("phosphodiester-linked ribonucleotides polymerise as translation-eligible RNA",()=>{
+  const runtime=createRuntime(),biology=new EmergenceProgression(runtime,{seed:92});
+  for(const [i,kind] of ["A","U","G"].entries())biology.create("monomer",{x:20+i*2,y:20,mass:37,monomerKind:kind,sugarBackbone:true,phosphateGroups:1,backboneType:"ribose-phosphate",polymerRole:"ribonucleotide",valence:2,bondAffinity:1},0);
+  assert.equal(biology.formPhosphodiesterBonds({radius:5,rate:1,energyCost:0}),2);
+  assert.equal(biology.polymerize({monomerTypes:["monomer"],minLength:3,energyCost:0}),1);
+  const rna=[...runtime.store.entities.values()].find(e=>e.type==="polymer");
+  assert.deepEqual(rna.properties.sequence,["A","U","G"]);
+  assert.equal(rna.properties.translationEligible,true);
+  assert.equal(rna.properties.backboneType,"ribose-phosphate");
+  assert.equal(rna.properties.polymerClass,"rna");
+});
+
+test("nucleotide condensation conserves atoms and releases two water molecules",()=>{
+  const runtime=createRuntime(),biology=new EmergenceProgression(runtime,{seed:91});
+  const add=(x,z,count,mass)=>{for(let i=0;i<count;i++)biology.create("atom",{x:x+(i%4)*.02,y:40+Math.floor(i/4)*.02,atomicNumber:z,elementSymbol:({1:"H",6:"C",7:"N",8:"O",15:"P"})[z],mass});};
+  add(10,6,5,12);add(10,8,5,16);add(10,1,10,1);
+  add(40,6,5,12);add(40,1,5,1);add(40,7,5,14);
+  add(70,15,1,31);add(70,8,4,16);add(70,1,3,1);
+  assert.equal(biology.assembleRibose({radius:5}),1);
+  assert.equal(biology.assembleNucleobaseMonomers({radius:5}),1);
+  assert.equal(biology.assemblePhosphoricAcid({radius:5}),1);
+  assert.equal(biology.assembleNucleotidePrecursors({radius:40}),1);
+  assert.equal(biology.condenseNucleotidePrecursors({radius:100}),1);
+  const nucleotide=[...runtime.store.entities.values()].find(e=>e.type==="monomer"&&e.properties.polymerRole==="ribonucleotide");
+  const waters=[...runtime.store.entities.values()].filter(e=>e.type==="water"&&e.properties.reaction==="nucleotide-condensation");
+  assert.ok(nucleotide);
+  assert.equal(nucleotide.properties.formula,"C10H14N5O7P");
+  assert.equal(nucleotide.properties.sugarBackbone,true);
+  assert.equal(nucleotide.properties.phosphateGroups,1);
+  assert.equal(runtime.store.descendants(nucleotide.id).filter(id=>runtime.store.get(id)?.type==="atom").length,37);
+  assert.equal(waters.length,2);
+  assert.deepEqual(waters.map(w=>runtime.store.descendants(w.id).filter(id=>runtime.store.get(id)?.type==="atom").length),[3,3]);
+  assert.equal(runtime.store.descendants(nucleotide.id).filter(id=>runtime.store.get(id)?.type==="atom").length+waters.reduce((n,w)=>n+runtime.store.descendants(w.id).filter(id=>runtime.store.get(id)?.type==="atom").length,0),43);
+  assert.equal(runtime.store.activeLinks.filter(e=>e.properties?.kind==="phosphoester").length,1);
+  assert.equal(runtime.store.activeLinks.filter(e=>e.properties?.kind==="glycosidic").length,1);
+  assert.equal([...runtime.store.entities.values()].filter(e=>e.type==="nucleotide-precursor").length,0);
+});
+test("phosphodiester-linked ribonucleotides polymerise as translation-eligible RNA",()=>{
+  const runtime=createRuntime(),biology=new EmergenceProgression(runtime,{seed:92});
+  for(const [i,kind] of ["A","U","G"].entries())biology.create("monomer",{x:20+i*2,y:20,mass:37,monomerKind:kind,sugarBackbone:true,phosphateGroups:1,backboneType:"ribose-phosphate",polymerRole:"ribonucleotide",valence:2,bondAffinity:1},0);
+  assert.equal(biology.formPhosphodiesterBonds({radius:5,rate:1,energyCost:0}),2);
+  assert.equal(biology.polymerize({monomerTypes:["monomer"],minLength:3,energyCost:0}),1);
+  const rna=[...runtime.store.entities.values()].find(e=>e.type==="polymer");
+  assert.deepEqual(rna.properties.sequence,["A","U","G"]);
+  assert.equal(rna.properties.translationEligible,true);
+  assert.equal(rna.properties.backboneType,"ribose-phosphate");
+  assert.equal(rna.properties.polymerClass,"rna");
+});
