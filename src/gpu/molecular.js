@@ -128,7 +128,7 @@ export async function createGpuMolecularCandidates(device) {
   const find = await device.createComputePipelineAsync({layout: pipelineLayout, compute: {module: shader, entryPoint: 'findCandidates'}});
   const paramsBuffer = device.createBuffer({size: 32, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST});
   let input = null, cells = null, next = null, output = null, readback = null, bindGroup = null;
-  let capacity = 0, gridCapacity = 0, pending = null, inFlight = false, destroyed = false, dispatches = 0, lastError = null;
+  let capacity = 0, gridCapacity = 0, pending = null, inFlight = false, destroyed = false, dispatches = 0, lastError = null, skippedInFlight = 0, skippedPending = 0, completed = 0, empty = 0, lastReadbackMs = 0, totalReadbackMs = 0, maxReadbackMs = 0, lastInputCount = 0, lastBondCount = 0;
 
   function ensure(count, gridCount) {
     let changed = false;
@@ -163,9 +163,11 @@ export async function createGpuMolecularCandidates(device) {
   function dispatch(entities, isActive, options = {}) {
     if (destroyed) throw new Error('Molecular candidate pipeline was destroyed');
     if (lastError) throw lastError;
-    if (inFlight || pending) return false;
+    if (inFlight) { skippedInFlight++; return false; }
+    if (pending) { skippedPending++; return false; }
     const packed = packMolecularParticles(entities, isActive);
-    if (!packed.count) return false;
+    lastInputCount = packed.count; lastBondCount = 0;
+    if (!packed.count) { empty++; return false; }
     const radius = Math.max(.001, Number.isFinite(options.radius) ? options.radius : 13);
     const width = Math.max(radius, Number.isFinite(options.worldWidth) ? options.worldWidth : radius);
     const height = Math.max(radius, Number.isFinite(options.worldHeight) ? options.worldHeight : radius);
@@ -182,15 +184,16 @@ export async function createGpuMolecularCandidates(device) {
     pass.setPipeline(insert); pass.dispatchWorkgroups(Math.ceil(packed.count / 64));
     pass.setPipeline(find); pass.dispatchWorkgroups(Math.ceil(packed.count / 64));
     pass.end(); encoder.copyBufferToBuffer(output, 0, readback, 0, packed.count * OUTPUT_STRIDE * 4); device.queue.submit([encoder.finish()]);
-    const ids = packed.ids.slice(), count = packed.count; inFlight = true; dispatches++;
+    const ids = packed.ids.slice(), count = packed.count, submittedAt = performance.now(); inFlight = true; dispatches++;
     readback.mapAsync(GPUMapMode.READ).then(() => {
       const outputData = new Uint32Array(readback.getMappedRange().slice(0)); readback.unmap();
+      lastReadbackMs = performance.now() - submittedAt; totalReadbackMs += lastReadbackMs; maxReadbackMs = Math.max(maxReadbackMs, lastReadbackMs); completed++;
       if (!destroyed) pending = {ids, output: outputData, count};
       inFlight = false;
     }).catch(error => { inFlight = false; lastError = error; options.onError?.(error); });
     return true;
   }
-  return {dispatch, consume, get capacity() { return capacity; }, get dispatches() { return dispatches; }, get pending() { return !!pending; }, get inFlight() { return inFlight; }, get lastError() { return lastError; }, destroy() { destroyed = true; pending = null; input?.destroy(); cells?.destroy(); next?.destroy(); output?.destroy(); readback?.destroy(); paramsBuffer.destroy(); }};
+  return {dispatch, consume, get capacity() { return capacity; }, get dispatches() { return dispatches; }, get telemetry() { return {skippedInFlight, skippedPending, completed, empty, lastInputCount, lastBondCount, lastReadbackMs, averageReadbackMs: completed ? totalReadbackMs / completed : 0, maxReadbackMs}; }, get pending() { return !!pending; }, get inFlight() { return inFlight; }, get lastError() { return lastError; }, destroy() { destroyed = true; pending = null; input?.destroy(); cells?.destroy(); next?.destroy(); output?.destroy(); readback?.destroy(); paramsBuffer.destroy(); }};
 }
 
 export {MAX_CANDIDATES_PER_PARTICLE, OUTPUT_STRIDE};
