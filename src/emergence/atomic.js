@@ -53,6 +53,83 @@ export const methods={
     return formed;
   },
 
+  accreteNucleons(options={}) {
+    const radius=Math.max(.01,finite(options.accretionRadius,finite(options.radius,18)*.65));
+    const isotopes=[...this.store.entities.values()].filter(e=>e.type==='isotope'&&active(e)&&!e.parent);
+    const free=[...this.store.entities.values()].filter(e=>(e.type==='proton'||e.type==='neutron')&&active(e)&&!e.parent);
+    let accreted=0;
+    for(const isotope of isotopes) {
+      const nucleus=this.store.outgoing(isotope.id,'contains').map(id=>this.store.get(id)).find(e=>e?.type==='atomic-nucleus');
+      if(!nucleus)continue;
+      const candidate=free.filter(e=>!e.parent&&Math.hypot(e.properties.x-isotope.properties.x,e.properties.y-isotope.properties.y)<=radius)
+        .sort((a,b)=>Math.hypot(a.properties.x-isotope.properties.x,a.properties.y-isotope.properties.y)-Math.hypot(b.properties.x-isotope.properties.x,b.properties.y-isotope.properties.y))[0];
+      if(!candidate)continue;
+      const protonCount=finite(nucleus.properties.protonCount)+(candidate.type==='proton'?1:0);
+      const neutronCount=finite(nucleus.properties.neutronCount)+(candidate.type==='neutron'?1:0);
+      const mass=finite(nucleus.properties.mass)+finite(candidate.properties.mass,1);
+      const x=(finite(nucleus.properties.x)*finite(nucleus.properties.mass)+finite(candidate.properties.x)*finite(candidate.properties.mass,1))/Math.max(.001,mass);
+      const y=(finite(nucleus.properties.y)*finite(nucleus.properties.mass)+finite(candidate.properties.y)*finite(candidate.properties.mass,1))/Math.max(.001,mass);
+      const charge=protonCount;
+      const actions=[{op:'compose',parent:nucleus.id,child:candidate.id},
+        ...Object.entries({protonCount,neutronCount,atomicNumber:protonCount,massNumber:protonCount+neutronCount,mass,charge,x,y}).map(([key,value])=>({op:'set',id:nucleus.id,key,value})),
+        ...Object.entries({protonCount,neutronCount,atomicNumber:protonCount,massNumber:protonCount+neutronCount,mass,charge,x,y}).map(([key,value])=>({op:'set',id:isotope.id,key,value}))];
+      if(candidate.energy>0)actions.push({op:'transfer',from:candidate.id,to:nucleus.id,amount:candidate.energy});
+      const result=this.store.transact(actions,{energy:this.energy,fields:this.energy.fields});
+      if(!result.ok)throw result.error;
+      this.runtime.constraints.add({a:nucleus.id,b:candidate.id,rest:Math.hypot(candidate.properties.x-x,candidate.properties.y-y),stiffness:.9});
+      this._record('nuclear-accretion',{parents:[isotope.id,candidate.id],children:[nucleus.id],protonCount,neutronCount});
+      free.splice(free.indexOf(candidate),1);accreted++;
+    }
+    return accreted;
+  },
+
+  fuseIsotopes(options={}) {
+    const radius=Math.max(.01,finite(options.fusionRadius,finite(options.radius,18)*.55));
+    const maxSpeed=Math.max(0,finite(options.maxFusionSpeed,1.5));
+    const isotopes=[...this.store.entities.values()].filter(e=>e.type==='isotope'&&active(e)&&!e.parent);
+    const used=new Set();let fused=0;
+    for(let i=0;i<isotopes.length;i++) {
+      const a=isotopes[i];if(used.has(a.id))continue;
+      const nucleusA=this.store.outgoing(a.id,'contains').map(id=>this.store.get(id)).find(e=>e?.type==='atomic-nucleus');
+      if(!nucleusA)continue;
+      let best=null,bestDistance=Infinity,bestNucleus=null;
+      for(let j=i+1;j<isotopes.length;j++) {
+        const b=isotopes[j];if(used.has(b.id))continue;
+        const nucleusB=this.store.outgoing(b.id,'contains').map(id=>this.store.get(id)).find(e=>e?.type==='atomic-nucleus');
+        if(!nucleusB)continue;
+        const dx=finite(b.properties.x)-finite(a.properties.x),dy=finite(b.properties.y)-finite(a.properties.y),d=Math.hypot(dx,dy);
+        const relativeSpeed=Math.hypot(finite(b.properties.vx)-finite(a.properties.vx),finite(b.properties.vy)-finite(a.properties.vy));
+        if(d>radius||relativeSpeed>maxSpeed||d>=bestDistance)continue;
+        best=b;bestNucleus=nucleusB;bestDistance=d;
+      }
+      if(!best)continue;
+      const nucleusB=bestNucleus,protonCount=finite(nucleusA.properties.protonCount)+finite(nucleusB.properties.protonCount);
+      const neutronCount=finite(nucleusA.properties.neutronCount)+finite(nucleusB.properties.neutronCount);
+      if(protonCount<1)continue;
+      const mass=finite(a.properties.mass)+finite(best.properties.mass);
+      const x=(finite(a.properties.x)*finite(a.properties.mass)+finite(best.properties.x)*finite(best.properties.mass))/Math.max(.001,mass);
+      const y=(finite(a.properties.y)*finite(a.properties.mass)+finite(best.properties.y)*finite(best.properties.mass))/Math.max(.001,mass);
+      const isotopeProperties={x,y,mass,protonCount,neutronCount,atomicNumber:protonCount,massNumber:protonCount+neutronCount,charge:protonCount,catalogueId:'isotopes',name:'Isotope',categoryId:'atoms',catalogueColor:'#d6c18b'};
+      const actions=[
+        {op:'create',type:'atomic-nucleus',properties:{...isotopeProperties,name:'Fused atomic nucleus',catalogueId:'atomic-nuclei',categoryId:'particles',catalogueColor:'#a5b5ce'},energy:0,as:'nucleus'},
+        {op:'unlink',from:a.id,to:nucleusA.id,type:'contains'},
+        {op:'unlink',from:best.id,to:nucleusB.id,type:'contains'},
+        {op:'remove',id:a.id},{op:'remove',id:best.id},
+        {op:'compose',parent:{ref:'nucleus'},child:nucleusA.id},
+        {op:'compose',parent:{ref:'nucleus'},child:nucleusB.id},
+        {op:'create',type:'isotope',properties:isotopeProperties,energy:0,as:'isotope'},
+        {op:'compose',parent:{ref:'isotope'},child:{ref:'nucleus'}}
+      ];
+      const result=this.store.transact(actions,{energy:this.energy,fields:this.energy.fields});
+      if(!result.ok)throw result.error;
+      this.runtime.constraints.add({a:result.refs.nucleus,b:nucleusA.id,rest:Math.max(1,bestDistance/2),stiffness:.7});
+      this.runtime.constraints.add({a:result.refs.nucleus,b:nucleusB.id,rest:Math.max(1,bestDistance/2),stiffness:.7});
+      this._record('nuclear-fusion',{parents:[a.id,best.id],children:[result.refs.isotope],protonCount,neutronCount,massNumber:protonCount+neutronCount});
+      used.add(a.id);used.add(best.id);fused++;
+    }
+    return fused;
+  },
+
   formIsotopes() {
     const nuclei=[...this.store.entities.values()].filter(e=>e.type==='atomic-nucleus'&&active(e)&&!e.parent);let formed=0;
     for(const nucleus of nuclei){const properties={x:finite(nucleus.properties.x),y:finite(nucleus.properties.y),mass:finite(nucleus.properties.mass),protonCount:nucleus.properties.protonCount,atomicNumber:nucleus.properties.atomicNumber,neutronCount:nucleus.properties.neutronCount,massNumber:nucleus.properties.massNumber,charge:nucleus.properties.charge,catalogueId:'isotopes',name:'Isotope',categoryId:'atoms',catalogueColor:'#d6c18b'};
@@ -118,7 +195,7 @@ export const methods={
   },
 
   assembleAtomicMatter(options={}) {
-    const hadrons=this.formHadrons(options),nuclei=this.formNuclei(options),isotopes=this.formIsotopes(),atoms=this.formAtoms(options),elements=this.formElements();
-    return{hadrons,nuclei,isotopes,atoms,elements};
+    const hadrons=this.formHadrons(options),nuclei=this.formNuclei(options),isotopes=this.formIsotopes(),accretions=this.accreteNucleons(options),fusions=this.fuseIsotopes(options),atoms=this.formAtoms(options),elements=this.formElements();
+    return{hadrons,nuclei,isotopes,accretions,fusions,atoms,elements};
   }
 };

@@ -37,7 +37,7 @@ export const methods = {
     const maxForce=Math.max(0,finite(options.maxAcceleration,.04));
     const dt=Math.max(0,finite(options.dt,1));
     if(!strength||!dt||!maxForce)return 0;
-    const nucleons=[...this.store.entities.values()].filter(e=>active(e)&&!e.parent&&(e.type==='proton'||e.type==='neutron')&&Number.isFinite(e.properties.x)&&Number.isFinite(e.properties.y));
+    const nucleons=[...this.store.entities.values()].filter(e=>active(e)&&!e.parent&&(e.type==='proton'||e.type==='neutron'||e.type==='isotope')&&Number.isFinite(e.properties.x)&&Number.isFinite(e.properties.y));
     const index=this.runtime.spatial.rebuild(nucleons);
     let pairs=0;
     for(const a of nucleons) {
