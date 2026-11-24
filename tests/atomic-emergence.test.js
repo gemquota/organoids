@@ -49,6 +49,15 @@ test("atomic valence limits bonds and produces a methane molecular structure",()
   assert.equal(molecule.properties.bondCount,4);
 });
 
+test("GPU molecular candidates constrain CPU bond commits to the detected spatial pairs",()=>{
+  const runtime=createRuntime(),biology=new EmergenceProgression(runtime);
+  const carbon=biology.create("atom",{x:20,y:20,atomicNumber:6,elementSymbol:"C",valence:4,electronegativity:2.55,mass:12},1);
+  const near=biology.create("atom",{x:24,y:20,atomicNumber:1,elementSymbol:"H",valence:1,electronegativity:2.2,mass:1},1);
+  biology.create("atom",{x:26,y:20,atomicNumber:1,elementSymbol:"H",valence:1,electronegativity:2.2,mass:1},1);
+  assert.equal(biology.formChemicalBonds({types:["atom"],radius:8,rate:10,dt:10,energyCost:0,activationEnergy:0,candidatePairs:[[carbon.id,near.id]]}),1);
+  assert.deepEqual(runtime.store.neighbours(carbon.id,"bond"),[near.id]);
+});
+
 test("diatomic oxygen and nitrogen acquire double and triple bonds",()=>{
   for(const [atomicNumber,symbol,expectedOrder] of [[8,"O",2],[7,"N",3]]) {
     const runtime=createRuntime(),biology=new EmergenceProgression(runtime);

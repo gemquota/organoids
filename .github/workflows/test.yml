@@ -1,7 +1,7 @@
 name: Validate emergence engine
 on:
   push:
-    branches: [main, 'feat/**']
+    branches: [main, 'feat/**', 'gpu/**']
   pull_request:
     branches: [main]
 jobs:

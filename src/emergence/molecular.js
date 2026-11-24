@@ -14,6 +14,7 @@ export const methods = {
     const energyCost=Math.max(0,finite(options.energyCost,.0001)),activation=Math.max(0,finite(options.activationEnergy,.002));
     const profiles=new Map([[1,{valence:1,electronegativity:2.2,radius:2.1}],[2,{valence:0,electronegativity:0,radius:1.5}],[3,{valence:1,electronegativity:.98,radius:3.2}],[4,{valence:2,electronegativity:1.57,radius:2.5}],[5,{valence:3,electronegativity:2.04,radius:2.1}],[6,{valence:4,electronegativity:2.55,radius:1.9}],[7,{valence:3,electronegativity:3.04,radius:1.8}],[8,{valence:2,electronegativity:3.44,radius:1.7}],[9,{valence:1,electronegativity:3.98,radius:1.6}],[10,{valence:0,electronegativity:0,radius:1.5}]]);
     const entities=[...this.store.entities.values()].filter(e=>e.state==='active'&&!e.parent&&types.has(e.type));
+    const candidateSet=Array.isArray(options.candidatePairs)?new Set(options.candidatePairs.map(([a,b])=>a<b?a+':'+b:b+':'+a)):null;
     const atoms=entities.filter(e=>e.type==='atom'),monomers=entities.filter(e=>e.type==='monomer');
     const index=this.runtime.spatial.rebuild(entities),degree=new Map(entities.map(e=>[e.id,0]));
     for(const link of this.store.activeLinks)if(link.type==='bond'){if(degree.has(link.a))degree.set(link.a,degree.get(link.a)+Math.max(1,finite(link.properties?.order,1)));if(degree.has(link.b))degree.set(link.b,degree.get(link.b)+Math.max(1,finite(link.properties?.order,1)))}
@@ -23,7 +24,7 @@ export const methods = {
       const capacity=isAtom?profile.valence:Math.max(1,finite(pa.valence,2));
       if((degree.get(a.id)||0)>=capacity)continue;
       for(const b of index.query(pa.x,pa.y,radius,[])) {
-        if(b.id<=a.id||!entities.includes(b)||a.type!==b.type)continue;
+        if(b.id<=a.id||!entities.includes(b)||a.type!==b.type||(candidateSet&&!candidateSet.has(a.id+':'+b.id)))continue;
         const pb=b.properties,bProfile=isAtom?(profiles.get(Math.floor(finite(pb.atomicNumber,0)))||{valence:0,electronegativity:0,radius:2}):null;
         const bCapacity=isAtom?bProfile.valence:Math.max(1,finite(pb.valence,2));
         if((degree.get(b.id)||0)>=bCapacity||this.store.neighbours(a.id,'bond').includes(b.id)||(!isAtom&&(degree.get(a.id)||0)>0&&(degree.get(b.id)||0)>0))continue;
@@ -144,7 +145,7 @@ export const methods = {
   },
   assembleMolecularMatter(options={}) {
     const elements=this.formElements();
-    const bonds=this.formChemicalBonds({types:['atom'],radius:finite(options.bondRadius,13),rate:finite(options.bondRate,.22),dt:finite(options.dt,1),energyCost:finite(options.bondEnergyCost,.0001),activationEnergy:finite(options.activationEnergy,.002)});
+    const bonds=this.formChemicalBonds({types:['atom'],radius:finite(options.bondRadius,13),rate:finite(options.bondRate,.22),dt:finite(options.dt,1),energyCost:finite(options.bondEnergyCost,.0001),activationEnergy:finite(options.activationEnergy,.002),candidatePairs:options.candidatePairs});
     const molecules=this.formMolecules({types:['atom'],minSize:2});
     const proteins=this.translateAllRNA(options),complexes=this.assembleMacromolecularComplexes(options);
     const formed=[...this.store.entities.values()].filter(e=>e.type==='molecule'&&e.state==='active'&&!e.parent);
