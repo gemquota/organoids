@@ -125,3 +125,34 @@ test("atomic feedstock can synthesize amphiphiles that assemble into a membrane 
   assert.equal(biology.metrics.membranes,1);
   assert.equal(biology.metrics.vesicles,1);
 });
+
+test("atomic feedstock produces nucleobase analogues that polymerise into an information chain",()=>{
+  const runtime=createRuntime(),biology=new EmergenceProgression(runtime,{seed:53});
+  const addCluster=(x,kind)=>{
+    const counts=kind==="A"?{6:5,1:5,7:5,8:0}:{6:4,1:4,7:2,8:2};
+    for(const [atomicNumber,count] of Object.entries(counts))for(let i=0;i<count;i++)biology.create("atom",{x:x+(i%5)*.03,y:30+Math.floor(i/5)*.03,atomicNumber:Number(atomicNumber),mass:atomicNumber==="1"?1:atomicNumber==="6"?12:atomicNumber==="7"?14:16});
+  };
+  for(const [x,kind] of [[20,"A"],[26,"A"],[32,"A"],[23,"U"],[29,"U"],[35,"U"]])addCluster(x,kind);
+  assert.equal(biology.assembleNucleobaseMonomers({radius:1}),6);
+  const monomers=[...runtime.store.entities.values()].filter(e=>e.type==="monomer");
+  assert.equal(monomers.length,6);
+  assert.ok(monomers.every(e=>e.properties.sugarBackbone===false&&e.properties.phosphateGroups===0));
+  let bonds=0;
+  for(let i=0;i<6;i++)bonds+=biology.formChemicalBonds({types:["monomer"],radius:4,rate:10,dt:1,energyCost:0,activationEnergy:0});
+  assert.ok(bonds>=5);
+  assert.equal(biology.polymerize({monomerTypes:["monomer"],minLength:3,energyCost:0}),1);
+  const polymer=[...runtime.store.entities.values()].find(e=>e.type==="polymer");
+  assert.equal(polymer.properties.length,6);
+  assert.equal(runtime.store.descendants(polymer.id).length,6);
+});
+
+test("nearby translated proteins can organise into a catalytic network",()=>{
+  const runtime=createRuntime(),biology=new EmergenceProgression(runtime,{seed:59});
+  biology.create("polymer",{x:20,y:20,sequence:["A","U","A","U","A","U"],mass:6,length:6},1);
+  biology.create("polymer",{x:22,y:20,sequence:["C","U","C","U","C","U"],mass:6,length:6},1);
+  assert.equal(biology.translateAllRNA().length,2);
+  assert.equal(biology.assembleAutocatalyticNetworks({radius:8,minimumCatalyticEfficiency:.2}),1);
+  const network=[...runtime.store.entities.values()].find(e=>e.type==="autocatalytic-network");
+  assert.equal(network.properties.memberCount,2);
+  assert.equal(runtime.store.descendants(network.id).filter(id=>runtime.store.get(id)?.type==="protein").length,2);
+});
