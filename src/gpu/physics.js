@@ -155,7 +155,14 @@ export function applyElectrostaticDeltas(store, ids, deltas, isActive) {
 export async function createGpuElectrostatics(device, options = {}) {
   if (!device || device.destroyed) throw new Error('A live WebGPU device is required');
   const shader = device.createShaderModule({label: 'Organoids electrostatics compute', code: ELECTROSTATICS_WGSL});
-  const layout = 'auto';
+  const bindGroupLayout = device.createBindGroupLayout({entries: [
+    {binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: {type: 'read-only-storage'}},
+    {binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: {type: 'storage'}},
+    {binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: {type: 'uniform'}},
+    {binding: 3, visibility: GPUShaderStage.COMPUTE, buffer: {type: 'storage'}},
+    {binding: 4, visibility: GPUShaderStage.COMPUTE, buffer: {type: 'storage'}},
+  ]});
+  const layout = device.createPipelineLayout({bindGroupLayouts: [bindGroupLayout]});
   const clearPipeline = await device.createComputePipelineAsync({label: 'Clear electrostatics grid', layout, compute: {module: shader, entryPoint: 'clearCells'}});
   const insertPipeline = await device.createComputePipelineAsync({label: 'Build electrostatics grid', layout, compute: {module: shader, entryPoint: 'insertParticles'}});
   const forcePipeline = await device.createComputePipelineAsync({label: 'Spatial electrostatics', layout, compute: {module: shader, entryPoint: 'electrostatics'}});
@@ -217,7 +224,7 @@ export async function createGpuElectrostatics(device, options = {}) {
     }
     if (changed) {
       bindGroup = device.createBindGroup({
-        layout: forcePipeline.getBindGroupLayout(0),
+        layout: bindGroupLayout,
         entries: [
           {binding: 0, resource: {buffer: inputBuffer}},
           {binding: 1, resource: {buffer: outputBuffer}},
@@ -255,6 +262,7 @@ export async function createGpuElectrostatics(device, options = {}) {
     const gridCols = Math.max(1, Math.ceil(worldWidth / radius));
     const gridRows = Math.max(1, Math.ceil(worldHeight / radius));
     const gridCount = gridCols * gridRows;
+    if (Math.ceil(gridCount / 64) > device.limits.maxComputeWorkgroupsPerDimension || Math.ceil(packed.count / 64) > device.limits.maxComputeWorkgroupsPerDimension) throw new Error('Electrostatics dispatch exceeds this GPU workgroup limit');
     ensureCapacity(packed.count, gridCount);
     device.queue.writeBuffer(inputBuffer, 0, packed.data);
     const uniforms = new ArrayBuffer(48);
