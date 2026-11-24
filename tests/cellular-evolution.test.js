@@ -20,6 +20,10 @@ test("small amphiphile clusters self-assemble into micelles instead of membranes
 test("vesicles can encapsulate polymers and catalytic networks without duplicating membranes",()=>{
   const runtime=createRuntime(),biology=new EmergenceProgression(runtime);
   const membrane=biology.assembleMembrane({x:20,y:20,count:8,radius:8}),vesicle=biology.wrapVesicle(membrane.id);
+  assert.equal(membrane.properties.bilayer,true);
+  assert.equal(membrane.properties.outerLeafletCount,4);
+  assert.equal(membrane.properties.innerLeafletCount,4);
+  assert.equal(biology.store.descendants(membrane.id).map(id=>biology.store.get(id)).filter(e=>e?.properties.leaflet==="outer").length,4);
   const polymer=biology.create("polymer",{sequence:["A","U","C","G"],x:20,y:20,mass:4},1);
   const a=biology.create("catalyst",{x:19,y:20}),b=biology.create("catalyst",{x:21,y:20});
   const network=biology.buildAutocatalyticNetwork({members:[a.id,b.id]});

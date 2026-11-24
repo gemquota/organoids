@@ -1,7 +1,25 @@
 import {clamp,finite,copy} from './shared.js';
 export const methods = {
-  _membranePlan(options={},prefix="membrane"){const count=Math.max(3,Math.floor(options.count||12)),cx=finite(options.x),cy=finite(options.y),radius=Math.max(2,finite(options.radius,12)),permeability=clamp(finite(options.permeability,.2)),properties={x:cx,y:cy,radius,permeability,lipidCount:count,closed:true,catalogueId:'membranes',name:'Lipid membrane',categoryId:'selforg',catalogueColor:'#e58b9d'},actions=[{op:"create",type:"membrane",properties,energy:0,as:prefix}],lipidRefs=[],bonds=[];this.contracts.assert("membrane",properties);for(let i=0;i<count;i++){const angle=2*Math.PI*i/count,ref=prefix+"Lipid"+i,lipid={x:cx+Math.cos(angle)*radius,y:cy+Math.sin(angle)*radius,angle,headPolarity:1,tailHydrophobicity:1};this.contracts.assert("lipid",lipid);lipidRefs.push(ref);actions.push({op:"create",type:"lipid",properties:lipid,energy:0,as:ref},{op:"compose",parent:{ref:prefix},child:{ref}});if(i){actions.push({op:"link",id:{ref:lipidRefs[i-1]},target:{ref},type:"bond",properties:{membrane:true}});bonds.push([lipidRefs[i-1],ref])}}actions.push({op:"link",from:{ref:lipidRefs.at(-1)},to:{ref:lipidRefs[0]},type:"bond",properties:{membrane:{ref:prefix}}});bonds.push([lipidRefs.at(-1),lipidRefs[0]]);return{prefix,count,radius,properties,actions,lipidRefs,bonds}},
-  _recordMembrane(plan,refs){const membraneId=refs[plan.prefix],lipids=plan.lipidRefs.map(ref=>refs[ref]);for(const [a,b]of plan.bonds)this._record("bonding",{parents:[refs[a],refs[b]],relation:"bond",properties:{membrane:membraneId}});this._record("membrane-assembly",{parents:lipids,children:[membraneId],count:plan.count,radius:plan.radius});return this.store.get(membraneId)},
+  _membranePlan(options={},prefix="membrane") {
+    const count=Math.max(6,Math.floor(options.count||12)),outerCount=Math.ceil(count/2),innerCount=Math.floor(count/2);
+    const cx=finite(options.x),cy=finite(options.y),radius=Math.max(2,finite(options.radius,12)),thickness=Math.max(1,finite(options.thickness,4)),permeability=clamp(finite(options.permeability,.2));
+    const properties={x:cx,y:cy,radius,thickness,permeability,lipidCount:count,leafletCount:2,outerLeafletCount:outerCount,innerLeafletCount:innerCount,bilayer:true,closed:true,catalogueId:"membranes",name:"Lipid bilayer",categoryId:"selforg",catalogueColor:"#e58b9d"};
+    const actions=[{op:"create",type:"membrane",properties,energy:0,as:prefix}],leafletRefs=[[],[]],bonds=[];
+    this.contracts.assert("membrane",properties);
+    for(let i=0;i<count;i++) {
+      const side=i%2,isOuter=side===0,slot=leafletRefs[side].length,leafletCount=isOuter?outerCount:innerCount;
+      const angle=2*Math.PI*slot/leafletCount,leafletRadius=radius+(isOuter?thickness/2:-thickness/2),headAngle=isOuter?angle:angle+Math.PI,tailAngle=headAngle+Math.PI;
+      const ref=prefix+"Lipid"+i,lipid={x:cx+Math.cos(angle)*leafletRadius,y:cy+Math.sin(angle)*leafletRadius,angle,leaflet:isOuter?"outer":"inner",headPolarity:1,tailHydrophobicity:1,headDirection:{x:Math.cos(headAngle),y:Math.sin(headAngle)},tailDirection:{x:Math.cos(tailAngle),y:Math.sin(tailAngle)}};
+      this.contracts.assert("lipid",lipid);leafletRefs[side].push(ref);
+      actions.push({op:"create",type:"lipid",properties:lipid,energy:0,as:ref},{op:"compose",parent:{ref:prefix},child:{ref}});
+    }
+    for(let side=0;side<leafletRefs.length;side++) {
+      const refs=leafletRefs[side];
+      for(let i=0;i<refs.length;i++){const a=refs[i],b=refs[(i+1)%refs.length];actions.push({op:"link",from:{ref:a},to:{ref:b},type:"bond",properties:{membrane:true,leaflet:side===0?"outer":"inner"}});bonds.push([a,b,side===0?"outer":"inner"])}
+    }
+    return{prefix,count,radius,thickness,properties,actions,lipidRefs:leafletRefs.flat(),bonds};
+  },
+  _recordMembrane(plan,refs){const membraneId=refs[plan.prefix],lipids=plan.lipidRefs.map(ref=>refs[ref]);for(const [a,b,leaflet]of plan.bonds)this._record("bonding",{parents:[refs[a],refs[b]],relation:"bond",properties:{membrane:membraneId,leaflet}});this._record("membrane-assembly",{parents:lipids,children:[membraneId],count:plan.count,radius:plan.radius,thickness:plan.thickness,bilayer:true,leaflets:2});return this.store.get(membraneId)},
   assembleMembrane(options={}){const plan=this._membranePlan(options),result=this.store.transact(plan.actions,{energy:this.energy,fields:this.energy.fields});if(!result.ok)throw result.error;return this._recordMembrane(plan,result.refs)},
   assembleMembraneFromLipids(ids,options={}) {
     const members=[...new Set(ids)].map(id=>this.store.get(id));
