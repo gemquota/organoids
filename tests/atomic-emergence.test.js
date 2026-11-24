@@ -72,7 +72,7 @@ test("nucleons bind into nuclei, isotopes capture electrons and elements are cla
   const runtime=createRuntime(),biology=new EmergenceProgression(runtime);
   seedHelium(biology);
   const result=biology.assembleAtomicMatter({radius:10});
-  assert.deepEqual(result,{hadrons:4,nuclei:1,isotopes:1,atoms:1,elements:1});
+  assert.deepEqual(result,{hadrons:4,nuclei:1,isotopes:1,accretions:0,fusions:0,atoms:1,elements:1});
   const element=[...runtime.store.entities.values()].find(e=>e.type==="element");
   const atom=[...runtime.store.entities.values()].find(e=>e.type==="atom");
   const isotope=[...runtime.store.entities.values()].find(e=>e.type==="isotope");
@@ -133,4 +133,42 @@ test("multi-proton nuclei form positive ions and neutralise through later electr
   assert.equal(atom.properties.name,"Helium atom");
   assert.equal(runtime.store.descendants(atom.id).filter(id=>runtime.store.get(id)?.type==="lepton").length,2);
   assert.equal(runtime.energy.audit(runtime.store,.1).balanced,true);
+});
+
+
+test("unatomized nuclei accrete nearby free nucleons without losing constituents",()=>{
+  const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
+  const nucleus=biology.create("atomic-nucleus",{x:50,y:50,mass:4,protonCount:2,neutronCount:2,atomicNumber:2,massNumber:4,charge:2},0);
+  const isotope=biology.create("isotope",{x:50,y:50,mass:4,protonCount:2,neutronCount:2,atomicNumber:2,massNumber:4,charge:2},0);
+  runtime.store.transact([{op:"compose",parent:isotope.id,child:nucleus.id}]);
+  const proton=biology.create("proton",{x:54,y:50,mass:3,charge:1},.1);
+  assert.equal(biology.accreteNucleons({accretionRadius:10}),1);
+  assert.equal(proton.parent,nucleus.id);
+  assert.equal(nucleus.properties.protonCount,3);
+  assert.equal(nucleus.properties.neutronCount,2);
+  assert.equal(nucleus.properties.massNumber,5);
+  assert.equal(isotope.properties.atomicNumber,3);
+  assert.equal(isotope.properties.mass,7);
+  assert.equal(runtime.store.descendants(isotope.id).includes(proton.id),true);
+});
+
+test("slow colliding isotopes fuse while preserving both nuclear fragments",()=>{
+  const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
+  const make=(x,protons,neutrons)=>{
+    const mass=protons+neutrons,nucleus=biology.create("atomic-nucleus",{x,y:50,vx:0,vy:0,mass,protonCount:protons,neutronCount:neutrons,atomicNumber:protons,massNumber:mass,charge:protons},0);
+    const isotope=biology.create("isotope",{x,y:50,vx:0,vy:0,mass,protonCount:protons,neutronCount:neutrons,atomicNumber:protons,massNumber:mass,charge:protons},0);
+    runtime.store.transact([{op:"compose",parent:isotope.id,child:nucleus.id}]);
+    return{nucleus,isotope};
+  };
+  const a=make(48,1,1),b=make(52,1,2);
+  assert.equal(biology.fuseIsotopes({fusionRadius:10,maxFusionSpeed:1}),1);
+  const product=[...runtime.store.entities.values()].find(e=>e.type==="isotope"&&!e.parent);
+  const fusedNucleus=runtime.store.outgoing(product.id,"contains").map(id=>runtime.store.get(id)).find(e=>e?.type==="atomic-nucleus");
+  assert.equal(product.properties.protonCount,2);
+  assert.equal(product.properties.neutronCount,3);
+  assert.equal(product.properties.massNumber,5);
+  assert.equal(fusedNucleus.properties.mass,5);
+  assert.deepEqual(new Set(runtime.store.outgoing(fusedNucleus.id,"contains")) ,new Set([a.nucleus.id,b.nucleus.id]));
+  assert.equal(runtime.store.get(a.isotope.id),undefined);
+  assert.equal(runtime.store.get(b.isotope.id),undefined);
 });
