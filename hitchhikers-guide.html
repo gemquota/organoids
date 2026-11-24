@@ -43,20 +43,15 @@ function svgText(text,x,y,attrs=""){return '<text x="'+x+'" y="'+y+'" '+attrs+'>
 function nodeLink(id,x,y,w,h,label,meta,color){return '<a class="diagram-node" href="#entity-'+id+'" aria-label="Open '+esc(label)+'"><rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" fill="'+color+'"/>'+svgText(label,x+w/2,y+19,'text-anchor="middle"')+svgText(meta,x+w/2,y+34,'text-anchor="middle" class="node-meta"')+'</a>'}
 function renderDiagrams(){
  const defs='<defs><marker id="diagram-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="#91a49a"/></marker></defs>';
- const linkText=(id,x,y,label,color)=>'<a href="#entity-'+id+'"><text x="'+x+'" y="'+y+'" fill="'+color+'" font-size="10" text-decoration="underline">'+esc(label)+'</text></a>';
- const progression=document.getElementById("progression-diagram");let p=defs;const rowH=72,pw=690,ph=C.length*rowH+18;
- C.forEach((c,i)=>{const y=9+i*rowH,col=colorFor(c[0]),items=D.filter(d=>d[2]===c[0]);p+='<rect x="8" y="'+y+'" width="674" height="64" rx="6" fill="'+col+'" opacity=".10" stroke="'+col+'"/>'+svgText(String(i+1).padStart(2,"0"),22,y+21,'fill="'+col+'" font-size="10" font-family="monospace"')+svgText(c[1],54,y+21,'fill="#edf2ed" font-size="12" font-weight="700"')+svgText(c[2],665,y+21,'text-anchor="end" fill="#a9b7af" font-size="9"');items.slice(0,4).forEach((d,j)=>{p+=linkText(d[0],54+j*153,y+45,d[1].length>21?d[1].slice(0,19)+"…":d[1],col)})});
- progression.setAttribute("viewBox","0 0 "+pw+" "+ph);progression.innerHTML=p;
- const renderNetwork=(svgId,groups,{width=760,row=58,nodeW=194,nodeH=44,feedback=[]}={})=>{const svg=document.getElementById(svgId),pos={};let out=defs,nodes="",paths="";groups.forEach((g,gi)=>{const x=12+gi*(width-24)/groups.length;const colW=(width-24)/groups.length;out+='<rect x="'+(x+3)+'" y="12" width="'+(colW-8)+'" height="'+((Math.max(...groups.map(g=>g.ids.length))+1)*row+28)+'" rx="7" fill="#17221d" stroke="#34463b"/>'+svgText(g.label,x+12,32,'fill="#d9e7dc" font-size="11" font-weight="700"');g.ids.forEach((id,j)=>{const d=byId.get(id);if(!d)return;const nx=x+9,ny=46+j*row;pos[id]={x:nx,y:ny,w:nodeW,h:nodeH};nodes+=nodeLink(id,nx,ny,nodeW,nodeH,d[1],(d[5]==="Possible"?"Possible":"Established")+" · scale "+d[6],colorFor(d[2]))})});
+ const renderNetwork=(svgId,groups,{width=760,row=58,nodeW=194,nodeH=44,feedback=[]}={})=>{const svg=document.getElementById(svgId),pos={};let out=defs,nodes="",paths="";groups.forEach((g,gi)=>{const x=12+gi*(width-24)/groups.length,colW=(width-24)/groups.length;out+='<rect x="'+(x+3)+'" y="12" width="'+(colW-8)+'" height="'+((Math.max(...groups.map(g=>g.ids.length))+1)*row+28)+'" rx="7" fill="#17221d" stroke="#34463b"/>'+svgText(g.label,x+12,32,'fill="#d9e7dc" font-size="11" font-weight="700"');g.ids.forEach((id,j)=>{const d=byId.get(id);if(!d)return;const nx=x+9,ny=46+j*row;pos[id]={x:nx,y:ny,w:nodeW,h:nodeH};nodes+=nodeLink(id,nx,ny,nodeW,nodeH,d[1],(d[5]==="Possible"?"Possible":"Established")+" · scale "+d[6],colorFor(d[2]))})});
  const included=new Set(groups.flatMap(g=>g.ids));edges.forEach(e=>{if(!included.has(e[0])||!included.has(e[1])||!pos[e[0]]||!pos[e[1]])return;const a=pos[e[0]],b=pos[e[1]],x1=a.x+a.w,y1=a.y+a.h/2,x2=b.x,y2=b.y+b.h/2,mid=(x1+x2)/2;paths+='<path class="diagram-edge '+(chapter(e[0])[0]===chapter(e[1])[0]?'':'cross')+'" d="M'+x1+' '+y1+' C'+mid+' '+y1+' '+mid+' '+y2+' '+x2+' '+y2+'"/>'});
- feedback.forEach(([from,to,label])=>{const a=pos[from],b=pos[to];if(!a||!b)return;const x1=a.x+a.w/2,y1=a.y,x2=b.x+b.w/2,y2=b.y;const curve='<path class="diagram-edge feedback" d="M'+[x1,' ',y1,' C',x1+85,' ',y1-42,' ',x2+85,' ',y2-42,' ',x2,' ',y2].join('')+'"/>';paths+=curve+svgText(label,(x1+x2)/2+58,Math.min(y1,y2)-27,'fill="#e7b76e" font-size="9" text-anchor="middle"')});
+ feedback.forEach(([from,to,label])=>{const a=pos[from],b=pos[to];if(!a||!b)return;const x1=a.x+a.w/2,y1=a.y,x2=b.x+b.w/2,y2=b.y;paths+='<path class="diagram-edge feedback" d="M'+[x1,' ',y1,' C',x1+85,' ',y1-42,' ',x2+85,' ',y2-42,' ',x2,' ',y2].join('')+'"/>'+svgText(label,(x1+x2)/2+58,Math.min(y1,y2)-27,'fill="#e7b76e" font-size="9" text-anchor="middle"')});
  svg.setAttribute("viewBox","0 0 "+width+" "+(Math.max(...groups.map(g=>g.ids.length))*row+86));svg.innerHTML=out+paths+nodes};
  renderNetwork("origins-diagram",[
  {label:"Molecular chemistry",ids:["water","organic-molecules","macromolecules","rna","proteins"]},
  {label:"Compartments",ids:["membranes","micelles","vesicles"]},
  {label:"Coupled systems",ids:["autocatalytic-networks","replication","protocells","prokaryotic-cells","eukaryotic-cells"]}
  ],{width:760,row:62,nodeW:204,nodeH:48});
- const scale=document.getElementById("scale-diagram");const bands=[["Physical foundations",0,2],["Atoms & molecular chemistry",3,5],["Self-organisation & early life",6,7],["Cells & multicellularity",8,9],["Organisms & collective systems",10,11],["Ecology & planetary systems",12,13],["Cosmic organisation",14,16]];let z="";bands.forEach((b,i)=>{const y=10+i*66,col=PALETTE[Math.min(i*2,11)],items=D.filter(d=>d[6]>=b[1]&&d[6]<=b[2]);z+='<rect class="scale-band" x="10" y="'+y+'" width="660" height="56" fill="'+col+'" opacity=".10" stroke="'+col+'"/>'+svgText(b[0],22,y+18,'class="scale-label" fill="'+col+'"');items.forEach((d,j)=>{const x=22+(j%5)*130,yy=y+39+Math.floor(j/5)*12;z+=linkText(d[0],x,yy,d[1].length>19?d[1].slice(0,17)+"…":d[1],col)})});scale.setAttribute("viewBox","0 0 680 "+(bands.length*66+10));scale.innerHTML=z;
  renderNetwork("cellular-diagram",[
  {label:"Cellular forms",ids:["prokaryotic-cells","eukaryotic-cells","endosymbiosis"]},
  {label:"Cooperation & development",ids:["cellular-colonies","multicellularity","cell-differentiation","tissues"]},
@@ -66,11 +61,6 @@ function renderDiagrams(){
  {label:"Reservoirs & life",ids:["water","atmospheres","hydrospheres","biosphere","ecosystems"]},
  {label:"Coupled planet",ids:["planetary-interiors","climate-systems"]}
  ],{width:620,row:62,nodeW:220,nodeH:48,feedback:[["climate-systems","hydrospheres","water & circulation feedback"],["climate-systems","biosphere","biosphere–climate feedback"]]});
- renderNetwork("chemistry-diagram",[
- {label:"Molecular machinery",ids:["organic-molecules","macromolecules","rna","proteins"]},
- {label:"Boundaries & reactions",ids:["membranes","vesicles","autocatalytic-networks"]},
- {label:"Information & life",ids:["replication","protocells","prokaryotic-cells"]}
- ],{width:760,row:62,nodeW:204,nodeH:48});
 }
 function renderMap(){
  const svg=document.getElementById("network"),W=1320,H=920,cx=W/2,cy=H/2;
