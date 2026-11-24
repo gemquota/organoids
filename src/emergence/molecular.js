@@ -150,6 +150,52 @@ export const methods = {
     }
     return formed;
   },
+  assembleNucleobaseMonomers(options={}) {
+    const recipes=[
+      {kind:'A',name:'Adenine analogue',formula:'C5H5N5',counts:{6:5,1:5,7:5,8:0}},
+      {kind:'U',name:'Uracil analogue',formula:'C4H4N2O2',counts:{6:4,1:4,7:2,8:2}},
+      {kind:'C',name:'Cytosine analogue',formula:'C4H5N3O',counts:{6:4,1:5,7:3,8:1}},
+      {kind:'G',name:'Guanine analogue',formula:'C5H5N5O',counts:{6:5,1:5,7:5,8:1}}
+    ];
+    const atoms=[...this.store.entities.values()].filter(e=>e.type==='atom'&&e.state==='active'&&!e.parent);
+    const radius=Math.max(.01,finite(options.radius,20)),used=new Set();
+    const available=number=>atoms.filter(e=>!e.parent&&!used.has(e.id)&&e.properties.atomicNumber===number);
+    const nearest=(pool,x,y,count)=>count?pool.slice().sort((a,b)=>Math.hypot(finite(a.properties.x)-x,finite(a.properties.y)-y)-Math.hypot(finite(b.properties.x)-x,finite(b.properties.y)-y)).slice(0,count):[];
+    let formed=0;
+    for(const recipe of recipes) {
+      for(const anchor of available(6)) {
+        if(anchor.parent||used.has(anchor.id))continue;
+        const ax=finite(anchor.properties.x),ay=finite(anchor.properties.y),counts=recipe.counts;
+        const members=[anchor,...nearest(available(6).filter(e=>e.id!==anchor.id),ax,ay,counts[6]-1),...nearest(available(1),ax,ay,counts[1]),...nearest(available(7),ax,ay,counts[7]),...nearest(available(8),ax,ay,counts[8])];
+        if(members.length!==Object.values(counts).reduce((sum,n)=>sum+n,0))continue;
+        const x=members.reduce((sum,e)=>sum+finite(e.properties.x),0)/members.length,y=members.reduce((sum,e)=>sum+finite(e.properties.y),0)/members.length;
+        if(members.some(e=>Math.hypot(finite(e.properties.x)-x,finite(e.properties.y)-y)>radius))continue;
+        const mass=members.reduce((sum,e)=>sum+Math.max(0,finite(e.properties.mass)),0);
+        const actions=[{op:'create',type:'monomer',properties:{x,y,mass,monomerKind:recipe.kind,valence:2,bondAffinity:.8,baseName:recipe.name,formula:recipe.formula,polymerRole:'nucleobase-analogue',phosphateGroups:0,sugarBackbone:false,catalogueId:'nucleobases',name:'Nucleobase analogue',categoryId:'chemistry',catalogueColor:'#f0a66e'},energy:0,as:'monomer'},...members.map(e=>({op:'compose',parent:{ref:'monomer'},child:e.id}))];
+        for(const e of members)if(e.energy>0)actions.push({op:'transfer',from:e.id,to:{ref:'monomer'},amount:e.energy});
+        const result=this.store.transact(actions,{energy:this.energy,fields:this.energy.fields});
+        if(!result.ok)continue;
+        for(const e of members)used.add(e.id);
+        this._record('nucleobase-analogue-formation',{parents:members.map(e=>e.id),children:[result.refs.monomer],kind:recipe.kind,formula:recipe.formula});formed++;
+        break;
+      }
+    }
+    return formed;
+  },
+  assembleAutocatalyticNetworks(options={}) {
+    const proteins=[...this.store.entities.values()].filter(e=>e.type==='protein'&&e.state==='active'&&!e.parent);
+    const radius=Math.max(.01,finite(options.radius,24)),minimum=clamp(finite(options.minimumCatalyticEfficiency,.2)),index=this.runtime.spatial.rebuild(proteins),used=new Set();
+    let formed=0;
+    for(const protein of proteins) {
+      if(protein.parent||used.has(protein.id)||finite(protein.properties.catalyticEfficiency)<minimum)continue;
+      const partner=index.query(protein.properties.x,protein.properties.y,radius,[]).filter(e=>e.id!==protein.id&&!e.parent&&!used.has(e.id)&&finite(e.properties.catalyticEfficiency)>=minimum).sort((a,b)=>Math.hypot(finite(a.properties.x)-finite(protein.properties.x),finite(a.properties.y)-finite(protein.properties.y))-Math.hypot(finite(b.properties.x)-finite(protein.properties.x),finite(b.properties.y)-finite(protein.properties.y)))[0];
+      if(!partner)continue;
+      const network=this.buildAutocatalyticNetwork({members:[protein.id,partner.id],cycleGain:1+Math.min(.5,(finite(protein.properties.catalyticEfficiency)+finite(partner.properties.catalyticEfficiency))*.25)});
+      used.add(protein.id);used.add(partner.id);formed++;
+      this._record('catalytic-pairing',{parents:[protein.id,partner.id],children:[network.id],cycleGain:network.properties.cycleGain});
+    }
+    return formed;
+  },
   assembleAmphiphiles(options={}) {
     const atoms=[...this.store.entities.values()].filter(e=>e.type==='atom'&&e.state==='active'&&!e.parent);
     const radius=Math.max(.01,finite(options.radius,20)),used=new Set();
@@ -197,11 +243,14 @@ export const methods = {
     // association, so water formation cannot starve more complex pathways.
     const lipids=this.assembleAmphiphiles({radius:finite(options.amphiphileRadius,finite(options.radius,20))});
     const organic=this.assembleOrganicMolecules({radius:finite(options.organicRadius,finite(options.radius,20))});
+    const monomers=this.assembleNucleobaseMonomers({radius:finite(options.monomerRadius,finite(options.radius,20))});
     const water=this.assembleWater({radius:finite(options.waterRadius,finite(options.radius,18))});
+    const monomerBonds=this.formChemicalBonds({types:['monomer'],radius:finite(options.bondRadius,13),rate:finite(options.bondRate,.22),dt:finite(options.dt,1),energyCost:finite(options.bondEnergyCost,.0001),activationEnergy:finite(options.activationEnergy,.002)});
+    const polymers=this.polymerize({monomerTypes:['monomer'],minLength:3,energyCost:finite(options.polymerEnergyCost,.002)});
     const bonds=this.formChemicalBonds({types:['atom'],radius:finite(options.bondRadius,13),rate:finite(options.bondRate,.22),dt:finite(options.dt,1),energyCost:finite(options.bondEnergyCost,.0001),activationEnergy:finite(options.activationEnergy,.002)});
     const molecules=this.formMolecules({types:['atom'],minSize:2});
-    const proteins=this.translateAllRNA(options),complexes=this.assembleMacromolecularComplexes(options);
-    return{elements,bonds,molecules,water,organic,lipids,proteins:proteins.length,complexes};
+    const proteins=this.translateAllRNA(options),networks=this.assembleAutocatalyticNetworks(options),complexes=this.assembleMacromolecularComplexes(options);
+    return{elements,bonds,monomerBonds,molecules,water,organic,lipids,monomers,polymers,proteins:proteins.length,networks,complexes};
   },
   assembleMacromolecularComplexes(options={}) {
     const rnas=[...this.store.entities.values()].filter(e=>e.type==='polymer'&&e.state==='active'&&!e.parent),proteins=[...this.store.entities.values()].filter(e=>e.type==='protein'&&e.state==='active'&&!e.parent),radius=Math.max(.01,finite(options.radius,28));let formed=0;
