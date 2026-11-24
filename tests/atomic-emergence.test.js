@@ -23,6 +23,18 @@ test("quark colour and flavour assemble protons and neutrons",()=>{
   assert.ok([...runtime.store.entities.values()].filter(e=>e.type==="neutron").every(e=>e.properties.charge===0));
 });
 
+test("unassigned startup quarks assemble from local colour and flavour matches",()=>{
+  const runtime=createRuntime(),biology=new EmergenceProgression(runtime);
+  const quarks=[
+    ["up","red",20,20],["down","green",21,20],["up","blue",20,21],
+    ["down","red",40,40],["up","green",41,40],["down","blue",40,41]
+  ];
+  for(const [flavor,colorCharge,x,y] of quarks)biology.create("quark",{x,y,flavor,colorCharge,charge:flavor==="up"?2/3:-1/3,mass:1},.1);
+  assert.equal(biology.formHadrons({radius:5}),2);
+  assert.equal([...runtime.store.entities.values()].filter(e=>e.type==="proton").length,1);
+  assert.equal([...runtime.store.entities.values()].filter(e=>e.type==="neutron").length,1);
+});
+
 test("nucleons bind into nuclei, isotopes capture electrons and elements are classified",()=>{
   const runtime=createRuntime(),biology=new EmergenceProgression(runtime);
   seedHelium(biology);
