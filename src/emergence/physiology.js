@@ -2,12 +2,12 @@ import {clamp,finite,active} from './shared.js';
 
 export const methods={
   advanceCellularProcesses(options={}) {
-    const cells=[...this.store.entities.values()].filter(e=>(e.type==='protocell'||e.type==='cell')&&active(e));
+    const cells=[...this.store.entities.values()].filter(e=>(['protocell','cell','prokaryotic-cell','eukaryotic-cell'].includes(e.type))&&active(e));
     const uptakeRadius=Math.max(1,finite(options.uptakeRadius,48)),uptakeAmount=Math.max(0,finite(options.uptakeAmount,.04));
     let transported=0,metabolised=0,grown=0,divided=0;
     const index=this.runtime.spatial.rebuild(this.store.entities.values());
     for(const cell of cells) {
-      const membrane=this.store.outgoing(cell.id,'contains').map(id=>this.store.get(id)).find(e=>e?.type==='membrane');
+      const membrane=this.store.descendants(cell.id).map(id=>this.store.get(id)).find(e=>e?.type==='membrane');
       if(membrane&&uptakeAmount>0) {
         const nearby=index.query(finite(cell.properties.x),finite(cell.properties.y),uptakeRadius,[]);
         for(const nutrient of nearby)if(nutrient.type==='substrate'&&nutrient.state==='active'&&nutrient.parent!==cell.id&&this.energy.quantity(nutrient,'substrate')>0) {
@@ -28,8 +28,8 @@ export const methods={
   transport(membraneId,fromId,toId,key,requested,options={}){
     const membrane=this.store.get(membraneId),from=this.store.get(fromId),to=this.store.get(toId);
     if(!membrane||membrane.type!=="membrane"||!from||!to||!active(from)||!active(to))throw Error("Transport requires a membrane and two active entities");
-    const parent=this.store.get(membrane.parent),inside=new Set(parent?[parent.id,...this.store.descendants(parent.id)]:[]);
-    if(parent&&inside.has(from.id)===inside.has(to.id))throw Error("Transport endpoints must lie on opposite sides of the membrane");
+    let root=this.store.get(membrane.parent);while(root?.parent)root=this.store.get(root.parent);const inside=new Set(root?[root.id,...this.store.descendants(root.id)]:[]);
+    if(root&&inside.has(from.id)===inside.has(to.id))throw Error("Transport endpoints must lie on opposite sides of the membrane");
     const permeability=clamp(finite(membrane.properties.permeability)),channels=membrane.properties.channels||{},channel=channels[key];
     if(channel===false||channel?.enabled===false) return 0;
     const selectivity=membrane.properties.selectivity;
@@ -51,7 +51,7 @@ export const methods={
     if((cell.quantityUnits?.[substrate]||"quantity")!=="energy")throw Error("Metabolic substrate must use energy units");
     const available=this.energy.quantity(cell,substrate),consumed=Math.min(amount,available),yieldEnergy=consumed*efficiency;
     if(consumed<=0)return{consumed:0,energy:0};
-    const result=this.store.transact([{op:"convert-quantity",id,key:substrate,amount:consumed,efficiency},{op:"material",id,key:waste,delta:consumed,unit:options.wasteUnit||"mass"}],{energy:this.energy,fields:this.energy.fields});
+    const result=this.store.transact([{op:"convert-quantity",id,key:substrate,amount:consumed,efficiency},{op:"material",id,key:waste,delta:consumed,unit:options.wasteUnit||"mass"},{op:'set',id,key:'metabolicEvents',value:finite(cell.properties.metabolicEvents)+1},{op:'set',id,key:'metabolicFlux',value:finite(cell.properties.metabolicFlux)+yieldEnergy}],{energy:this.energy,fields:this.energy.fields});
     if(!result.ok)throw result.error;
     this._record("metabolism",{entity:id,substrate,waste,consumed,energy:yieldEnergy,efficiency});
     return{consumed,energy:yieldEnergy,waste:consumed};
