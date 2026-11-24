@@ -48,11 +48,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p _site/src _site/experiments _site/assets _site/archive
+          mkdir -p _site/src _site/experiments _site/assets _site/archive/assets
           cp accretion.html _site/index.html
           cp emergent-life-atlas.html _site/emergent-life-atlas.html
           cp hitchhikers-guide.html _site/hitchhikers-guide.html
           cp archive/emergent-life-atlas-exploratory.html _site/archive/emergent-life-atlas-exploratory.html
+          cp -R assets/atlas _site/archive/assets/
           cp -R src/. _site/src/
           cp -R assets/. _site/assets/
           touch _site/.nojekyll
