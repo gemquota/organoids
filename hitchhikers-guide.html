@@ -10,13 +10,16 @@ main{max-width:1600px;margin:auto;padding:12px clamp(10px,2vw,26px) 30px}.chapte
 .map-section{margin-top:26px;border-top:1px solid var(--line);padding-top:14px}.map-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:9px}.map-head h2{font:500 21px Georgia,serif;margin:0}.map-legend{display:flex;gap:8px;flex-wrap:wrap}.legend-item{display:flex;align-items:center;gap:4px;color:var(--muted);font:10px ui-monospace,monospace}.legend-dot{width:8px;height:8px;border-radius:50%;background:var(--cat)}.map-wrap{border:1px solid var(--line);border-radius:6px;overflow:auto;background:#0d1512}.map-wrap svg{display:block;width:100%;min-width:760px;height:auto;min-height:540px}.map-edge{stroke:#82938a;stroke-width:1;opacity:.3}.map-node rect{stroke:#101714;stroke-width:2;rx:7}.map-node text{fill:#101714;font:600 11px system-ui;pointer-events:none}.map-node:focus rect,.map-node:hover rect{stroke:#fff;stroke-width:3}.empty{display:none!important}footer{border-top:1px solid var(--line);padding:12px clamp(14px,3vw,36px);color:var(--muted);font-size:10px}footer a{margin-right:12px}
 .map-note{font:10px ui-monospace,monospace;color:var(--muted)}
 .venn-wrap{overflow:auto;border:1px solid var(--line);border-radius:7px;background:#0d1512;padding:10px}
-.venn-wrap svg{display:block;width:100%;min-width:620px;height:auto}
-.venn-circle{stroke-width:2;fill-opacity:.24}
-.venn-label{font:600 13px system-ui;fill:#edf2ed;text-anchor:middle}
-.venn-item{font:11px ui-monospace,monospace;fill:#e8f0e9;text-anchor:middle}
-.venn-item a{fill:inherit;text-decoration:underline;text-decoration-color:#a9b7af}
-.venn-center{font:700 15px Georgia,serif;fill:#fff;text-anchor:middle}
-.venn-sub{font:10px ui-monospace,monospace;fill:#d6e2d9;text-anchor:middle}
+.atlas-venn-wrap svg{display:block;width:100%;min-width:980px;height:auto}
+.venn-circle{stroke-width:3;fill-opacity:.16}
+.venn-domain{font:700 17px system-ui;fill:#f0f4f0;text-anchor:middle;letter-spacing:.08em}
+.venn-subtitle{font:11px ui-monospace,monospace;fill:#d0ddd4;text-anchor:middle}
+.venn-region{font:700 12px ui-monospace,monospace;fill:#f0f4f0;letter-spacing:.04em}
+.venn-entity{font:12px ui-monospace,monospace;text-decoration:underline;text-decoration-color:#82938a;text-underline-offset:3px}
+.venn-entity:hover,.venn-entity:focus{fill:#fff!important;font-weight:800;text-decoration-color:#fff}
+.venn-region-count{font:10px ui-monospace,monospace;fill:#9eafa5}
+.venn-region-bg{fill:#0d1512;fill-opacity:.72;stroke:#52645a;stroke-opacity:.4;rx:8}
+#venn-legend{margin-top:9px}
 #network{min-width:0!important;min-height:0!important;width:100%;height:auto;display:block}
 .graph-edge{fill:none;stroke:#91a49a;stroke-width:1.35;opacity:.48;marker-end:url(#graph-arrow)}
 .graph-edge.cross{stroke-dasharray:4 3;opacity:.58}
@@ -30,17 +33,11 @@ main{max-width:1600px;margin:auto;padding:12px clamp(10px,2vw,26px) 30px}.chapte
 <header><h1>Emergence Atlas</h1><span class="count" id="entity-total">49 ENTITIES</span></header>
 <div class="toolbar"><div class="toolbar-inner"><input class="search" id="search" type="search" placeholder="Find an entity…" aria-label="Search entities"><div class="filters"><label><input type="checkbox" value="Established" checked> Established</label><label><input type="checkbox" value="Possible" checked> Possible</label></div><span class="result-count" id="result-count"></span><nav class="category-nav" id="chapter-nav" aria-label="Filter by category"></nav></div></div>
 <main><div id="encyclopedia"></div><section class="map-section" id="diagrams">
-<div class="map-head"><h2>Life’s three-way intersection</h2><span class="map-note">A living system emerges where boundaries, chemistry and heredity become coupled</span></div>
-<div class="venn-wrap"><svg viewBox="0 0 760 490" role="img" aria-label="Venn diagram showing the overlap of compartments, metabolism and heredity in the emergence of life">
-<circle class="venn-circle" cx="290" cy="205" r="166" fill="#7ed4cf" stroke="#7ed4cf"/><circle class="venn-circle" cx="470" cy="205" r="166" fill="#f0a66e" stroke="#f0a66e"/><circle class="venn-circle" cx="380" cy="330" r="166" fill="#c4a0ed" stroke="#c4a0ed"/>
-<text class="venn-label" x="210" y="82">COMPARTMENTS</text><a href="#entity-membranes"><text class="venn-item" x="195" y="108">Lipid membranes</text></a><a href="#entity-vesicles"><text class="venn-item" x="195" y="127">Vesicles</text></a>
-<text class="venn-label" x="550" y="82">METABOLISM</text><a href="#entity-autocatalytic-networks"><text class="venn-item" x="565" y="108">Autocatalytic networks</text></a><a href="#entity-proteins"><text class="venn-item" x="565" y="127">Catalytic proteins</text></a>
-<text class="venn-label" x="380" y="462">HEREDITY</text><a href="#entity-rna"><text class="venn-item" x="350" y="442">RNA</text></a><text class="venn-item" x="380" y="442">·</text><a href="#entity-replication"><text class="venn-item" x="420" y="442">Replication</text></a>
-<text class="venn-sub" x="380" y="180">BOUNDARY + CHEMISTRY</text><text class="venn-item" x="380" y="198">Contained reaction networks</text>
-<text class="venn-sub" x="290" y="286">BOUNDARY + HEREDITY</text><text class="venn-item" x="290" y="304">Encapsulated information</text>
-<text class="venn-sub" x="470" y="286">CHEMISTRY + HEREDITY</text><text class="venn-item" x="470" y="304">Catalytic replication</text>
-<rect x="318" y="224" width="124" height="54" rx="8" fill="#17231e" stroke="#edf2ed" stroke-width="1.5"/><text class="venn-center" x="380" y="246">PROTOCELL</text><text class="venn-sub" x="380" y="263">all three coupled</text>
-</svg></div></section>
+<div class="map-head"><h2>The emergence of everything</h2><span class="map-note">All 49 atlas entities positioned across four overlapping domains</span></div>
+<p class="graph-hint">Each entity appears once. Overlap regions show where physical substrate, chemistry, heredity and organisation become interdependent. Entity labels use their atlas category colours and link directly to their entries.</p>
+<div class="venn-wrap atlas-venn-wrap"><svg id="atlas-venn" viewBox="0 0 1400 1120" role="img" aria-label="Four-set Venn diagram containing all 49 atlas entities across physical substrate, chemical dynamics, information and heredity, and organisation and collective systems"></svg></div>
+<div class="map-legend" id="venn-legend"></div>
+</section>
 <section class="map-section" id="emergence-map"><div class="map-head"><h2>Relational node graph</h2><span class="map-note">All 49 entities · directed precursor relationships · category colour</span><div class="map-legend" id="map-legend"></div></div><div class="map-key"><span><i class="key-line"></i>Precursor relationship</span><span><i class="key-line cross"></i>Cross-category relationship</span><span>Arrow direction: precursor → dependent entity · hover a node to isolate its connections</span></div><p class="graph-hint">Nodes are actual catalogue entities. Each directed arrow is a recorded precursor link, not a guessed similarity. Hover or focus a node to trace its immediate dependencies and dependants.</p><div class="map-wrap"><svg id="network" viewBox="0 0 1100 850" role="img" aria-label="Force-directed relational graph of all curated entities and their precursor relationships"></svg></div></section></main>
 <footer><a href="./">Organoids simulation</a><a href="https://github.com/gemquota/organoids">Source</a></footer>
 <script type="module">
@@ -56,6 +53,36 @@ function chapter(id){return C.find(c=>c[0]===byId.get(id)[2])||C[0]}
 function links(ids,empty){return ids.length?ids.map(id=>byId.get(id)).filter(Boolean).map(d=>'<a href="#entity-'+d[0]+'">'+esc(d[1])+'</a>').join(""):empty}
 function card(d){const next=edges.filter(e=>e[0]===d[0]).map(e=>e[1]);const status=d[5]==="Established"?"Established":"Possible";const art=ART[d[0]]||"organoid";const color=colorFor(d[2]);return '<article class="entity-card" style="--cat:'+color+'" id="entity-'+d[0]+'" data-entity-card data-status="'+d[5]+'" data-chapter="'+d[2]+'"><svg class="entity-art" viewBox="0 0 480 480" role="img" aria-label="'+esc(d[1])+' illustration"><use href="assets/atlas/entities.svg#entity-'+art+'"></use></svg><div class="entity-copy"><div class="entity-top"><h3>'+esc(d[1])+'</h3><span class="evidence '+(d[5]==="Established"?"":"possible")+'">'+status+'</span></div><p class="summary">'+esc(d[3])+'</p><div class="meta">SCALE '+d[6]+' · '+esc(chapter(d[0])[1])+'</div><div class="mechanism"><strong>Mechanism</strong><p>'+esc(d[4])+'</p></div><div class="relations"><div class="relation"><span class="relation-label">From</span>'+links(d[8],"Foundational")+'</div><div class="relation"><span class="relation-label">To</span>'+links(next,"—")+'</div></div><div class="tags">'+d[7].map(t=>'<span class="tag">'+esc(t)+'</span>').join("")+'</div></div></article>'}
 function renderGuide(){const nav=document.getElementById("chapter-nav");nav.innerHTML=C.map(c=>'<button type="button" data-category="'+c[0]+'" style="--cat:'+colorFor(c[0])+'" aria-pressed="true">'+esc(c[1])+'</button>').join("");document.getElementById("encyclopedia").innerHTML=C.map((c,i)=>{const items=D.filter(d=>d[2]===c[0]);return '<section class="chapter" id="chapter-'+c[0]+'" data-chapter-section style="--cat:'+colorFor(c[0])+'"><div class="chapter-head"><span class="chapter-swatch"></span><h2>'+esc(c[1])+'</h2><span class="chapter-count">'+items.length+'</span></div><div class="entity-grid">'+items.map(card).join("")+'</div></section>'}).join("");document.getElementById("entity-total").textContent=D.length+" ENTITIES · "+C.length+" CATEGORIES";document.getElementById("map-legend").innerHTML=C.map(c=>'<span class="legend-item" style="--cat:'+colorFor(c[0])+'"><i class="legend-dot"></i>'+esc(c[1])+'</span>').join("")}
+function renderAtlasVenn(){
+ const svg=document.getElementById("atlas-venn");
+ const domains=[
+  {id:"physical",name:"PHYSICAL SUBSTRATE",sub:"fields · particles · matter",cx:560,cy:410,r:390,color:"#8da8ff"},
+  {id:"chemical",name:"CHEMICAL DYNAMICS",sub:"bonds · reactions · energy",cx:840,cy:410,r:390,color:"#f0a66e"},
+  {id:"information",name:"INFORMATION & HEREDITY",sub:"replication · regulation · memory",cx:560,cy:690,r:390,color:"#c4a0ed"},
+  {id:"organisation",name:"ORGANISATION",sub:"life · collectives · environments",cx:840,cy:690,r:390,color:"#7ed4cf"}
+ ];
+ const groups=[
+  {title:"PHYSICAL FOUNDATIONS",ids:["quantum-field","spacetime","elementary-particles","quarks","leptons","gluons","protons-neutrons","atomic-nuclei","isotopes","atoms","elements","stars","galaxies","cosmic-web"],x:255,y:215,cols:2,step:22},
+  {title:"PHYSICS × CHEMISTRY",ids:["chemical-bonds","water","organic-molecules","macromolecules","proteins","rna"],x:590,y:185,cols:1,step:24},
+  {title:"CHEMISTRY × ORGANISATION",ids:["membranes","micelles","vesicles","autocatalytic-networks"],x:935,y:400,cols:1,step:25},
+  {title:"CHEMISTRY × HEREDITY × LIFE",ids:["protocells","replication","prokaryotic-cells","eukaryotic-cells","endosymbiosis"],x:590,y:465,cols:1,step:24},
+  {title:"HEREDITY × ORGANISATION",ids:["cellular-colonies","multicellularity","cell-differentiation","tissues","organoids","organs","nervous-systems","brains","cognition","social-groups","collective-intelligence","institutions"],x:590,y:790,cols:2,step:22},
+  {title:"PHYSICAL WORLDS × ECOLOGY",ids:["populations","ecosystems","biosphere","planetary-interiors","atmospheres","hydrospheres","climate-systems","planetary-systems"],x:235,y:565,cols:2,step:23}
+ ];
+ let out="";
+ domains.forEach(d=>{out+='<circle class="venn-circle" cx="'+d.cx+'" cy="'+d.cy+'" r="'+d.r+'" fill="'+d.color+'" stroke="'+d.color+'"/>';});
+ domains.forEach((d,i)=>{const pos=[[390,65],[1010,65],[390,1060],[1010,1060]][i];out+='<text class="venn-domain" x="'+pos[0]+'" y="'+pos[1]+'">'+d.name+'</text><text class="venn-subtitle" x="'+pos[0]+'" y="'+(pos[1]+19)+'">'+d.sub+'</text>';});
+ groups.forEach(g=>{
+  const rows=Math.ceil(g.ids.length/g.cols),width=g.cols===2?310:300,height=rows*g.step+37;
+  out+='<rect class="venn-region-bg" x="'+(g.x-13)+'" y="'+(g.y-25)+'" width="'+width+'" height="'+height+'"/>';
+  out+='<text class="venn-region" x="'+g.x+'" y="'+g.y+'">'+g.title+'</text>';
+  g.ids.forEach((id,i)=>{const d=byId.get(id);if(!d)return;const col=Math.floor(i/rows),row=i%rows,x=g.x+col*(g.cols===2?155:0),y=g.y+22+row*g.step,color=colorFor(d[2]);out+='<a href="#entity-'+id+'" aria-label="Open '+esc(d[1])+'"><text class="venn-entity" x="'+x+'" y="'+y+'" fill="'+color+'">'+esc(d[1])+'</text></a>';});
+ });
+ svg.innerHTML=out;
+ const listed=groups.flatMap(g=>g.ids);
+ if(listed.length!==D.length||new Set(listed).size!==D.length||D.some(d=>!listed.includes(d[0])))throw Error("Atlas Venn must include every catalogue entity exactly once");
+ document.getElementById("venn-legend").innerHTML=C.map(c=>'<span class="legend-item" style="--cat:'+colorFor(c[0])+'"><i class="legend-dot"></i>'+esc(c[1])+'</span>').join("");
+}
 function renderMap(){
  const svg=document.getElementById("network"),W=1320,H=920,cx=W/2,cy=H/2;
  const nodes=D.map((d,i)=>({id:d[0],d,x:cx+350*Math.cos(i*2.399),y:cy+300*Math.sin(i*2.399),vx:0,vy:0}));
@@ -78,5 +105,5 @@ function renderMap(){
  svg.addEventListener("focusin",e=>{const n=e.target.closest("[data-node]");if(n)focus(n.dataset.node)});svg.addEventListener("focusout",clear);
 }
 let activeCategory="all";function applyFilters(){const q=document.getElementById("search").value.trim().toLowerCase(),statuses=[...document.querySelectorAll(".filters input:checked")].map(x=>x.value);let shown=0;document.querySelectorAll("[data-entity-card]").forEach(el=>{const d=byId.get(el.id.slice(7));const match=d.join(" ").toLowerCase().includes(q)&&statuses.includes(d[5])&&(activeCategory==="all"||d[2]===activeCategory);el.classList.toggle("empty",!match);if(match)shown++});document.querySelectorAll("[data-chapter-section]").forEach(section=>section.classList.toggle("empty",!section.querySelector("[data-entity-card]:not(.empty)")));document.querySelectorAll("[data-category]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.category===activeCategory||activeCategory==="all")));document.getElementById("result-count").textContent=shown+"/"+D.length}
-renderGuide();renderMap();document.getElementById("search").addEventListener("input",applyFilters);document.querySelectorAll(".filters input").forEach(input=>input.addEventListener("change",applyFilters));document.getElementById("chapter-nav").addEventListener("click",event=>{const b=event.target.closest("[data-category]");if(!b)return;activeCategory=activeCategory===b.dataset.category?"all":b.dataset.category;applyFilters()});applyFilters();
+renderGuide();renderAtlasVenn();renderMap();document.getElementById("search").addEventListener("input",applyFilters);document.querySelectorAll(".filters input").forEach(input=>input.addEventListener("change",applyFilters));document.getElementById("chapter-nav").addEventListener("click",event=>{const b=event.target.closest("[data-category]");if(!b)return;activeCategory=activeCategory===b.dataset.category?"all":b.dataset.category;applyFilters()});applyFilters();
 </script></body></html>
