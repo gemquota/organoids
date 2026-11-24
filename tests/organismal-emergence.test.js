@@ -40,7 +40,7 @@ test("neural activity responds to stimulus, builds directed connections and reta
 
 test("cognition emerges only after a sufficiently active brain exists",()=>{
   const runtime=createRuntime({width:100,height:100,cols:40,rows:40}),biology=new EmergenceProgression(runtime);
-  const neurons=Array.from({length:4},(_,i)=>biology.create("cell",{x:10+i,y:10,genome:{sequence:"ACGT",traits:{}},phenotype:"neural"},1));
+  const neurons=Array.from({length:4},(_,i)=>biology.create("cell",{x:10+i,y:10,genome:{sequence:"ACGT",traits:{}},phenotype:"neural"},1));for(let i=0;i<3;i++)biology.create("cell",{x:10+i,y:14,genome:{sequence:"ACGT",traits:{}},phenotype:"boundary"},1);
   const colony=biology.formColony(neurons.map(e=>e.id));
   const tissue=biology.formTissues(colony.id)[0];
   const organoid=biology.formOrganoid(colony.id);
