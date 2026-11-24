@@ -30,7 +30,7 @@ export const methods = {
         if((isAtom&&b.id<=a.id)||b.id===a.id||!entities.includes(b)||a.type!==b.type)continue;
         const pb=b.properties,bProfile=isAtom?(profiles.get(Math.floor(finite(pb.atomicNumber,0)))||{valence:0,electronegativity:0,radius:2}):null;
         const bCapacity=isAtom?bProfile.valence:Math.max(1,finite(pb.valence,2));
-        if((degree.get(b.id)||0)>=bCapacity||this.store.neighbours(a.id,'bond').includes(b.id))continue;
+        if((degree.get(b.id)||0)>=bCapacity||this.store.neighbours(a.id,'bond').includes(b.id)||(!isAtom&&findRoot(a.id)===findRoot(b.id)))continue;
         if(isAtom&&(capacity===0||bCapacity===0))continue;
         if(!isAtom&&options.complementary!==false&&COMPLEMENT[pa.monomerKind]!==pb.monomerKind)continue;
         const dx=finite(pb.x)-finite(pa.x),dy=finite(pb.y)-finite(pa.y),distance=Math.hypot(dx,dy);
