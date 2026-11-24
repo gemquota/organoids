@@ -88,10 +88,11 @@ body.simple-mode #simple-atlas{display:block}
 .simple-entity{border:1px solid var(--line);background:linear-gradient(140deg,#202922,#151c17);padding:16px;min-height:115px}
 .simple-entity h3{font:19px Georgia,serif;color:var(--paper);margin:0 0 8px}
 .simple-entity p{font-size:12px;color:#c4c3ad;line-height:1.5;margin:0}
-.level-arrow{position:fixed;z-index:25;top:50%;transform:translateY(-50%);width:44px;height:76px;border:1px solid var(--accent);background:#202a22;color:var(--acid);font:30px/1 var(--mono);cursor:pointer}
+.level-arrow{display:none;position:fixed;z-index:25;top:50%;transform:translateY(-50%);width:44px;height:76px;border:1px solid var(--accent);background:#202a22;color:var(--acid);font:30px/1 var(--mono);cursor:pointer}
 #level-prev{left:8px}
 #level-next{right:8px}
 .level-arrow:disabled{opacity:.28;border-color:var(--line);color:var(--muted);cursor:not-allowed}
+body.simple-mode .level-arrow{display:block}
 @media(max-width:600px){.simple-entities{grid-template-columns:1fr;padding:0 34px}.level-arrow{width:34px;height:62px}#level-prev{left:2px}#level-next{right:2px}}
 
 </style>
