@@ -16,7 +16,7 @@ test('packs only active, charged, root entities for electrostatics', () => {
     [1, {id: 1, state: 'active', properties: {x: 2, y: 3, vx: 4, vy: 5, charge: -1, mass: 2}}],
     [2, {id: 2, state: 'active', properties: {x: 7, y: 8, charge: 0, mass: 1}}],
     [3, {id: 3, state: 'inactive', properties: {x: 9, y: 10, charge: 1, mass: 1}}],
-    [4, {id: 4, state: 'active', parent: 1, properties: {x: 1, y: 1, charge: 1, mass: 1}}},
+    [4, {id: 4, state: 'active', parent: 1, properties: {x: 1, y: 1, charge: 1, mass: 1}}],
   ]);
   const {data, ids, count} = packElectrostaticParticles(entities, active);
   assert.equal(count, 1);
@@ -64,6 +64,9 @@ test('WGSL computes pairwise Coulomb-like velocity deltas on the GPU', () => {
   assert.match(ELECTROSTATICS_WGSL, /@compute @workgroup_size\(64\)/);
   assert.match(ELECTROSTATICS_WGSL, /params\.strength \* product/);
   assert.match(ELECTROSTATICS_WGSL, /deltas\[i\]/);
+  assert.match(ELECTROSTATICS_WGSL, /atomicExchange/);
+  assert.match(ELECTROSTATICS_WGSL, /atomicLoad/);
+  assert.match(ELECTROSTATICS_WGSL, /nextParticle\[j\]/);
   assert.match(ELECTROSTATICS_WGSL, /atomicExchange/);
   assert.match(ELECTROSTATICS_WGSL, /atomicLoad/);
   assert.match(ELECTROSTATICS_WGSL, /nextParticle\[j\]/);
