@@ -29,7 +29,7 @@ export const methods={
     const membrane=this.store.get(membraneId),from=this.store.get(fromId),to=this.store.get(toId);
     if(!membrane||membrane.type!=="membrane"||!from||!to||!active(from)||!active(to))throw Error("Transport requires a membrane and two active entities");
     let root=this.store.get(membrane.parent);while(root?.parent)root=this.store.get(root.parent);const inside=new Set(root?[root.id,...this.store.descendants(root.id)]:[]);
-    if(parent&&inside.has(from.id)===inside.has(to.id))throw Error("Transport endpoints must lie on opposite sides of the membrane");
+    if(root&&inside.has(from.id)===inside.has(to.id))throw Error("Transport endpoints must lie on opposite sides of the membrane");
     const permeability=clamp(finite(membrane.properties.permeability)),channels=membrane.properties.channels||{},channel=channels[key];
     if(channel===false||channel?.enabled===false) return 0;
     const selectivity=membrane.properties.selectivity;
