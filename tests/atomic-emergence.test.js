@@ -35,6 +35,27 @@ test("unassigned startup quarks assemble from local colour and flavour matches",
   assert.equal([...runtime.store.entities.values()].filter(e=>e.type==="neutron").length,1);
 });
 
+test("atomic valence limits bonds and produces a methane molecular structure",()=>{
+  const runtime=createRuntime(),biology=new EmergenceProgression(runtime);
+  biology.create("atom",{x:20,y:20,atomicNumber:6,elementSymbol:"C",valence:4,electronegativity:2.55,mass:12},1);
+  for(const [x,y] of [[24,20],[16,20],[20,24],[20,16]])biology.create("atom",{x,y,atomicNumber:1,elementSymbol:"H",valence:1,electronegativity:2.2,mass:1},1);
+  const bonds=biology.formChemicalBonds({types:["atom"],radius:5,rate:10,dt:10,energyCost:.0001,activationEnergy:0});
+  assert.equal(bonds,4);
+  assert.equal(runtime.store.neighbours([...runtime.store.entities.values()].find(e=>e.type==="atom"&&e.properties.atomicNumber===6).id,"bond").length,4);
+  assert.equal(biology.formMolecules({types:["atom"],minSize:2}),1);
+  const molecule=[...runtime.store.entities.values()].find(e=>e.type==="molecule");
+  assert.equal(molecule.properties.formula,"CH4");
+  assert.equal(molecule.properties.moleculeName,"Methane");
+  assert.equal(molecule.properties.bondCount,4);
+});
+
+test("closed-shell noble gases do not form covalent bonds",()=>{
+  const runtime=createRuntime(),biology=new EmergenceProgression(runtime);
+  biology.create("atom",{x:20,y:20,atomicNumber:2,elementSymbol:"He",valence:0,electronegativity:0},1);
+  biology.create("atom",{x:22,y:20,atomicNumber:1,elementSymbol:"H",valence:1,electronegativity:2.2},1);
+  assert.equal(biology.formChemicalBonds({types:["atom"],radius:5,rate:10,dt:10,energyCost:0,activationEnergy:0}),0);
+});
+
 test("nucleons bind into nuclei, isotopes capture electrons and elements are classified",()=>{
   const runtime=createRuntime(),biology=new EmergenceProgression(runtime);
   seedHelium(biology);
