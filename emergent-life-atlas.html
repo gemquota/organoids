@@ -536,6 +536,7 @@ function refreshDependentOptions(){
   const counts=new Map();for(const entry of allowed){const key=field(entry);counts.set(key,(counts.get(key)||0)+1)}
   document.querySelectorAll('input[data-group="'+group+'"]').forEach(input=>{
    const count=counts.get(input.value)||0,label=input.closest(".check-option");
+   input.disabled=count===0;
    if(count===0){selected[group].delete(input.value);input.checked=false}
    label.hidden=count===0;
    const counter=label.querySelector("[data-count]");if(counter)counter.textContent="("+count+")";
