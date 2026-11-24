@@ -16,7 +16,7 @@ export const methods = {
     const entities=[...this.store.entities.values()].filter(e=>e.state==='active'&&!e.parent&&types.has(e.type));
     const atoms=entities.filter(e=>e.type==='atom'),monomers=entities.filter(e=>e.type==='monomer');
     const index=this.runtime.spatial.rebuild(entities),degree=new Map(entities.map(e=>[e.id,0]));
-    for(const e of entities)for(const link of this.store.neighbours(e.id,'bond'))if(degree.has(link))degree.set(e.id,degree.get(e.id)+1);
+    for(const link of this.store.activeLinks)if(link.type==='bond'){if(degree.has(link.a))degree.set(link.a,degree.get(link.a)+Math.max(1,finite(link.properties?.order,1)));if(degree.has(link.b))degree.set(link.b,degree.get(link.b)+Math.max(1,finite(link.properties?.order,1)))}
     let formed=0;
     for(const a of entities) {
       const pa=a.properties,isAtom=a.type==='atom',profile=isAtom?(profiles.get(Math.floor(finite(pa.atomicNumber,0)))||{valence:0,electronegativity:0,radius:2}):null;
@@ -31,6 +31,9 @@ export const methods = {
         if(!isAtom&&options.complementary!==false&&COMPLEMENT[pa.monomerKind]!==pb.monomerKind)continue;
         const dx=finite(pb.x)-finite(pa.x),dy=finite(pb.y)-finite(pa.y),distance=Math.hypot(dx,dy);
         if(distance>radius)continue;
+        const za=Math.floor(finite(pa.atomicNumber)),zb=Math.floor(finite(pb.atomicNumber));
+        const order=isAtom?((za===7&&zb===7)?3:((za===8&&zb===8)||(za===6&&zb===8)||(za===8&&zb===6)||(za===6&&zb===6)?2:1)):1;
+        if((degree.get(a.id)||0)+order>capacity||(degree.get(b.id)||0)+order>bCapacity)continue;
         const affinity=isAtom?clamp(1-Math.abs(profile.electronegativity-bProfile.electronegativity)/5,.15,1):clamp(finite(pa.bondAffinity,1)*finite(pb.bondAffinity,1));
         const thermal=(Math.max(0,a.energy)/Math.max(.001,finite(pa.heatCapacity,1))+Math.max(0,b.energy)/Math.max(.001,finite(pb.heatCapacity,1)))*.5;
         const optimal=isAtom?profile.radius+bProfile.radius:radius*.55;
@@ -38,12 +41,13 @@ export const methods = {
         const probability=1-Math.exp(-rate*affinity*geometry*Math.exp(-activation/Math.max(.02,thermal+.05))*dt);
         if(this.rng.next()>probability||a.energy<energyCost)continue;
         const electronegativityDelta=isAtom?Math.abs(profile.electronegativity-bProfile.electronegativity):0;
-        const kind=isAtom?(electronegativityDelta>.8?'polar-covalent':'covalent'):'complementary';
-        const result=this.store.transact([{op:'link',from:a.id,to:b.id,type:'bond',properties:{kind,order:1,distance,electronegativityDelta,affinity,energy:energyCost}}],{energy:this.energy,fields:this.energy.fields});
+        const kind=isAtom?(electronegativityDelta>1.7?'ionic':electronegativityDelta>.8?'polar-covalent':'covalent'):'complementary';
+        const result=this.store.transact([{op:'link',from:a.id,to:b.id,type:'bond',properties:{kind,order,distance,equilibriumDistance:optimal,electronegativityDelta,affinity,energy:energyCost}}],{energy:this.energy,fields:this.energy.fields});
         if(!result.ok)continue;
         if(energyCost>0&&a.energy>=energyCost)this.store.transact([{op:'dissipate',id:a.id,amount:energyCost}],{energy:this.energy,fields:this.energy.fields});
-        degree.set(a.id,(degree.get(a.id)||0)+1);degree.set(b.id,(degree.get(b.id)||0)+1);
-        this._record('bonding',{parents:[a.id,b.id],relation:'bond',properties:{kind,order:1,distance,electronegativityDelta,affinity}});
+        degree.set(a.id,(degree.get(a.id)||0)+order);degree.set(b.id,(degree.get(b.id)||0)+order);
+        if(isAtom)this.runtime.constraints.add({a:a.id,b:b.id,rest:optimal,stiffness:.62});
+        this._record('bonding',{parents:[a.id,b.id],relation:'bond',properties:{kind,order,distance,electronegativityDelta,affinity}});
         formed++;
       }
     }
@@ -63,7 +67,7 @@ export const methods = {
       const mass=members.reduce((sum,e)=>sum+Math.max(0,finite(e.properties.mass,1)),0)||members.length;
       const x=members.reduce((sum,e)=>sum+finite(e.properties.x)*Math.max(0,finite(e.properties.mass,1)),0)/mass;
       const y=members.reduce((sum,e)=>sum+finite(e.properties.y)*Math.max(0,finite(e.properties.mass,1)),0)/mass;
-      const bonds=members.reduce((sum,e)=>sum+this.store.neighbours(e.id,'bond').filter(id=>ids.includes(id)).length,0)/2;
+      const bonds=this.store.activeLinks.filter(link=>link.type==='bond'&&ids.includes(link.a)&&ids.includes(link.b)).reduce((sum,link)=>sum+Math.max(1,finite(link.properties?.order,1)),0);
       const name=names[formula]||'Molecule';
       const productType=options.productType||'molecule';
       const properties={x,y,mass,formula,moleculeName:name,memberCount:ids.length,atomCount:members.length,bondCount:bonds,structure:members.map(e=>({element:e.properties.elementSymbol||e.properties.atomicNumber,atomicNumber:e.properties.atomicNumber,x:finite(e.properties.x)-x,y:finite(e.properties.y)-y})),geometry:members.length===2?'diatomic':'polyatomic',formedAt:this.runtime.scheduler.time,catalogueId:formula==='H2O'?'water':'molecular-structures',name,categoryId:'chemistry',catalogueColor:'#f0a66e'};
