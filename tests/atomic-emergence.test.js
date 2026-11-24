@@ -205,6 +205,22 @@ test("hydrogen can be captured by a heavier isotope without hydrogen-only fusion
 });
 
 
+
+test("hydrogen isotopes can enter the fusion pathway when no threshold is imposed",()=>{
+  const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
+  for(const x of [48,52]){
+    const properties={x,y:50,mass:1,protonCount:1,neutronCount:1,atomicNumber:1,massNumber:2,charge:1};
+    const nucleus=biology.create("atomic-nucleus",properties,0);
+    const isotope=biology.create("isotope",properties,0);
+    runtime.store.transact([{op:"compose",parent:isotope.id,child:nucleus.id}]);
+  }
+  assert.equal(biology.fuseIsotopes({fusionRadius:10,maxFusionSpeed:1,maxAtomicNumber:10}),1);
+  const fused=[...runtime.store.entities.values()].find(e=>e.type==="isotope"&&!e.parent);
+  assert.equal(fused.properties.atomicNumber,2);
+  assert.equal(fused.properties.neutronCount,2);
+});
+
+
 test("nuclear fusion respects the supported element ceiling",()=>{
   const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
   for(const x of [48,52]){
