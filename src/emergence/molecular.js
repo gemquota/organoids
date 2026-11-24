@@ -42,14 +42,15 @@ export const methods = {
         const thermal=(Math.max(0,a.energy)/Math.max(.001,finite(pa.heatCapacity,1))+Math.max(0,b.energy)/Math.max(.001,finite(pb.heatCapacity,1)))*.5;
         const optimal=isAtom?profile.radius+bProfile.radius:radius*.55;
         const geometry=isAtom?Math.exp(-Math.pow((distance-optimal)/Math.max(2,optimal),2)):.7;
-        const probability=1-Math.exp(-rate*affinity*geometry*Math.exp(-activation/Math.max(.02,thermal+.05))*dt);
+        const attemptRate=rate*affinity*geometry;
+        const probability=1-Math.exp(-attemptRate*Math.exp(-activation/Math.max(.02,thermal+.05))*dt);
         const availableEnergy=Math.max(0,finite(a.energy))+Math.max(0,finite(b.energy));
         if(this.rng.next()>probability||availableEnergy+1e-12<energyCost)continue;
         const electronegativityDelta=isAtom?Math.abs(profile.electronegativity-bProfile.electronegativity):0;
         const kind=isAtom?(electronegativityDelta>1.7?'ionic':electronegativityDelta>.8?'polar-covalent':'covalent'):'complementary';
         const paidA=availableEnergy>0?Math.min(Math.max(0,a.energy),energyCost*Math.max(0,a.energy)/availableEnergy):0;
         const paidB=energyCost-paidA;
-        const actions=[{op:'link',from:a.id,to:b.id,type:'bond',properties:{kind,order,distance,equilibriumDistance:optimal,electronegativityDelta,affinity,energy:energyCost,bondEnergy:Math.max(0,finite(options.bondEnergy,.001))}}];
+        const actions=[{op:'link',from:a.id,to:b.id,type:'bond',properties:{kind,order,distance,equilibriumDistance:optimal,electronegativityDelta,affinity,energy:energyCost,bondEnergy:Math.max(0,finite(options.bondEnergy,.001)),activationEnergy:activation,attemptRate}}];
         if(paidA>0)actions.push({op:'dissipate',id:a.id,amount:paidA});
         if(paidB>0)actions.push({op:'dissipate',id:b.id,amount:paidB});
         const result=this.store.transact(actions,{energy:this.energy,fields:this.energy.fields});
@@ -80,7 +81,12 @@ export const methods = {
       const cost=activationEnergy+bondEnergy;
       const available=Math.max(0,a.energy)+Math.max(0,b.energy);
       if(available+1e-12<cost)continue;
-      const probability=1-Math.exp(-rate*Math.exp(-activationEnergy/Math.max(.02,temperature+.05))*dt);
+      const forwardBarrier=Math.max(0,finite(link.properties?.activationEnergy,activationEnergy));
+      const attemptRate=Math.max(0,finite(link.properties?.attemptRate,rate));
+      // The reverse transition crosses the forward barrier plus the stored
+      // bond energy. This gives the pair of rates a Boltzmann-like equilibrium.
+      const reverseBarrier=forwardBarrier+bondEnergy;
+      const probability=1-Math.exp(-attemptRate*Math.exp(-reverseBarrier/Math.max(.02,temperature+.05))*dt);
       if(this.rng.next()>probability)continue;
       const paidA=available>0?Math.min(Math.max(0,a.energy),cost*Math.max(0,a.energy)/available):0;
       const paidB=cost-paidA;
@@ -89,7 +95,7 @@ export const methods = {
       if(paidB>0)actions.push({op:"dissipate",id:b.id,amount:paidB});
       const result=this.store.transact(actions,{energy:this.energy,fields:this.energy.fields});
       if(!result.ok)continue;
-      this._record("bond-dissociation",{parents:[a.id,b.id],relation:"bond",properties:{kind:link.properties?.kind||"covalent",order:finite(link.properties?.order,1),bondEnergy,activationEnergy,energy:cost}});
+      this._record("bond-dissociation",{parents:[a.id,b.id],relation:"bond",properties:{kind:link.properties?.kind||"covalent",order:finite(link.properties?.order,1),bondEnergy,activationEnergy:forwardBarrier,reverseBarrier,attemptRate,energy:cost}});
       broken++;
     }
     return broken;
