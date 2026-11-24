@@ -1,6 +1,21 @@
 import {finite,active,idOf} from './shared.js';
 export const methods={
   formColony(ids,options={}){const members=ids.map(idOf);if(members.length<2||members.some(id=>!this.store.get(id)))throw Error("A colony requires at least two existing members");const parts=members.map(id=>this.store.get(id)),x=parts.reduce((s,e)=>s+finite(e.properties.x),0)/parts.length,y=parts.reduce((s,e)=>s+finite(e.properties.y),0)/parts.length;const colony=this.runtime.topology.assemble(options.type||"colony",members,{memberCount:members.length,x,y,radius:finite(options.radius,20),formedAt:this.runtime.scheduler.time,catalogueId:'cellular-colonies',name:'Cellular colony',categoryId:'multicell',catalogueColor:'#7ed4cf'});this._record("colony-formation",{parents:members,children:[colony.id]});return colony},
+  formOrgan(organoidId,options={}) {
+    const organoid=this.store.get(organoidId);
+    if(!organoid||organoid.type!=='organoid')throw Error('Organ formation requires an organoid');
+    if(organoid.parent){const parent=this.store.get(organoid.parent);if(parent?.type==='organ')return parent}
+    const tissues=this.store.descendants(organoidId).map(id=>this.store.get(id)).filter(e=>e?.type==='tissue');
+    if(tissues.length<2)return null;
+    const x=finite(organoid.properties.x),y=finite(organoid.properties.y),parentId=organoid.parent;
+    const actions=[{op:'create',type:'organ',properties:{x,y,tissueCount:tissues.length,function:options.function||'integrated tissue function',catalogueId:'organs',name:'Organ',categoryId:'organisms',catalogueColor:'#c4a0ed'},energy:0,as:'organ'},{op:'compose',parent:{ref:'organ'},child:organoid.id}];
+    if(parentId)actions.push({op:'compose',parent:parentId,child:{ref:'organ'}});
+    const result=this.store.transact(actions);
+    if(!result.ok)throw result.error;
+    const organ=this.store.get(result.refs.organ);
+    this._record('organ-formation',{parents:[organoid.id,...tissues.map(e=>e.id)],children:[organ.id],tissueCount:tissues.length});
+    return organ;
+  },
   formTissues(colonyId,options={}) {
     const colony=this.store.get(colonyId);
     if(!colony||colony.type!=='colony')throw Error('Tissue formation requires a colony');
@@ -53,7 +68,7 @@ export const methods={
       const colony=this.formColony(group,{radius});
       const members=group.map(id=>this.store.get(id)),cx=finite(colony.properties.x),cy=finite(colony.properties.y),field=this.runtime.fields.fields.has('morphogen')?'morphogen':null;
       if(field)for(const member of members){const distance=Math.hypot(finite(member.properties.x)-cx,finite(member.properties.y)-cy),value=Math.min(1,distance/radius);this.runtime.fields.add(field,finite(member.properties.x),finite(member.properties.y),value)}
-      if(field)for(const member of members)if(!member.properties.phenotype)this.differentiateFromField(member.id,field,{defaultRole:'support',thresholds:options.thresholds||{boundary:.5,secretory:.4,motile:.3,interior:.12}});
+      if(field)for(const member of members)if(!member.properties.phenotype)this.differentiateFromField(member.id,field,{defaultRole:'support',thresholds:options.thresholds||{neural:.98,sensory:.95,secretory:.9,motile:.85,contractile:.8,boundary:.5,interior:.12}});
       this.morphogenesis(colony.id,{pattern:options.pattern||'radial',radius:Math.max(2,finite(options.morphogenesisRadius, radius*.6)),stiffness:.2});
       formed++;
     }
