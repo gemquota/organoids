@@ -32,7 +32,7 @@ test("organic feedstock atoms assemble into an amino-acid precursor",()=>{
 
 test("RNA translates into a folded protein and can form a ribonucleoprotein complex",()=>{
   const runtime=createRuntime(),biology=new EmergenceProgression(runtime);
-  const rna=biology.create("polymer",{x:20,y:20,sequence:"AUGGCUUAA",mass:3,length:9},1);
+  const rna=biology.create("polymer",{x:20,y:20,sequence:["A","U","G","G","C","U","U","A","A"],mass:3,length:9},1);
   const protein=biology.translateRNA(rna.id,{energyCost:.01});
   assert.equal(protein.type,"protein");
   assert.equal(protein.properties.sequence,"MA");
