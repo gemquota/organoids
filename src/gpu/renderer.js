@@ -76,30 +76,31 @@ function particleColor(entity, cache) {
   return color;
 }
 
-export function packParticles(entities, isActive, cameraScale = 1) {
-  const source = [];
+export function packParticles(entities, isActive, cameraScale = 1, target = null) {
+  let count = 0;
+  for (const entity of entities) if (isActive(entity)) count++;
+  const required = count * FLOATS_PER_PARTICLE;
+  const storage = target && target.length >= required ? target : new Float32Array(required);
+  const data = storage.subarray(0, required);
+  const scale = Number.isFinite(cameraScale) && cameraScale > 0 ? cameraScale : 1;
+  const colors = new Map();
+  let index = 0;
   for (const entity of entities) {
     if (!isActive(entity)) continue;
     const p = entity.properties || {};
     const mass = Number.isFinite(+p.mass) ? +p.mass : 1;
-    source.push({entity, p, radius: Math.max(1.1 / cameraScale, 3 * Math.sqrt(Math.max(0, mass)))});
-  }
-  const data = new Float32Array(source.length * FLOATS_PER_PARTICLE);
-  const colors = new Map();
-  for (let i = 0; i < source.length; i++) {
-    const {entity, p, radius} = source[i];
-    const offset = i * FLOATS_PER_PARTICLE;
+    const offset = index++ * FLOATS_PER_PARTICLE;
     const color = particleColor(entity, colors);
     data[offset] = Number.isFinite(+p.x) ? +p.x : 0;
     data[offset + 1] = Number.isFinite(+p.y) ? +p.y : 0;
-    data[offset + 2] = radius;
+    data[offset + 2] = Math.max(1.1 / scale, 3 * Math.sqrt(Math.max(0, mass)));
     data[offset + 3] = 0;
     data[offset + 4] = color[0];
     data[offset + 5] = color[1];
     data[offset + 6] = color[2];
     data[offset + 7] = 0.55 + Math.min(0.4, Math.max(0, mass) / 35);
   }
-  return {data, count: source.length};
+  return {data, storage, count};
 }
 
 export async function createGpuParticleRenderer(canvas, options = {}) {
@@ -136,6 +137,7 @@ export async function createGpuParticleRenderer(canvas, options = {}) {
   let particleBuffer = null;
   let bindGroup = null;
   let capacity = 0;
+  let packedStorage = new Float32Array(0);
   let width = 1;
   let height = 1;
   let pixelRatio = 1;
@@ -175,20 +177,23 @@ export async function createGpuParticleRenderer(canvas, options = {}) {
 
   function render(entities, isActive, camera) {
     if (lost) throw new Error('WebGPU device was lost');
-    const {data, count} = packParticles(entities, isActive, camera.scale);
-    if (!count) return;
-    ensureCapacity(count);
-    device.queue.writeBuffer(particleBuffer, 0, data);
-    const uniforms = new Float32Array(8);
-    uniforms[0] = width * pixelRatio;
-    uniforms[1] = height * pixelRatio;
-    uniforms[2] = camera.worldWidth;
-    uniforms[3] = camera.worldHeight;
-    uniforms[4] = camera.x * pixelRatio;
-    uniforms[5] = camera.y * pixelRatio;
-    uniforms[6] = camera.scale * pixelRatio;
-    new Uint32Array(uniforms.buffer)[7] = count;
-    device.queue.writeBuffer(uniformBuffer, 0, uniforms);
+    const packed = packParticles(entities, isActive, camera.scale, packedStorage);
+    packedStorage = packed.storage;
+    const {data, count} = packed;
+    if (count) {
+      ensureCapacity(count);
+      device.queue.writeBuffer(particleBuffer, 0, data);
+      const uniforms = new Float32Array(8);
+      uniforms[0] = width * pixelRatio;
+      uniforms[1] = height * pixelRatio;
+      uniforms[2] = camera.worldWidth;
+      uniforms[3] = camera.worldHeight;
+      uniforms[4] = camera.x * pixelRatio;
+      uniforms[5] = camera.y * pixelRatio;
+      uniforms[6] = camera.scale * pixelRatio;
+      new Uint32Array(uniforms.buffer)[7] = count;
+      device.queue.writeBuffer(uniformBuffer, 0, uniforms);
+    }
 
     const encoder = device.createCommandEncoder({label: 'Organoids particle frame'});
     const pass = encoder.beginRenderPass({
@@ -199,9 +204,11 @@ export async function createGpuParticleRenderer(canvas, options = {}) {
         storeOp: 'store',
       }],
     });
-    pass.setPipeline(pipeline);
-    pass.setBindGroup(0, bindGroup);
-    pass.draw(6, count);
+    if (count) {
+      pass.setPipeline(pipeline);
+      pass.setBindGroup(0, bindGroup);
+      pass.draw(6, count);
+    }
     pass.end();
     device.queue.submit([encoder.finish()]);
   }
