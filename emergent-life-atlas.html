@@ -73,11 +73,39 @@ dd{margin:0;overflow-wrap:anywhere;color:#dedacb;font-size:13px}
 @media(max-width:760px){#detail-dock .content{max-height:48vh;padding:12px 16px}#detail-dock .specimen{grid-template-columns:105px minmax(0,1fr);gap:13px}#detail-dock .art{max-height:105px}#detail-dock dl{grid-template-columns:100px minmax(0,1fr)}main{grid-template-columns:1fr}aside{border-right:0;border-bottom:1px solid var(--line);padding:15px 16px}.check-grid.level-grid{max-height:150px}.specimen{grid-template-columns:minmax(0,1fr)}.art{max-width:390px;margin:0 auto 8px}.content{padding:18px}.check-grid{grid-template-columns:repeat(2,minmax(0,1fr))}header:after{margin-left:0}}
 @media(min-width:761px){aside{position:relative;align-self:start;max-height:none;overflow:visible}}
 @media(prefers-reduced-motion:no-preference){button,.item{transition:border-color .14s ease,background .14s ease,box-shadow .14s ease}}
+
+.mode-switch{display:flex;gap:8px;align-items:center;padding:14px clamp(16px,4vw,48px);border-bottom:1px solid var(--line);background:#111914}
+.mode-switch button{border:1px solid #687453;background:#202a22;color:var(--paper);padding:10px 15px;cursor:pointer;font:11px var(--mono);letter-spacing:.08em;text-transform:uppercase}
+.mode-switch button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#171a13}
+#simple-atlas{display:none;min-height:calc(100vh - 180px);padding:clamp(20px,5vw,60px);position:relative}
+body.simple-mode #detail-dock,body.simple-mode main{display:none}
+body.simple-mode #simple-atlas{display:block}
+.simple-heading{max-width:900px;margin:0 auto 28px;text-align:center}
+.simple-heading .level-kicker{font:11px var(--mono);letter-spacing:.18em;color:var(--accent);text-transform:uppercase}
+.simple-heading h2{margin:8px 0;font-size:clamp(28px,5vw,48px)}
+.simple-heading p{color:var(--muted);font:15px/1.6 Georgia,serif}
+.simple-entities{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;padding:0 52px}
+.simple-entity{border:1px solid var(--line);background:linear-gradient(140deg,#202922,#151c17);padding:16px;min-height:115px}
+.simple-entity h3{font:19px Georgia,serif;color:var(--paper);margin:0 0 8px}
+.simple-entity p{font-size:12px;color:#c4c3ad;line-height:1.5;margin:0}
+.level-arrow{position:fixed;z-index:25;top:50%;transform:translateY(-50%);width:44px;height:76px;border:1px solid var(--accent);background:#202a22;color:var(--acid);font:30px/1 var(--mono);cursor:pointer}
+#level-prev{left:8px}
+#level-next{right:8px}
+.level-arrow:disabled{opacity:.28;border-color:var(--line);color:var(--muted);cursor:not-allowed}
+@media(max-width:600px){.simple-entities{grid-template-columns:1fr;padding:0 34px}.level-arrow{width:34px;height:62px}#level-prev{left:2px}#level-next{right:2px}}
+
 </style>
 </head>
 <body>
 <header><h1>ORGANOIDS / EMERGENCE ATLAS</h1><small>Field guide to organised matter, living systems and cosmic models</small></header>
-<div class="intro">A field register of organised matter, living systems and cosmological ideas. Browse by scale, by form, or by how firmly an idea is grounded. The axes are independent: a hypothesis is not a bigger kind of matter simply because it sounds ambitious.</div>
+<div class="intro">A field register of organised matter, living systems and cosmological ideas. Choose the detailed register or a simplified level-by-level view.</div>
+<div class="mode-switch" role="group" aria-label="Atlas display mode"><button type="button" id="detailed-mode" aria-pressed="true">Detailed atlas</button><button type="button" id="simple-mode" aria-pressed="false">Simplified level view</button></div>
+<section id="simple-atlas" aria-label="Simplified level browser">
+<div class="simple-heading"><div class="level-kicker" id="simple-level-kicker">LEVEL 0 / 30</div><h2 id="simple-level-title">Fields</h2><p id="simple-level-description"></p></div>
+<div class="simple-entities" id="simple-entities"></div>
+</section>
+<button type="button" class="level-arrow" id="level-prev" aria-label="Previous emergence level" disabled>‹</button>
+<button type="button" class="level-arrow" id="level-next" aria-label="Next emergence level">›</button>
 <section id="detail-dock" aria-label="Selected entity information">
 <button type="button" class="detail-toggle" id="detail-toggle" aria-expanded="true" aria-controls="detail">SPECIMEN / SELECTED ENTITY</button>
 <div class="content" aria-live="polite">
@@ -435,6 +463,29 @@ const E=[
 ];
 const LEVELS={0:{label:"Fields",description:"Fundamental fields and field degrees of freedom."},1:{label:"Elementary particles",description:"Elementary fermions and bosons: excitations associated with fundamental fields."},2:{label:"Composite subatomic particles",description:"Hadrons and bound nuclear constituents assembled from quarks and gluons."},3:{label:"Atoms and elements",description:"Atomic species classified by proton number, with isotopes and ions as variants."},4:{label:"Complex molecules",description:"Covalently organised molecular structures, polymers and information-bearing macromolecules."},5:{label:"Prebiotic building blocks",description:"Simple biological and prebiotic entities, including amphiphiles and self-organising chemical assemblies."},6:{label:"Protocells",description:"Bounded chemical systems coupling compartments with internal reaction networks."},7:{label:"Cells",description:"Self-maintaining cellular systems with metabolism, heredity and regulated boundaries."},8:{label:"Colonial organisation",description:"Connected or aggregating multicellular and colonial forms."},9:{label:"Tissues",description:"Spatially organised cell populations with specialised, coordinated functions."},10:{label:"Organisms and systems",description:"Integrated individuals, body plans and organ systems."},11:{label:"Ecological organisation",description:"Populations, communities, habitats and ecosystem-scale structures."},12:{label:"Planetary biosphere",description:"The integrated planetary-scale living system and its coupling to atmosphere, oceans, land, rocks and global biogeochemical processes."},13:{label:"Planetary systems",description:"The coupled physical and chemical subsystems of a planet, including its atmosphere, oceans, interior, climate and magnetic environment."},14:{label:"Stellar systems",description:"Stars and their gravitationally organised planetary systems, disks, satellites and surrounding stellar environments."},15:{label:"Galactic systems",description:"Large-scale gravitational and material systems comprising stars, interstellar matter and galactic structures."},16:{label:"Galaxy groups",description:"Gravitationally bound associations of galaxies and their shared dark-matter and hot-gas environments."},17:{label:"Galaxy clusters",description:"Massive gravitationally bound systems containing hundreds to thousands of galaxies, hot plasma and dark matter."},18:{label:"Superclusters",description:"Large associations of galaxy groups and clusters. Many are not fully gravitationally bound and continue to expand with cosmic expansion."},19:{label:"Cosmic web",description:"The filamentary, sheet-like and node-like large-scale distribution of matter, separated by vast underdense voids."},20:{label:"Observable universe",description:"The region from which signals have had time to reach an observer since the early hot universe; its boundary is an observational horizon, not a physical edge."},21:{label:"Universe",description:"The totality of spacetime, matter, energy and physical fields. Its full spatial extent may exceed the observable region and is not currently known."},22:{label:"Multiverse hypotheses",description:"Speculative frameworks proposing multiple universes or causally disconnected domains. These are not established observationally and may not form one physical hierarchy."},23:{label:"Inflationary multiverse",description:"Eternal and stochastic inflation models that can generate many causally disconnected expanding regions."},24:{label:"Vacuum landscapes",description:"Proposals in which many possible low-energy vacuum states or effective laws arise from a deeper theory."},25:{label:"Higher-dimensional cosmologies",description:"Models in which our observable spacetime is embedded in, coupled to or emerges from a higher-dimensional structure."},26:{label:"Quantum cosmological totality",description:"Frameworks applying quantum theory to the universe as a whole, including branching descriptions and proposed universal quantum states."},27:{label:"Computational and holographic cosmologies",description:"Proposals treating physical reality as information-theoretic, computational or encoded by lower-dimensional descriptions."},28:{label:"Mathematical and modal reality",description:"Philosophical and mathematical proposals in which physical universes are instances of mathematical structures or possible-world domains."},29:{label:"Meta-cosmological ensembles",description:"Higher-order descriptions whose members are entire cosmological models, multiverse proposals or spaces of possible laws."},30:{label:"Ontological limit concepts",description:"Boundary concepts describing maximal totality, unrestricted possibility and the limits of any proposed hierarchy; these are not established physical structures."}};
 for(const entry of E){if(!Number.isInteger(entry.level)||entry.level<0||entry.level>30)throw new Error("Invalid emergence level: "+entry.id);}
+
+
+let simpleLevel=0;
+const detailedMode=$("detailed-mode"),simpleMode=$("simple-mode");
+function setAtlasMode(simple){
+ document.body.classList.toggle("simple-mode",simple);
+ detailedMode.setAttribute("aria-pressed",String(!simple));
+ simpleMode.setAttribute("aria-pressed",String(simple));
+ if(simple)renderSimpleLevel();
+}
+function renderSimpleLevel(){
+ const level=LEVELS[simpleLevel],entries=E.filter(e=>e.level===simpleLevel);
+ $("simple-level-kicker").textContent="LEVEL "+simpleLevel+" / "+(Object.keys(LEVELS).length-1);
+ $("simple-level-title").textContent=level.label;
+ $("simple-level-description").textContent=level.description;
+ $("simple-entities").innerHTML=entries.length?entries.map(e=>'<article class="simple-entity"><h3>'+esc(e.name)+'</h3><p>'+esc(e.summary)+'</p></article>').join(""):'<p class="hint">No registered entities at this level yet.</p>';
+ $("level-prev").disabled=simpleLevel===0;
+ $("level-next").disabled=simpleLevel===Object.keys(LEVELS).length-1;
+}
+detailedMode.addEventListener("click",()=>setAtlasMode(false));
+simpleMode.addEventListener("click",()=>setAtlasMode(true));
+$("level-prev").addEventListener("click",()=>{if(simpleLevel>0){simpleLevel--;renderSimpleLevel()}});
+$("level-next").addEventListener("click",()=>{if(simpleLevel<Object.keys(LEVELS).length-1){simpleLevel++;renderSimpleLevel()}});
 
 const $=id=>document.getElementById(id);
 const stages=[...new Set(E.map(e=>e.stage))].sort((a,b)=>a.localeCompare(b));
