@@ -156,3 +156,22 @@ test("nearby translated proteins can organise into a catalytic network",()=>{
   assert.equal(network.properties.memberCount,2);
   assert.equal(runtime.store.descendants(network.id).filter(id=>runtime.store.get(id)?.type==="protein").length,2);
 });
+
+
+test("forward and reverse bond rates share one activation barrier and bond energy",()=>{
+  const runtime=createRuntime(),biology=new EmergenceProgression(runtime,{seed:71});
+  biology.create("atom",{x:20,y:20,atomicNumber:6,elementSymbol:"C",mass:12},.2);
+  biology.create("atom",{x:24,y:20,atomicNumber:1,elementSymbol:"H",mass:1},.2);
+  assert.equal(biology.formChemicalBonds({types:["atom"],radius:6,rate:100,dt:1,energyCost:0,activationEnergy:.003,bondEnergy:.02}),1);
+  const link=runtime.store.activeLinks.find(edge=>edge.type==="bond");
+  assert.ok(link);
+  assert.equal(link.properties.activationEnergy,.003);
+  assert.equal(link.properties.bondEnergy,.02);
+  assert.ok(link.properties.attemptRate>0);
+  assert.equal(biology.breakChemicalBonds({rate:100,dt:100,activationEnergy:.9,bondEnergy:.9}),1);
+  const event=biology.events.at(-1);
+  assert.equal(event.type,"bond-dissociation");
+  assert.equal(event.properties.activationEnergy,.003);
+  assert.equal(event.properties.reverseBarrier,.023);
+  assert.equal(event.properties.attemptRate,link.properties.attemptRate);
+});
