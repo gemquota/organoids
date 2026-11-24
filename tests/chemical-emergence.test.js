@@ -55,3 +55,25 @@ test("polymerisation can pay its activation cost from the combined monomer pool"
   assert.ok(Math.abs(polymer.energy-.01)<1e-9);
   assert.equal(runtime.energy.audit(runtime.store,.06).balanced,true);
 });
+
+test("chemical bonds can dissociate under thermal activation while conserving energy",()=>{
+  const runtime=createRuntime(),biology=new EmergenceProgression(runtime,{seed:17});
+  const a=biology.create("atom",{x:20,y:20,atomicNumber:6,elementSymbol:"C",mass:12,valence:4,electronegativity:2.55,heatCapacity:1},.2);
+  const b=biology.create("atom",{x:23,y:20,atomicNumber:1,elementSymbol:"H",mass:1,valence:1,electronegativity:2.2,heatCapacity:1},.2);
+  assert.equal(biology.formChemicalBonds({types:["atom"],radius:5,rate:100,dt:1,energyCost:.01,bondEnergy:.02,activationEnergy:0}),1);
+  const bond=runtime.store.activeLinks.find(link=>link.type==="bond");
+  assert.equal(bond.properties.bondEnergy,.02);
+  assert.equal(biology.breakChemicalBonds({rate:100,dt:1,activationEnergy:.01}),1);
+  assert.equal(runtime.store.activeLinks.filter(link=>link.type==="bond").length,0);
+  assert.ok(a.energy<.2&&b.energy<.2);
+  assert.equal(runtime.energy.audit(runtime.store,.4).balanced,true);
+});
+
+test("chemical bonds remain intact when the reactants cannot fund dissociation",()=>{
+  const runtime=createRuntime(),biology=new EmergenceProgression(runtime,{seed:19});
+  const a=biology.create("atom",{x:20,y:20,atomicNumber:6,elementSymbol:"C",mass:12,valence:4,electronegativity:2.55,heatCapacity:1},.02);
+  const b=biology.create("atom",{x:23,y:20,atomicNumber:1,elementSymbol:"H",mass:1,valence:1,electronegativity:2.2,heatCapacity:1},.02);
+  assert.equal(biology.formChemicalBonds({types:["atom"],radius:5,rate:100,dt:1,energyCost:0,bondEnergy:.05,activationEnergy:0}),1);
+  assert.equal(biology.breakChemicalBonds({rate:100,dt:1,activationEnergy:.01}),0);
+  assert.equal(runtime.store.activeLinks.filter(link=>link.type==="bond").length,1);
+});

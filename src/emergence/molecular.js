@@ -49,7 +49,7 @@ export const methods = {
         const kind=isAtom?(electronegativityDelta>1.7?'ionic':electronegativityDelta>.8?'polar-covalent':'covalent'):'complementary';
         const paidA=availableEnergy>0?Math.min(Math.max(0,a.energy),energyCost*Math.max(0,a.energy)/availableEnergy):0;
         const paidB=energyCost-paidA;
-        const actions=[{op:'link',from:a.id,to:b.id,type:'bond',properties:{kind,order,distance,equilibriumDistance:optimal,electronegativityDelta,affinity,energy:energyCost}}];
+        const actions=[{op:'link',from:a.id,to:b.id,type:'bond',properties:{kind,order,distance,equilibriumDistance:optimal,electronegativityDelta,affinity,energy:energyCost,bondEnergy:Math.max(0,finite(options.bondEnergy,.001))}}];
         if(paidA>0)actions.push({op:'dissipate',id:a.id,amount:paidA});
         if(paidB>0)actions.push({op:'dissipate',id:b.id,amount:paidB});
         const result=this.store.transact(actions,{energy:this.energy,fields:this.energy.fields});
@@ -62,6 +62,37 @@ export const methods = {
       }
     }
     return formed;
+  },
+  breakChemicalBonds(options={}) {
+    const rate=Math.max(0,finite(options.rate,.04));
+    const dt=Math.max(0,finite(options.dt,1));
+    const activationEnergy=Math.max(0,finite(options.activationEnergy,.004));
+    if(!rate||!dt)return 0;
+    let broken=0;
+    for(const link of [...this.store.activeLinks]) {
+      if(link.type!=="bond")continue;
+      const a=this.store.get(link.a),b=this.store.get(link.b);
+      if(!a||!b||a.state!=="active"||b.state!=="active"||a.parent||b.parent)continue;
+      const pa=a.properties,pb=b.properties;
+      const heatA=Math.max(.001,finite(pa.heatCapacity,1)),heatB=Math.max(.001,finite(pb.heatCapacity,1));
+      const temperature=(Math.max(0,a.energy)/heatA+Math.max(0,b.energy)/heatB)*.5;
+      const bondEnergy=Math.max(0,finite(link.properties?.bondEnergy,finite(options.bondEnergy,.001)));
+      const cost=activationEnergy+bondEnergy;
+      const available=Math.max(0,a.energy)+Math.max(0,b.energy);
+      if(available+1e-12<cost)continue;
+      const probability=1-Math.exp(-rate*Math.exp(-activationEnergy/Math.max(.02,temperature+.05))*dt);
+      if(this.rng.next()>probability)continue;
+      const paidA=available>0?Math.min(Math.max(0,a.energy),cost*Math.max(0,a.energy)/available):0;
+      const paidB=cost-paidA;
+      const actions=[{op:"unlink",from:a.id,to:b.id,type:"bond"}];
+      if(paidA>0)actions.push({op:"dissipate",id:a.id,amount:paidA});
+      if(paidB>0)actions.push({op:"dissipate",id:b.id,amount:paidB});
+      const result=this.store.transact(actions,{energy:this.energy,fields:this.energy.fields});
+      if(!result.ok)continue;
+      this._record("bond-dissociation",{parents:[a.id,b.id],relation:"bond",properties:{kind:link.properties?.kind||"covalent",order:finite(link.properties?.order,1),bondEnergy,activationEnergy,energy:cost}});
+      broken++;
+    }
+    return broken;
   },
   formMolecules(options={}) {
     const types=options.types||['particle'],min=Math.max(2,options.minSize||2),groups=this._bondComponents(types).filter(g=>g.length>=min);
@@ -251,12 +282,13 @@ export const methods = {
     const organic=this.assembleOrganicMolecules({radius:finite(options.organicRadius,finite(options.radius,20))});
     const monomers=this.assembleNucleobaseMonomers({radius:finite(options.monomerRadius,finite(options.radius,20))});
     const water=this.assembleWater({radius:finite(options.waterRadius,finite(options.radius,18))});
-    const monomerBonds=this.formChemicalBonds({types:['monomer'],radius:finite(options.bondRadius,13),rate:finite(options.bondRate,.22),dt:finite(options.dt,1),energyCost:finite(options.bondEnergyCost,.0001),activationEnergy:finite(options.activationEnergy,.002)});
+    const bondDissociations=this.breakChemicalBonds({rate:finite(options.bondBreakRate,.002),dt:finite(options.dt,1),activationEnergy:finite(options.bondBreakActivationEnergy,.004),bondEnergy:finite(options.bondEnergy,.001)});
+    const monomerBonds=this.formChemicalBonds({types:['monomer'],radius:finite(options.bondRadius,13),rate:finite(options.bondRate,.22),dt:finite(options.dt,1),energyCost:finite(options.bondEnergyCost,.0001),activationEnergy:finite(options.activationEnergy,.002),bondEnergy:finite(options.bondEnergy,.001)});
     const polymers=this.polymerize({monomerTypes:['monomer'],minLength:3,energyCost:finite(options.polymerEnergyCost,.002)});
     const bonds=this.formChemicalBonds({types:['atom'],radius:finite(options.bondRadius,13),rate:finite(options.bondRate,.22),dt:finite(options.dt,1),energyCost:finite(options.bondEnergyCost,.0001),activationEnergy:finite(options.activationEnergy,.002)});
     const molecules=this.formMolecules({types:['atom'],minSize:2});
     const proteins=this.translateAllRNA(options),networks=this.assembleAutocatalyticNetworks(options),complexes=this.assembleMacromolecularComplexes(options);
-    return{elements,bonds,monomerBonds,molecules,water,organic,lipids,monomers,polymers,proteins:proteins.length,networks,complexes};
+    return{elements,bonds,bondDissociations,monomerBonds,molecules,water,organic,lipids,monomers,polymers,proteins:proteins.length,networks,complexes};
   },
   assembleMacromolecularComplexes(options={}) {
     const rnas=[...this.store.entities.values()].filter(e=>e.type==='polymer'&&e.state==='active'&&!e.parent),proteins=[...this.store.entities.values()].filter(e=>e.type==='protein'&&e.state==='active'&&!e.parent),radius=Math.max(.01,finite(options.radius,28));let formed=0;
