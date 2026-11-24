@@ -12,7 +12,7 @@ export const methods = {
     const types=new Set(options.types||['monomer']),radius=Math.max(.001,finite(options.radius,13));
     const rate=Math.max(0,finite(options.rate,.22)),dt=Math.max(0,finite(options.dt,1));
     const energyCost=Math.max(0,finite(options.energyCost,.0001)),activation=Math.max(0,finite(options.activationEnergy,.002));
-    const profiles=new Map([[1,{valence:1,electronegativity:2.2,radius:2.1}],[2,{valence:0,electronegativity:0,radius:1.5}],[3,{valence:1,electronegativity:.98,radius:3.2}],[4,{valence:2,electronegativity:1.57,radius:2.5}],[5,{valence:3,electronegativity:2.04,radius:2.1}],[6,{valence:4,electronegativity:2.55,radius:1.9}],[7,{valence:3,electronegativity:3.04,radius:1.8}],[8,{valence:2,electronegativity:3.44,radius:1.7}],[9,{valence:1,electronegativity:3.98,radius:1.6}],[10,{valence:0,electronegativity:0,radius:1.5}]]);
+    const profiles=new Map([[1,{valence:1,electronegativity:2.2,radius:2.1}],[2,{valence:0,electronegativity:0,radius:1.5}],[3,{valence:1,electronegativity:.98,radius:3.2}],[4,{valence:2,electronegativity:1.57,radius:2.5}],[5,{valence:3,electronegativity:2.04,radius:2.1}],[6,{valence:4,electronegativity:2.55,radius:1.9}],[7,{valence:3,electronegativity:3.04,radius:1.8}],[8,{valence:2,electronegativity:3.44,radius:1.7}],[9,{valence:1,electronegativity:3.98,radius:1.6}],[10,{valence:0,electronegativity:0,radius:1.5}],[11,{valence:1,electronegativity:.93,radius:2.3}],[12,{valence:2,electronegativity:1.31,radius:1.7}],[13,{valence:3,electronegativity:1.61,radius:1.8}],[14,{valence:4,electronegativity:1.9,radius:2.1}],[15,{valence:5,electronegativity:2.19,radius:2.1}],[16,{valence:2,electronegativity:2.58,radius:1.9}],[17,{valence:1,electronegativity:3.16,radius:1.8}],[18,{valence:0,electronegativity:0,radius:1.8}]]);
     const entities=[...this.store.entities.values()].filter(e=>e.state==='active'&&!e.parent&&types.has(e.type));
     const atoms=entities.filter(e=>e.type==='atom'),monomers=entities.filter(e=>e.type==='monomer');
     const index=this.runtime.spatial.rebuild(entities),degree=new Map(entities.map(e=>[e.id,0])),roots=new Map(entities.map(e=>[e.id,e.id]));
@@ -102,7 +102,7 @@ export const methods = {
       const members=ids.map(id=>this.store.get(id)).filter(Boolean);
       if(members.length<min)continue;
       const counts=new Map();
-      for(const e of members){const symbol=e.properties.elementSymbol||({1:'H',2:'He',3:'Li',4:'Be',5:'B',6:'C',7:'N',8:'O',9:'F',10:'Ne'})[e.properties.atomicNumber]||'X';counts.set(symbol,(counts.get(symbol)||0)+1)}
+      for(const e of members){const symbol=e.properties.elementSymbol||({1:'H',2:'He',3:'Li',4:'Be',5:'B',6:'C',7:'N',8:'O',9:'F',10:'Ne',11:'Na',12:'Mg',13:'Al',14:'Si',15:'P',16:'S',17:'Cl',18:'Ar'})[e.properties.atomicNumber]||'X';counts.set(symbol,(counts.get(symbol)||0)+1)}
       const order=[...counts.keys()].sort((x,y)=>(x==='C'?-2:x==='H'?-1:0)-(y==='C'?-2:y==='H'?-1:0)||x.localeCompare(y));
       const formula=order.map(symbol=>symbol+(counts.get(symbol)>1?counts.get(symbol):'')).join('');
       const mass=members.reduce((sum,e)=>sum+Math.max(0,finite(e.properties.mass,1)),0)||members.length;
@@ -272,6 +272,73 @@ export const methods = {
     }
     return formed;
   },
+  assembleRibose(options={}) {
+    const atoms=[...this.store.entities.values()].filter(e=>e.type==='atom'&&e.state==='active'&&!e.parent);
+    const radius=Math.max(.01,finite(options.radius,18)),used=new Set();
+    const available=number=>atoms.filter(e=>!e.parent&&!used.has(e.id)&&e.properties.atomicNumber===number);
+    const nearest=(pool,x,y,count)=>pool.slice().sort((a,b)=>Math.hypot(finite(a.properties.x)-x,finite(a.properties.y)-y)-Math.hypot(finite(b.properties.x)-x,finite(b.properties.y)-y)).slice(0,count);
+    let formed=0;
+    for(const anchor of available(6)) {
+      if(anchor.parent||used.has(anchor.id))continue;
+      const x0=finite(anchor.properties.x),y0=finite(anchor.properties.y);
+      const carbons=[anchor,...nearest(available(6).filter(e=>e.id!==anchor.id),x0,y0,4)];
+      if(carbons.length!==5)continue;
+      const cx=carbons.reduce((sum,e)=>sum+finite(e.properties.x),0)/5,cy=carbons.reduce((sum,e)=>sum+finite(e.properties.y),0)/5;
+      const oxygens=nearest(available(8),cx,cy,5),hydrogens=nearest(available(1),cx,cy,10);
+      if(oxygens.length!==5||hydrogens.length!==10)continue;
+      const members=[...carbons,...oxygens,...hydrogens],x=members.reduce((sum,e)=>sum+finite(e.properties.x),0)/members.length,y=members.reduce((sum,e)=>sum+finite(e.properties.y),0)/members.length;
+      if(members.some(e=>Math.hypot(finite(e.properties.x)-x,finite(e.properties.y)-y)>radius))continue;
+      const mass=members.reduce((sum,e)=>sum+Math.max(0,finite(e.properties.mass)),0);
+      const actions=[{op:'create',type:'sugar',properties:{x,y,mass,formula:'C5H10O5',sugarKind:'ribose',carbonCount:5,hydroxylGroups:4,catalogueId:'sugars',name:'Ribose',categoryId:'chemistry',catalogueColor:'#e8bd77'},energy:0,as:'sugar'},...members.map(e=>({op:'compose',parent:{ref:'sugar'},child:e.id}))];
+      for(const e of members)if(e.energy>0)actions.push({op:'transfer',from:e.id,to:{ref:'sugar'},amount:e.energy});
+      const result=this.store.transact(actions,{energy:this.energy,fields:this.energy.fields});if(!result.ok)continue;
+      for(const e of members)used.add(e.id);
+      this._record('ribose-formation',{parents:members.map(e=>e.id),children:[result.refs.sugar],formula:'C5H10O5'});formed++;
+    }
+    return formed;
+  },
+  assemblePhosphoricAcid(options={}) {
+    const atoms=[...this.store.entities.values()].filter(e=>e.type==='atom'&&e.state==='active'&&!e.parent);
+    const radius=Math.max(.01,finite(options.radius,16)),used=new Set();
+    const available=number=>atoms.filter(e=>!e.parent&&!used.has(e.id)&&e.properties.atomicNumber===number);
+    const nearest=(pool,x,y,count)=>pool.slice().sort((a,b)=>Math.hypot(finite(a.properties.x)-x,finite(a.properties.y)-y)-Math.hypot(finite(b.properties.x)-x,finite(b.properties.y)-y)).slice(0,count);
+    let formed=0;
+    for(const phosphorus of available(15)) {
+      if(phosphorus.parent||used.has(phosphorus.id))continue;
+      const x0=finite(phosphorus.properties.x),y0=finite(phosphorus.properties.y),oxygen=nearest(available(8),x0,y0,4);
+      if(oxygen.length!==4)continue;
+      const core=[phosphorus,...oxygen],cx=core.reduce((sum,e)=>sum+finite(e.properties.x),0)/5,cy=core.reduce((sum,e)=>sum+finite(e.properties.y),0)/5,hydrogen=nearest(available(1),cx,cy,3);
+      if(hydrogen.length!==3)continue;
+      const members=[...core,...hydrogen],x=members.reduce((sum,e)=>sum+finite(e.properties.x),0)/members.length,y=members.reduce((sum,e)=>sum+finite(e.properties.y),0)/members.length;
+      if(members.some(e=>Math.hypot(finite(e.properties.x)-x,finite(e.properties.y)-y)>radius))continue;
+      const mass=members.reduce((sum,e)=>sum+Math.max(0,finite(e.properties.mass)),0);
+      const actions=[{op:'create',type:'phosphoric-acid',properties:{x,y,mass,formula:'H3PO4',phosphorusCount:1,oxygenCount:4,hydrogenCount:3,charge:0,reactiveSites:2,catalogueId:'phosphates',name:'Phosphoric acid',categoryId:'chemistry',catalogueColor:'#d7a86e'},energy:0,as:'phosphoricAcid'},...members.map(e=>({op:'compose',parent:{ref:'phosphoricAcid'},child:e.id}))];
+      for(const e of members)if(e.energy>0)actions.push({op:'transfer',from:e.id,to:{ref:'phosphoricAcid'},amount:e.energy});
+      const result=this.store.transact(actions,{energy:this.energy,fields:this.energy.fields});if(!result.ok)continue;
+      for(const e of members)used.add(e.id);
+      this._record('phosphoric-acid-formation',{parents:members.map(e=>e.id),children:[result.refs.phosphoricAcid],formula:'H3PO4'});formed++;
+    }
+    return formed;
+  },
+  assembleNucleotidePrecursors(options={}) {
+    const bases=[...this.store.entities.values()].filter(e=>e.type==='monomer'&&e.state==='active'&&!e.parent&&e.properties.polymerRole==='nucleobase-analogue');
+    const sugars=[...this.store.entities.values()].filter(e=>e.type==='sugar'&&e.state==='active'&&!e.parent&&e.properties.sugarKind==='ribose');
+    const phosphates=[...this.store.entities.values()].filter(e=>e.type==='phosphoric-acid'&&e.state==='active'&&!e.parent);
+    const radius=Math.max(.01,finite(options.radius,22));let formed=0;
+    for(const base of bases) {
+      const nearest=(pool)=>pool.filter(e=>!e.parent).sort((a,b)=>Math.hypot(finite(a.properties.x)-finite(base.properties.x),finite(a.properties.y)-finite(base.properties.y))-Math.hypot(finite(b.properties.x)-finite(base.properties.x),finite(b.properties.y)-finite(base.properties.y)))[0];
+      const sugar=nearest(sugars),phosphate=nearest(phosphates);
+      if(!sugar||!phosphate)continue;
+      const parts=[base,sugar,phosphate],x=parts.reduce((sum,e)=>sum+finite(e.properties.x),0)/3,y=parts.reduce((sum,e)=>sum+finite(e.properties.y),0)/3;
+      if(parts.some(e=>Math.hypot(finite(e.properties.x)-x,finite(e.properties.y)-y)>radius))continue;
+      const mass=parts.reduce((sum,e)=>sum+Math.max(0,finite(e.properties.mass)),0),kind=base.properties.monomerKind;
+      const actions=[{op:'create',type:'nucleotide-precursor',properties:{x,y,mass,monomerKind:kind,baseName:base.properties.baseName,formula:'base + ribose + phosphate precursor',polymerRole:'nucleotide-precursor',sugarBackbone:false,sugarKind:'ribose',phosphateGroups:1,backboneType:'uncondensed',baseIdentity:kind,condensationRequired:true,catalogueId:'nucleotides',name:kind+' nucleotide precursor',categoryId:'chemistry',catalogueColor:'#e8bd77'},energy:0,as:'nucleotide'},...parts.map(e=>({op:'compose',parent:{ref:'nucleotide'},child:e.id}))];
+      for(const e of parts)if(e.energy>0)actions.push({op:'transfer',from:e.id,to:{ref:'nucleotide'},amount:e.energy});
+      const result=this.store.transact(actions,{energy:this.energy,fields:this.energy.fields});if(!result.ok)continue;
+      this._record('nucleotide-precursor-association',{parents:parts.map(e=>e.id),children:[result.refs.nucleotide],base:kind,backbone:'uncondensed-precursor'});formed++;
+    }
+    return formed;
+  },
   assembleAmphiphiles(options={}) {
     const atoms=[...this.store.entities.values()].filter(e=>e.type==='atom'&&e.state==='active'&&!e.parent);
     const radius=Math.max(.01,finite(options.radius,20)),used=new Set();
@@ -320,6 +387,9 @@ export const methods = {
     const lipids=this.assembleAmphiphiles({radius:finite(options.amphiphileRadius,finite(options.radius,20))});
     const organic=this.assembleOrganicMolecules({radius:finite(options.organicRadius,finite(options.radius,20))});
     const monomers=this.assembleNucleobaseMonomers({radius:finite(options.monomerRadius,finite(options.radius,20))});
+    const ribose=this.assembleRibose({radius:finite(options.riboseRadius,finite(options.radius,18))});
+    const phosphates=this.assemblePhosphoricAcid({radius:finite(options.phosphateRadius,finite(options.radius,16))});
+    const nucleotidePrecursors=this.assembleNucleotidePrecursors({radius:finite(options.nucleotideRadius,finite(options.radius,22))});
     const water=this.assembleWater({radius:finite(options.waterRadius,finite(options.radius,18))});
     const bondDissociations=this.breakChemicalBonds({rate:finite(options.bondBreakRate,.002),dt:finite(options.dt,1),activationEnergy:finite(options.bondBreakActivationEnergy,.004),bondEnergy:finite(options.bondEnergy,.001)});
     const monomerBonds=this.formChemicalBonds({types:['monomer'],radius:finite(options.bondRadius,13),rate:finite(options.bondRate,.22),dt:finite(options.dt,1),energyCost:finite(options.bondEnergyCost,.0001),activationEnergy:finite(options.activationEnergy,.002),bondEnergy:finite(options.bondEnergy,.001)});
@@ -327,7 +397,7 @@ export const methods = {
     const bonds=this.formChemicalBonds({types:['atom'],radius:finite(options.bondRadius,13),rate:finite(options.bondRate,.22),dt:finite(options.dt,1),energyCost:finite(options.bondEnergyCost,.0001),activationEnergy:finite(options.activationEnergy,.002)});
     const molecules=this.formMolecules({types:['atom'],minSize:2});
     const proteins=this.translateAllRNA(options),networks=this.assembleAutocatalyticNetworks(options),complexes=this.assembleMacromolecularComplexes(options);
-    return{elements,bonds,bondDissociations,monomerBonds,molecules,water,organic,lipids,monomers,polymers,proteins:proteins.length,networks,complexes};
+    return{elements,bonds,bondDissociations,monomerBonds,molecules,water,organic,lipids,monomers,ribose,phosphates,nucleotidePrecursors,polymers,proteins:proteins.length,networks,complexes};
   },
   assembleMacromolecularComplexes(options={}) {
     const rnas=[...this.store.entities.values()].filter(e=>e.type==='polymer'&&e.state==='active'&&!e.parent),proteins=[...this.store.entities.values()].filter(e=>e.type==='protein'&&e.state==='active'&&!e.parent),radius=Math.max(.01,finite(options.radius,28));let formed=0;

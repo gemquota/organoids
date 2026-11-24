@@ -184,3 +184,27 @@ test("nearby translated proteins can organise into a catalytic network",()=>{
   assert.equal(network.properties.memberCount,2);
   assert.equal(runtime.store.descendants(network.id).filter(id=>runtime.store.get(id)?.type==="protein").length,2);
 });
+test("ribose and phosphoric-acid precursors assemble from C/H/O and P/H/O atoms",()=>{
+  const runtime=createRuntime(),biology=new EmergenceProgression(runtime,{seed:73});
+  const add=(x,z,count,mass)=>{for(let i=0;i<count;i++)biology.create("atom",{x:x+(i%4)*.02,y:40+Math.floor(i/4)*.02,atomicNumber:z,elementSymbol:({1:"H",6:"C",7:"N",8:"O",15:"P"})[z],mass});};
+  add(10,6,5,12);add(10,8,5,16);add(10,1,10,1);
+  add(40,6,5,12);add(40,1,5,1);add(40,7,5,14);
+  add(70,15,1,31);add(70,8,4,16);add(70,1,3,1);
+  assert.equal(biology.assembleRibose({radius:5}),1);
+  assert.equal(biology.assembleNucleobaseMonomers({radius:5}),1);
+  assert.equal(biology.assemblePhosphoricAcid({radius:5}),1);
+  const sugar=[...runtime.store.entities.values()].find(e=>e.type==="sugar");
+  const phosphate=[...runtime.store.entities.values()].find(e=>e.type==="phosphoric-acid");
+  assert.equal(sugar.properties.formula,"C5H10O5");
+  assert.equal(runtime.store.descendants(sugar.id).length,20);
+  assert.equal(phosphate.properties.formula,"H3PO4");
+  assert.equal(runtime.store.descendants(phosphate.id).length,8);
+  assert.equal(biology.assembleNucleotidePrecursors({radius:40}),1);
+  const precursor=[...runtime.store.entities.values()].find(e=>e.type==="nucleotide-precursor");
+  assert.ok(precursor);
+  assert.equal(precursor.properties.condensationRequired,true);
+  assert.equal(precursor.properties.sugarBackbone,false);
+  assert.equal(precursor.properties.backboneType,"uncondensed");
+  assert.equal(runtime.store.outgoing(precursor.id,"contains").length,3);
+  assert.equal(biology.polymerize({monomerTypes:["monomer"],minLength:2,energyCost:0}),0);
+});

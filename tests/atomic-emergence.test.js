@@ -284,3 +284,23 @@ test("slow colliding isotopes fuse while preserving both nuclear fragments",()=>
   assert.equal(runtime.store.get(a.isotope.id),undefined);
   assert.equal(runtime.store.get(b.isotope.id),undefined);
 });
+test("nuclear fusion and atomisation support phosphorus with its electron shell",()=>{
+  const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
+  const make=(x,z,n)=>{
+    const properties={x,y:50,mass:z+n,protonCount:z,neutronCount:n,atomicNumber:z,massNumber:z+n,charge:z,formedAt:0};
+    const nucleus=biology.create("atomic-nucleus",properties,0),isotope=biology.create("isotope",properties,0);
+    runtime.store.transact([{op:"compose",parent:isotope.id,child:nucleus.id}]);
+  };
+  make(48,7,8);make(52,8,8);
+  for(let i=0;i<15;i++)biology.create("lepton",{x:50+i*.01,y:50,leptonKind:"electron",charge:-1,mass:.0005},.01);
+  assert.equal(biology.fuseIsotopes({fusionRadius:10,maxFusionSpeed:1,maxAtomicNumber:18,fusionProbability:1}),1);
+  assert.equal(biology.formAtoms({radius:10}),1);
+  const phosphorus=[...runtime.store.entities.values()].find(e=>e.type==="atom");
+  assert.equal(phosphorus.properties.atomicNumber,15);
+  assert.equal(phosphorus.properties.elementSymbol,"P");
+  assert.equal(phosphorus.properties.elementName,"Phosphorus");
+  assert.equal(phosphorus.properties.electronCount,15);
+  assert.equal(phosphorus.properties.valenceElectrons,5);
+  assert.equal(phosphorus.properties.maxCovalentBonds,5);
+  assert.equal(runtime.energy.audit(runtime.store,.15).balanced,true);
+});
