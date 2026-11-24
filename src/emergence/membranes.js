@@ -32,9 +32,41 @@ export const methods = {
     }
     return formed;
   },
-  encapsulateProtocell(membraneId,contents=[],options={}) {
+  assembleMicelleFromLipids(ids,options={}) {
+    const members=[...new Set(ids)].map(id=>this.store.get(id));
+    if(members.length<3||members.some(e=>!e||e.type!=='lipid'||e.state!=='active'||e.parent))throw Error('Micelle assembly requires at least three free lipids');
+    const x=members.reduce((s,e)=>s+finite(e.properties.x),0)/members.length,y=members.reduce((s,e)=>s+finite(e.properties.y),0)/members.length,radius=Math.max(2,finite(options.radius,Math.sqrt(members.length)*1.8));
+    const actions=[{op:'create',type:'micelle',properties:{x,y,radius,amphiphileCount:members.length,hydrophobicCore:true,catalogueId:'micelles',name:'Micelle',categoryId:'selforg',catalogueColor:'#e58b9d'},energy:0,as:'micelle'}];
+    members.forEach((e,i)=>{const angle=2*Math.PI*i/members.length;actions.push({op:'compose',parent:{ref:'micelle'},child:e.id},{op:'set',id:e.id,key:'x',value:x+Math.cos(angle)*radius},{op:'set',id:e.id,key:'y',value:y+Math.sin(angle)*radius},{op:'link',from:e.id,to:members[(i+1)%members.length].id,type:'bond',properties:{micelle:true}})});
+    const result=this.store.transact(actions,{energy:this.energy,fields:this.energy.fields});if(!result.ok)throw result.error;
+    const micelle=this.store.get(result.refs.micelle);this._record('micelle-assembly',{parents:members.map(e=>e.id),children:[micelle.id],count:members.length,radius});return micelle;
+  },
+  selfAssembleMicelles(options={}) {
+    const radius=Math.max(.001,finite(options.radius,12)),minimum=Math.max(3,Math.floor(options.minLipids||3)),maximum=Math.max(minimum,Math.floor(options.maxLipids||7));
+    const lipids=[...this.store.entities.values()].filter(e=>e.type==='lipid'&&e.state==='active'&&!e.parent),index=this.runtime.spatial.rebuild(lipids),adjacency=new Map(lipids.map(e=>[e.id,[]]));
+    for(const a of lipids)for(const b of index.query(a.properties.x,a.properties.y,radius,[]))if(b.id>a.id&&Math.hypot(b.properties.x-a.properties.x,b.properties.y-a.properties.y)<=radius){adjacency.get(a.id).push(b.id);adjacency.get(b.id).push(a.id)}
+    const seen=new Set();let formed=0;
+    for(const lipid of lipids){if(seen.has(lipid.id))continue;const group=[],stack=[lipid.id];seen.add(lipid.id);while(stack.length){const id=stack.pop();group.push(id);for(const next of adjacency.get(id)||[])if(!seen.has(next)){seen.add(next);stack.push(next)}}
+      if(group.length>=minimum&&group.length<=maximum){this.assembleMicelleFromLipids(group,options);formed++}
+    }
+    return formed;
+  },
+  wrapVesicle(membraneId,options={}) {
     const membrane=this.store.get(membraneId);
-    if(!membrane||membrane.type!=='membrane'||membrane.state!=='active'||membrane.parent||!membrane.properties.closed)throw Error('A free closed membrane is required');
+    if(!membrane||membrane.type!=='membrane'||membrane.state!=='active'||membrane.parent||!membrane.properties.closed)throw Error('A free closed membrane is required for vesicle formation');
+    const properties={x:finite(membrane.properties.x),y:finite(membrane.properties.y),radius:finite(membrane.properties.radius,10),permeability:finite(membrane.properties.permeability,.2),closed:true,catalogueId:'vesicles',name:'Lipid vesicle',categoryId:'selforg',catalogueColor:'#e58b9d'};
+    const result=this.store.transact([{op:'create',type:'vesicle',properties,energy:0,as:'vesicle'},{op:'compose',parent:{ref:'vesicle'},child:membrane.id}]);
+    if(!result.ok)throw result.error;
+    const vesicle=this.store.get(result.refs.vesicle);this._record('vesicle-formation',{parents:[membrane.id],children:[vesicle.id]});return vesicle;
+  },
+  formVesiclesFromMembranes() {
+    const membranes=[...this.store.entities.values()].filter(e=>(e.type==='membrane'||e.type==='vesicle')&&e.state==='active'&&!e.parent&&e.properties.closed);let formed=0;
+    for(const membrane of membranes){this.wrapVesicle(membrane.id);formed++}
+    return formed;
+  },
+  encapsulateProtocell(membraneId,contents=[],options={}) {
+    const compartment=this.store.get(membraneId),membrane=compartment?.type==='membrane'?compartment:this.store.descendants(membraneId).map(id=>this.store.get(id)).find(e=>e?.type==='membrane');
+    if(!compartment||!['membrane','vesicle'].includes(compartment.type)||compartment.state!=='active'||compartment.parent||!membrane||!membrane.properties.closed)throw Error('A free closed membrane or vesicle is required');
     const members=[...new Set(contents)].map(id=>this.store.get(id));
     if(members.some(e=>!e||e.state!=='active'||e.parent||e.id===membrane.id))throw Error('Protocell contents must be active, uncontained entities');
     const polymer=members.find(e=>e.type==='polymer');
@@ -45,13 +77,13 @@ export const methods = {
     const properties=this.contracts.defaults('protocell',{x,y,genome,age:0,biomass:Math.max(1,finite(options.biomass,members.length)),permeability:finite(membrane.properties.permeability,.2),lifeStage:'nascent',lineageId:options.lineageId||'emergent'});
     properties.catalogueId='protocells';properties.name='Protocell';properties.categoryId='life';properties.catalogueColor='#8ec6a6';
     this.contracts.assert('protocell',properties);
-    const energySources=[membrane,...members,...this.store.descendants(membrane.id).map(id=>this.store.get(id)).filter(Boolean)];
-    const actions=[{op:'create',type:'protocell',properties,energy:0,as:'cell'},{op:'compose',parent:{ref:'cell'},child:membrane.id},...members.map(e=>({op:'compose',parent:{ref:'cell'},child:e.id}))];
+    const energySources=[compartment,...members,...this.store.descendants(compartment.id).map(id=>this.store.get(id)).filter(Boolean)];
+    const actions=[{op:'create',type:'protocell',properties,energy:0,as:'cell'},{op:'compose',parent:{ref:'cell'},child:compartment.id},...members.map(e=>({op:'compose',parent:{ref:'cell'},child:e.id}))];
     for(const source of energySources)if(source.energy>0)actions.push({op:'transfer',from:source.id,to:{ref:'cell'},amount:source.energy});
     const result=this.store.transact(actions,{energy:this.energy,fields:this.energy.fields});
     if(!result.ok)throw result.error;
     const cell=this.store.get(result.refs.cell);
-    this._record('protocell-formation',{parents:[membrane.id,...members.map(e=>e.id)],children:[cell.id],genome:genome.sequence});
+    this._record('protocell-formation',{parents:[compartment.id,...members.map(e=>e.id)],children:[cell.id],genome:genome.sequence});
     return cell;
   },
   formProtocellsFromAssemblies(options={}) {
