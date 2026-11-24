@@ -70,9 +70,9 @@ export function packMolecularParticles(entities, isActive) {
   for (const entity of source) {
     if (entity.type !== 'atom' || entity.state !== 'active' || entity.parent || !isActive(entity)) continue;
     const p = entity.properties || {};
-    const atomicNumber = Math.floor(Number(p.atomicNumber));
+    const atomicNumber = Number(p.atomicNumber);
     if (!Number.isInteger(entity.id) || entity.id < 0 || entity.id > 0xffffffff ||
-        !Number.isFinite(+p.x) || !Number.isFinite(+p.y) || atomicNumber < 1 || atomicNumber > 118) continue;
+        !Number.isFinite(+p.x) || !Number.isFinite(+p.y) || !Number.isInteger(atomicNumber) || atomicNumber < 1 || atomicNumber > 118) continue;
     data.push(+p.x, +p.y, atomicNumber, entity.id);
     ids.push(entity.id);
   }

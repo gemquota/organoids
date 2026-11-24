@@ -17,6 +17,7 @@ test('packs active, unbound atoms with finite positions and valid atomic numbers
     [3, {id: 3, type: 'atom', state: 'inactive', properties: {x: 1, y: 1, atomicNumber: 1}}],
     [4, {id: 4, type: 'quark', state: 'active', properties: {x: 1, y: 1, atomicNumber: 1}}],
     [5, {id: 5, type: 'atom', state: 'active', properties: {x: NaN, y: 1, atomicNumber: 1}}],
+    [6, {id: 6, type: 'atom', state: 'active', properties: {x: 1, y: 1, atomicNumber: NaN}}],
   ]);
   const packed = packMolecularParticles(entities, active);
   assert.equal(packed.count, 1);
