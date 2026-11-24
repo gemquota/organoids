@@ -466,6 +466,7 @@ const LEVELS={0:{label:"Fields",description:"Fundamental fields and field degree
 for(const entry of E){if(!Number.isInteger(entry.level)||entry.level<0||entry.level>30)throw new Error("Invalid emergence level: "+entry.id);}
 
 
+const $=id=>document.getElementById(id);
 let simpleLevel=0;
 const detailedMode=$("detailed-mode"),simpleMode=$("simple-mode");
 function setAtlasMode(simple){
@@ -488,7 +489,7 @@ simpleMode.addEventListener("click",()=>setAtlasMode(true));
 $("level-prev").addEventListener("click",()=>{if(simpleLevel>0){simpleLevel--;renderSimpleLevel()}});
 $("level-next").addEventListener("click",()=>{if(simpleLevel<Object.keys(LEVELS).length-1){simpleLevel++;renderSimpleLevel()}});
 
-const $=id=>document.getElementById(id);
+
 const stages=[...new Set(E.map(e=>e.stage))].sort((a,b)=>a.localeCompare(b));
 const statusLabels={established:"Established",possible:"Possible",speculative:"Speculative",conceptual:"Conceptual"};
 const statusValues=Object.keys(statusLabels);
