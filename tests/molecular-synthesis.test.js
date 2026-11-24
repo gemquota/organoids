@@ -81,3 +81,18 @@ test("the molecular pass forwards live chemistry parameters to atomic bonding",(
   assert.equal(received.dt,.5);
   assert.equal(received.activationEnergy,.01);
 });
+
+test("organic synthesis searches for a local cluster instead of getting stuck on distant feedstock",()=>{
+  const runtime=createRuntime(),biology=new EmergenceProgression(runtime,{seed:23});
+  biology.create("atom",{x:2,y:2,atomicNumber:6,mass:12});
+  biology.create("atom",{x:50,y:50,atomicNumber:6,mass:12});
+  biology.create("atom",{x:51,y:50,atomicNumber:6,mass:12});
+  for(let i=0;i<5;i++)biology.create("atom",{x:49+i*.5,y:52,atomicNumber:1,mass:1});
+  biology.create("atom",{x:50,y:51,atomicNumber:7,mass:14});
+  for(let i=0;i<2;i++)biology.create("atom",{x:51+i,y:51,atomicNumber:8,mass:16});
+  assert.equal(biology.assembleOrganicMolecules({radius:8}),1);
+  const molecule=[...runtime.store.entities.values()].find(e=>e.type==="organic-molecule");
+  assert.ok(molecule);
+  assert.equal(runtime.store.descendants(molecule.id).length,10);
+  assert.equal(runtime.store.get(1).parent,null);
+});
