@@ -283,6 +283,7 @@ export async function createGpuElectrostatics(device, options = {}) {
 
   function dispatch(entities, isActive, parameters = {}) {
     if (destroyed) throw new Error('Electrostatics compute pipeline was destroyed');
+    if (lastError) throw lastError;
     if (inFlight || pending) return false;
 
     const packed = packElectrostaticParticles(entities, isActive, packedStorage);
