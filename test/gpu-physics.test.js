@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   packElectrostaticParticles,
   applyElectrostaticDeltas,
+  computeElectrostaticDeltasReference,
   ELECTROSTATICS_WGSL,
   INPUT_BYTES,
   OUTPUT_BYTES,
@@ -63,4 +64,37 @@ test('WGSL computes pairwise Coulomb-like velocity deltas on the GPU', () => {
   assert.match(ELECTROSTATICS_WGSL, /@compute @workgroup_size\(64\)/);
   assert.match(ELECTROSTATICS_WGSL, /params\.strength \* product/);
   assert.match(ELECTROSTATICS_WGSL, /deltas\[i\]/);
+});
+
+test('reference electrostatics produces equal-and-opposite acceleration for equal masses', () => {
+  const entities = new Map([
+    [1, {id: 1, state: 'active', properties: {x: 0, y: 0, charge: 1, mass: 1}}],
+    [2, {id: 2, state: 'active', properties: {x: 10, y: 0, charge: -1, mass: 1}}],
+  ]);
+  const {ids, deltas, count} = computeElectrostaticDeltasReference(entities, active, {
+    radius: 20, strength: 3, softening: 2, maxAcceleration: 1, dt: 1,
+  });
+  assert.equal(count, 2);
+  assert.deepEqual(ids, [1, 2]);
+  assert.ok(deltas[0] > 0);
+  assert.ok(deltas[4] < 0);
+  assert.ok(Math.abs(deltas[0] + deltas[4]) < 1e-6);
+  assert.ok(Math.abs(deltas[1]) < 1e-8);
+  assert.ok(Math.abs(deltas[5]) < 1e-8);
+});
+
+test('reference electrostatics repels like charges and respects the interaction radius', () => {
+  const entities = [
+    {id: 1, state: 'active', properties: {x: 0, y: 0, charge: 1, mass: 1}},
+    {id: 2, state: 'active', properties: {x: 10, y: 0, charge: 1, mass: 1}},
+    {id: 3, state: 'active', properties: {x: 100, y: 0, charge: -1, mass: 1}},
+  ];
+  const {deltas, count} = computeElectrostaticDeltasReference(entities, active, {
+    radius: 20, strength: 3, softening: 2, maxAcceleration: 1, dt: 1,
+  });
+  assert.equal(count, 3);
+  assert.ok(deltas[0] < 0);
+  assert.ok(deltas[4] > 0);
+  assert.equal(deltas[8], 0);
+  assert.equal(deltas[9], 0);
 });
