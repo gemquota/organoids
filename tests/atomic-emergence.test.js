@@ -112,3 +112,25 @@ test("composite atomic assembly conserves constituent mass, charge and energy",(
   assert.equal(atom.properties.charge,0);
   assert.equal(runtime.energy.audit(runtime.store,1.38).balanced,true);
 });
+
+
+test("multi-proton nuclei form positive ions and neutralise through later electron capture",()=>{
+  const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
+  const nucleus=biology.create("atomic-nucleus",{x:50,y:50,mass:4,protonCount:2,neutronCount:2,atomicNumber:2,massNumber:4,charge:2},0);
+  const isotope=biology.create("isotope",{x:50,y:50,mass:4,protonCount:2,neutronCount:2,atomicNumber:2,massNumber:4,charge:2},0);
+  runtime.store.transact([{op:"compose",parent:isotope.id,child:nucleus.id}]);
+  biology.create("lepton",{x:51,y:50,leptonKind:"electron",charge:-1,mass:.0005},.05);
+  assert.equal(biology.formAtoms({radius:10}),1);
+  const atom=[...runtime.store.entities.values()].find(e=>e.type==="atom");
+  assert.ok(atom);
+  assert.equal(atom.properties.charge,1);
+  assert.equal(atom.properties.electronCount,1);
+  assert.equal(atom.properties.name,"Helium ion");
+  biology.create("lepton",{x:52,y:50,leptonKind:"electron",charge:-1,mass:.0005},.05);
+  assert.equal(biology.formAtoms({radius:10}),0);
+  assert.equal(atom.properties.charge,0);
+  assert.equal(atom.properties.electronCount,2);
+  assert.equal(atom.properties.name,"Helium atom");
+  assert.equal(runtime.store.descendants(atom.id).filter(id=>runtime.store.get(id)?.type==="lepton").length,2);
+  assert.equal(runtime.energy.audit(runtime.store,.1).balanced,true);
+});

@@ -64,16 +64,38 @@ export const methods={
   },
 
   formAtoms(options={}) {
-    const isotopes=[...this.store.entities.values()].filter(e=>e.type==='isotope'&&active(e)&&!e.parent),electrons=[...this.store.entities.values()].filter(e=>e.type==='lepton'&&e.properties.leptonKind==='electron'&&active(e)&&!e.parent),radius=Math.max(.01,finite(options.radius,24));let formed=0;
-    for(const isotope of isotopes){const count=Math.max(1,Math.floor(finite(isotope.properties.atomicNumber,1))),near=electrons.filter(e=>!e.parent&&Math.hypot(e.properties.x-isotope.properties.x,e.properties.y-isotope.properties.y)<=radius).sort((a,b)=>Math.hypot(a.properties.x-isotope.properties.x,a.properties.y-isotope.properties.y)-Math.hypot(b.properties.x-isotope.properties.x,b.properties.y-isotope.properties.y)).slice(0,count);
-      if(near.length<count)continue;
+    const radius=Math.max(.01,finite(options.radius,24));
+    const electrons=()=>[...this.store.entities.values()].filter(e=>e.type==='lepton'&&e.properties.leptonKind==='electron'&&active(e)&&!e.parent);
+    let formed=0;
+    // Existing positive ions continue capturing electrons instead of becoming
+    // permanently frozen at their first, incomplete electron shell.
+    for(const atom of [...this.store.entities.values()].filter(e=>e.type==='atom'&&active(e)&&!e.parent&&finite(e.properties.charge)>0)) {
+      const need=Math.max(0,Math.floor(finite(atom.properties.charge)));
+      if(!need)continue;
+      const near=electrons().filter(e=>Math.hypot(e.properties.x-atom.properties.x,e.properties.y-atom.properties.y)<=radius)
+        .sort((a,b)=>Math.hypot(a.properties.x-atom.properties.x,a.properties.y-atom.properties.y)-Math.hypot(b.properties.x-atom.properties.x,b.properties.y-atom.properties.y)).slice(0,need);
+      if(!near.length)continue;
+      const count=finite(atom.properties.electronCount)+near.length,charge=finite(atom.properties.atomicNumber)-count;
+      const actions=[...near.map(e=>({op:'compose',parent:atom.id,child:e.id})),{op:'set',id:atom.id,key:'electronCount',value:count},{op:'set',id:atom.id,key:'charge',value:charge},{op:'set',id:atom.id,key:'mass',value:finite(atom.properties.mass)+near.reduce((sum,e)=>sum+finite(e.properties.mass),0)},{op:'set',id:atom.id,key:'name',value:atom.properties.elementName+(charge>0?' ion':' atom')}];
+      for(const e of near)if(e.energy>0)actions.push({op:'transfer',from:e.id,to:atom.id,amount:e.energy});
+      const result=this.store.transact(actions,{energy:this.energy,fields:this.energy.fields});if(!result.ok)throw result.error;
+    }
+    const isotopes=[...this.store.entities.values()].filter(e=>e.type==='isotope'&&active(e)&&!e.parent);
+    for(const isotope of isotopes) {
+      const atomicNumber=Math.max(1,Math.floor(finite(isotope.properties.atomicNumber,1)));
+      const near=electrons().filter(e=>Math.hypot(e.properties.x-isotope.properties.x,e.properties.y-isotope.properties.y)<=radius)
+        .sort((a,b)=>Math.hypot(a.properties.x-isotope.properties.x,a.properties.y-isotope.properties.y)-Math.hypot(b.properties.x-isotope.properties.x,b.properties.y-isotope.properties.y)).slice(0,atomicNumber);
+      // Ionisation is allowed: a nucleus can become a positive ion with one
+      // captured electron, then neutralise incrementally as electrons arrive.
+      if(!near.length)continue;
       const nucleus=this.store.descendants(isotope.id).map(id=>this.store.get(id)).find(e=>e?.type==='atomic-nucleus');if(!nucleus)continue;
-      const element=ELEMENTS[isotope.properties.atomicNumber]||['X','Unknown'],x=finite(isotope.properties.x),y=finite(isotope.properties.y),mass=finite(isotope.properties.mass,finite(nucleus.properties.mass,1))+near.length*.0005;
-      const atomicNumber=isotope.properties.atomicNumber,valenceElectrons=({1:1,2:2,3:1,4:2,5:3,6:4,7:5,8:6,9:7,10:8})[atomicNumber]??0,maxCovalentBonds=({1:1,2:0,3:1,4:2,5:3,6:4,7:3,8:2,9:1,10:0})[atomicNumber]??0,electronegativity=({1:2.2,2:0,3:.98,4:1.57,5:2.04,6:2.55,7:3.04,8:3.44,9:3.98,10:0})[atomicNumber]??0;const properties={x,y,mass,atomicNumber,protonCount:atomicNumber,neutronCount:isotope.properties.neutronCount,massNumber:isotope.properties.massNumber,electronCount:near.length,charge:atomicNumber-near.length,valenceElectrons,valence:maxCovalentBonds,maxCovalentBonds,electronegativity,elementSymbol:element[0],elementName:element[1],catalogueId:'atoms',name:element[1]+' atom',categoryId:'atoms',catalogueColor:'#d6c18b'};
+      const element=ELEMENTS[atomicNumber]||['X','Unknown'],x=finite(isotope.properties.x),y=finite(isotope.properties.y),mass=finite(isotope.properties.mass,finite(nucleus.properties.mass,1))+near.reduce((sum,e)=>sum+finite(e.properties.mass),0);
+      const valenceElectrons=({1:1,2:2,3:1,4:2,5:3,6:4,7:5,8:6,9:7,10:8})[atomicNumber]??0,maxCovalentBonds=({1:1,2:0,3:1,4:2,5:3,6:4,7:3,8:2,9:1,10:0})[atomicNumber]??0,electronegativity=({1:2.2,2:0,3:.98,4:1.57,5:2.04,6:2.55,7:3.04,8:3.44,9:3.98,10:0})[atomicNumber]??0;
+      const properties={x,y,mass,atomicNumber,protonCount:atomicNumber,neutronCount:isotope.properties.neutronCount,massNumber:isotope.properties.massNumber,electronCount:near.length,charge:atomicNumber-near.length,valenceElectrons,valence:maxCovalentBonds,maxCovalentBonds,electronegativity,elementSymbol:element[0],elementName:element[1],catalogueId:'atoms',name:element[1]+(near.length<atomicNumber?' ion':' atom'),categoryId:'atoms',catalogueColor:'#d6c18b'};
       const actions=[{op:'create',type:'atom',properties,energy:0,as:'atom'},{op:'compose',parent:{ref:'atom'},child:isotope.id},...near.map(e=>({op:'compose',parent:{ref:'atom'},child:e.id}))];
       for(const e of [isotope,...near])if(e.energy>0)actions.push({op:'transfer',from:e.id,to:{ref:'atom'},amount:e.energy});
       const result=this.store.transact(actions,{energy:this.energy,fields:this.energy.fields});if(!result.ok)throw result.error;
-      this._record('atom-formation',{parents:[isotope.id,...near.map(e=>e.id)],children:[result.refs.atom],element:element[1],atomicNumber:properties.atomicNumber});formed++;
+      this._record('atom-formation',{parents:[isotope.id,...near.map(e=>e.id)],children:[result.refs.atom],element:element[1],atomicNumber,charge:properties.charge});formed++;
     }
     return formed;
   },

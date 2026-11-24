@@ -30,6 +30,33 @@ export const methods = {
     return pairs;
   },
 
+  applyNuclearAttraction(options={}) {
+    const radius=Math.max(.001,finite(options.radius,120));
+    const range=Math.max(.001,finite(options.range,radius*.4));
+    const strength=Math.max(0,finite(options.strength,.08));
+    const maxForce=Math.max(0,finite(options.maxAcceleration,.04));
+    const dt=Math.max(0,finite(options.dt,1));
+    if(!strength||!dt||!maxForce)return 0;
+    const nucleons=[...this.store.entities.values()].filter(e=>active(e)&&!e.parent&&(e.type==='proton'||e.type==='neutron')&&Number.isFinite(e.properties.x)&&Number.isFinite(e.properties.y));
+    const index=this.runtime.spatial.rebuild(nucleons);
+    let pairs=0;
+    for(const a of nucleons) {
+      const pa=a.properties,ma=Math.max(.001,finite(pa.mass,1));
+      for(const b of index.query(pa.x,pa.y,radius,[])) {
+        if(b.id<=a.id||!active(b)||b.parent)continue;
+        const pb=b.properties,dx=pb.x-pa.x,dy=pb.y-pa.y,distance=Math.hypot(dx,dy);
+        if(distance<1e-9||distance>radius)continue;
+        const mb=Math.max(.001,finite(pb.mass,1));
+        const force=Math.min(maxForce*Math.min(ma,mb),strength*Math.exp(-distance/range));
+        const fx=dx/distance*force,fy=dy/distance*force;
+        pa.vx=finite(pa.vx)+fx/ma*dt;pa.vy=finite(pa.vy)+fy/ma*dt;
+        pb.vx=finite(pb.vx)-fx/mb*dt;pb.vy=finite(pb.vy)-fy/mb*dt;
+        pairs++;
+      }
+    }
+    return pairs;
+  },
+
   exchangeThermalEnergy(options={}) {
     const radius=Math.max(.001,finite(options.radius,24));
     const conductance=clamp(finite(options.conductance,.04));

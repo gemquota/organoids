@@ -37,3 +37,18 @@ test("thermal exchange moves energy down temperature gradients without creating 
   assert.ok(Math.abs(hot.energy+cold.energy-before)<1e-10);
   assert.equal(runtime.energy.audit(runtime.store,10).balanced,true);
 });
+
+
+test("short-range nuclear attraction binds free nucleons with conserved pair momentum",()=>{
+  const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
+  const a=biology.create("proton",{x:40,y:50,vx:0,vy:0,mass:3,charge:1},.1);
+  const b=biology.create("neutron",{x:60,y:50,vx:0,vy:0,mass:3,charge:0},.1);
+  const nucleus=biology.create("atomic-nucleus",{x:80,y:50,mass:3,protonCount:1},0);
+  const bound=biology.create("proton",{x:80,y:50,vx:0,vy:0,mass:3,charge:1},.1);
+  runtime.store.transact([{op:"compose",parent:nucleus.id,child:bound.id}]);
+  const pairs=biology.applyNuclearAttraction({radius:30,range:20,strength:1,maxAcceleration:1,dt:1});
+  assert.equal(pairs,1);
+  assert.ok(a.properties.vx>0&&b.properties.vx<0);
+  assert.equal(bound.properties.vx,0);
+  assert.ok(Math.abs(a.properties.vx*a.properties.mass+b.properties.vx*b.properties.mass)<1e-10);
+});
