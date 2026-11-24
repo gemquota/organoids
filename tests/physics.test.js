@@ -37,3 +37,17 @@ test("thermal exchange moves energy down temperature gradients without creating 
   assert.ok(Math.abs(hot.energy+cold.energy-before)<1e-10);
   assert.equal(runtime.energy.audit(runtime.store,10).balanced,true);
 });
+
+test("thermal exchange uses GPU candidate pairs but keeps energy transfers transactional",()=>{
+  const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
+  const hot=biology.create("particle",{x:40,y:50,heatCapacity:1},10);
+  const cold=biology.create("particle",{x:45,y:50,heatCapacity:2},0);
+  const isolated=biology.create("particle",{x:42,y:50,heatCapacity:1},0);
+  const before=runtime.energy.inventory(runtime.store).total;
+  const moved=biology.exchangeThermalEnergy({radius:20,conductance:.5,dt:1,candidatePairs:[[hot.id,cold.id]]});
+  assert.equal(moved,1);
+  assert.ok(cold.energy>0);
+  assert.equal(isolated.energy,0);
+  assert.ok(Math.abs(runtime.energy.inventory(runtime.store).total-before)<1e-10);
+  assert.equal(runtime.energy.audit(runtime.store,10).balanced,true);
+});
