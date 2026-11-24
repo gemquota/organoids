@@ -7,7 +7,9 @@ Organoids is an artificial-life and emergence sandbox. It explores how organisat
 The GitHub Pages site is deployed from `main`.
 
 - **[Organoids simulation](https://gemquota.github.io/organoids/)** — the main accretion and emergence sandbox.
-- **[Emergent Life Atlas](https://gemquota.github.io/organoids/emergent-life-atlas.html)** — a standalone visual atlas of forms and transitions.
+- **[The Hitchhikers Guide to Emergence](https://gemquota.github.io/organoids/hitchhikers-guide.html)** — the curated field guide, relationship map, scale explorer and searchable entity register.
+- **[Archived Emergent Life Atlas](https://gemquota.github.io/organoids/archive/emergent-life-atlas-exploratory.html)** — the preserved exploratory edition.
+- **[Emergent Life Atlas](https://gemquota.github.io/organoids/emergent-life-atlas.html)** — legacy route retained for compatibility.
 - **[Experiment index](https://gemquota.github.io/organoids/experiments/)** — a directory of the separately hosted interactive experiences and their supporting material.
 
 The current Organoids repository contains two standalone browser experiences: `accretion.html` and `emergent-life-atlas.html`. The reusable experiment harness is a JavaScript module under `src/emergence/experiments.js`, not a third standalone page. The Pages workflow publishes the runtime modules alongside the main simulation so its dynamic import resolves correctly.
