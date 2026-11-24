@@ -206,6 +206,20 @@ test("hydrogen can be captured by a heavier isotope without hydrogen-only fusion
 
 
 
+
+test("fusion probability zero preserves nearby isotopes",()=>{
+  const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
+  for(const x of [48,52]){
+    const properties={x,y:50,mass:2,protonCount:1,neutronCount:1,atomicNumber:1,massNumber:2,charge:1};
+    const nucleus=biology.create("atomic-nucleus",properties,0);
+    const isotope=biology.create("isotope",properties,0);
+    runtime.store.transact([{op:"compose",parent:isotope.id,child:nucleus.id}]);
+  }
+  assert.equal(biology.fuseIsotopes({fusionRadius:10,maxFusionSpeed:1,fusionProbability:0}),0);
+  assert.equal([...runtime.store.entities.values()].filter(e=>e.type==="isotope"&&!e.parent).length,2);
+});
+
+
 test("hydrogen isotopes can enter the fusion pathway when no threshold is imposed",()=>{
   const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
   for(const x of [48,52]){

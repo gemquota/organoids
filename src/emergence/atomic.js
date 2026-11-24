@@ -88,6 +88,7 @@ export const methods={
     const maxSpeed=Math.max(0,finite(options.maxFusionSpeed,1.5));
     const maxAtomicNumber=Number.isFinite(options.maxAtomicNumber)?Math.max(1,Math.floor(options.maxAtomicNumber)):Infinity;
     const minFusionAtomicNumber=Number.isFinite(options.minFusionAtomicNumber)?Math.max(1,Math.floor(options.minFusionAtomicNumber)):1;
+    const fusionProbability=Math.max(0,Math.min(1,finite(options.fusionProbability,1)));
     const isotopes=[...this.store.entities.values()].filter(e=>e.type==='isotope'&&active(e)&&!e.parent);
     const used=new Set();let fused=0;
     for(let i=0;i<isotopes.length;i++) {
@@ -108,7 +109,7 @@ export const methods={
       if(!best)continue;
       const nucleusB=bestNucleus,protonCount=finite(nucleusA.properties.protonCount)+finite(nucleusB.properties.protonCount);
       const neutronCount=finite(nucleusA.properties.neutronCount)+finite(nucleusB.properties.neutronCount);
-      if(protonCount<1||protonCount>maxAtomicNumber)continue;
+      if(protonCount<1||protonCount>maxAtomicNumber||this.rng.next()>fusionProbability)continue;
       const mass=finite(a.properties.mass)+finite(best.properties.mass);
       const x=(finite(a.properties.x)*finite(a.properties.mass)+finite(best.properties.x)*finite(best.properties.mass))/Math.max(.001,mass);
       const y=(finite(a.properties.y)*finite(a.properties.mass)+finite(best.properties.y)*finite(best.properties.mass))/Math.max(.001,mass);
