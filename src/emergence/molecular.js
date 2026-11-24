@@ -144,12 +144,13 @@ export const methods = {
   },
   assembleMolecularMatter(options={}) {
     const elements=this.formElements();
+    // Specific low-complexity products compete for free atoms before the
+    // general bond pass can lock those atoms into arbitrary aggregates.
+    const water=this.assembleWater({radius:finite(options.waterRadius,finite(options.radius,18))});
+    const organic=this.assembleOrganicMolecules({radius:finite(options.organicRadius,finite(options.radius,20))});
     const bonds=this.formChemicalBonds({types:['atom'],radius:finite(options.bondRadius,13),rate:finite(options.bondRate,.22),dt:finite(options.dt,1),energyCost:finite(options.bondEnergyCost,.0001),activationEnergy:finite(options.activationEnergy,.002)});
     const molecules=this.formMolecules({types:['atom'],minSize:2});
     const proteins=this.translateAllRNA(options),complexes=this.assembleMacromolecularComplexes(options);
-    const formed=[...this.store.entities.values()].filter(e=>e.type==='molecule'&&e.state==='active'&&!e.parent);
-    const water=formed.filter(e=>e.properties.formula==='H2O').length;
-    const organic=formed.filter(e=>(e.properties.formula||'').includes('C')).length;
     return{elements,bonds,molecules,water,organic,proteins:proteins.length,complexes};
   },
   assembleMacromolecularComplexes(options={}) {
