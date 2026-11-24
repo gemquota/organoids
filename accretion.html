@@ -69,14 +69,37 @@ addEventListener('unhandledrejection',e=>log('error','Unhandled promise rejectio
 log('info','Debug console initialised',{defaultVisible:true,capacity:400});
 
 
-let W,H,viewW,viewH,cameraX=0,cameraY=0,cameraScale=1,fitScale=1,frame=0,last=0;function resize(){const dpr=Math.min(devicePixelRatio||1,2);viewW=innerWidth;viewH=innerHeight;W=viewW*15;H=viewH*15;fitScale=Math.min(viewW/W,viewH/H);cameraScale=clamp(cameraScale||fitScale,fitScale*.5,fitScale*32);cameraX=(viewW-W*cameraScale)/2;cameraY=(viewH-H*cameraScale)/2;canvas.width=viewW*dpr;canvas.height=viewH*dpr;g.setTransform(dpr,0,0,dpr,0,0)}addEventListener('resize',resize);resize();
-// Browser/page zoom is disabled. Wheel and pinch gestures over the simulation
-// operate on its camera instead, anchored at the pointer or pinch midpoint.
-function zoomAt(x,y,factor){const next=clamp(cameraScale*factor,fitScale*.5,fitScale*32);if(next===cameraScale)return;const wx=(x-cameraX)/cameraScale,wy=(y-cameraY)/cameraScale;cameraScale=next;cameraX=x-wx*cameraScale;cameraY=y-wy*cameraScale}
+let W,H,viewW,viewH,cameraX=0,cameraY=0,cameraScale=1,fitScale=1,frame=0,last=0;
+function clampCamera(){
+  const scaledW=W*cameraScale,scaledH=H*cameraScale;
+  cameraX=scaledW<=viewW?(viewW-scaledW)/2:clamp(cameraX,viewW-scaledW,0);
+  cameraY=scaledH<=viewH?(viewH-scaledH)/2:clamp(cameraY,viewH-scaledH,0);
+}
+function resize(){
+  const dpr=Math.min(devicePixelRatio||1,2);
+  const previousFit=fitScale;
+  viewW=innerWidth;viewH=innerHeight;W=viewW*15;H=viewH*15;
+  fitScale=Math.min(viewW/W,viewH/H);
+  const zoomRatio=previousFit>0?cameraScale/previousFit:1;
+  cameraScale=fitScale*clamp(zoomRatio||1,.5,1);
+  cameraX=(viewW-W*cameraScale)/2;cameraY=(viewH-H*cameraScale)/2;
+  clampCamera();
+  canvas.width=viewW*dpr;canvas.height=viewH*dpr;g.setTransform(dpr,0,0,dpr,0,0)
+}
+addEventListener('resize',resize);resize();
+// Camera zoom is restricted to 0.5x–1x of the fitted world size.
+// The world remains inside the viewport; undersized axes stay centred.
+function zoomAt(x,y,factor){
+  const next=clamp(cameraScale*factor,fitScale*.5,fitScale);
+  if(next===cameraScale)return;
+  const wx=(x-cameraX)/cameraScale,wy=(y-cameraY)/cameraScale;
+  cameraScale=next;cameraX=x-wx*cameraScale;cameraY=y-wy*cameraScale;
+  clampCamera()
+}
 canvas.addEventListener('wheel',e=>{e.preventDefault();zoomAt(e.clientX,e.clientY,Math.exp(-e.deltaY*.0015))},{passive:false});
 const activePointers=new Map();let pinchDistance=0,pinchMidpoint=null;
 canvas.addEventListener('pointerdown',e=>{if(e.pointerType==='touch'){canvas.setPointerCapture(e.pointerId);activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(activePointers.size===2){const p=[...activePointers.values()];pinchDistance=Math.hypot(p[1].x-p[0].x,p[1].y-p[0].y);pinchMidpoint={x:(p[0].x+p[1].x)/2,y:(p[0].y+p[1].y)/2}}} });
-canvas.addEventListener('pointermove',e=>{if(!activePointers.has(e.pointerId))return;activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(activePointers.size===2){const p=[...activePointers.values()],distance=Math.hypot(p[1].x-p[0].x,p[1].y-p[0].y),mid={x:(p[0].x+p[1].x)/2,y:(p[0].y+p[1].y)/2};if(pinchDistance>0){zoomAt(pinchMidpoint.x,pinchMidpoint.y,distance/pinchDistance);cameraX+=mid.x-pinchMidpoint.x;cameraY+=mid.y-pinchMidpoint.y}pinchDistance=distance;pinchMidpoint=mid}});
+canvas.addEventListener('pointermove',e=>{if(!activePointers.has(e.pointerId))return;activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(activePointers.size===2){const p=[...activePointers.values()],distance=Math.hypot(p[1].x-p[0].x,p[1].y-p[0].y),mid={x:(p[0].x+p[1].x)/2,y:(p[0].y+p[1].y)/2};if(pinchDistance>0){zoomAt(pinchMidpoint.x,pinchMidpoint.y,distance/pinchDistance);cameraX+=mid.x-pinchMidpoint.x;cameraY+=mid.y-pinchMidpoint.y;clampCamera()}pinchDistance=distance;pinchMidpoint=mid}});
 function endPointer(e){activePointers.delete(e.pointerId);if(activePointers.size<2){pinchDistance=0;pinchMidpoint=null}}canvas.addEventListener('pointerup',endPointer);canvas.addEventListener('pointercancel',endPointer);canvas.addEventListener('lostpointercapture',endPointer);
 addEventListener('gesturestart',e=>e.preventDefault(),{passive:false});addEventListener('gesturechange',e=>e.preventDefault(),{passive:false});addEventListener('gestureend',e=>e.preventDefault(),{passive:false});
 addEventListener('wheel',e=>{if(e.ctrlKey||e.metaKey)e.preventDefault()},{passive:false});addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&['+','=','-','0'].includes(e.key)){e.preventDefault()}},true);const worldScale=deriveWorldScale(W,H,viewW,viewH),distance=n=>scaleDistance(n,worldScale),velocity=n=>scaleVelocity(n,worldScale);const sim=createRuntime({width:W,height:H,cols:120,rows:68,cellSize:distance(24),constraintIterations:2}),biology=new EmergenceProgression(sim,{seed:20261115});sim.fields.add('stimulus',W*.5,H*.5,.8);sim.interactions.register({id:'long-range-cohesion',a:'*',b:'*',radius:distance(150),strength:.045,mode:'attract'}).register({id:'short-range-exclusion',a:'*',b:'*',radius:distance(10),strength:.28,mode:'repel'});
