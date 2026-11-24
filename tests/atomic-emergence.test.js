@@ -175,6 +175,36 @@ test("isotopes remain fusible during the atomisation window",()=>{
   assert.equal(runtime.energy.audit(runtime.store,.2).balanced,true);
 });
 
+
+test("hydrogen nuclei remain available while heavier isotopes fuse",()=>{
+  const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
+  for(const x of [48,52]){
+    const properties={x,y:50,mass:1,protonCount:1,neutronCount:0,atomicNumber:1,massNumber:1,charge:1};
+    const nucleus=biology.create("atomic-nucleus",properties,0);
+    const isotope=biology.create("isotope",properties,0);
+    runtime.store.transact([{op:"compose",parent:isotope.id,child:nucleus.id}]);
+  }
+  assert.equal(biology.fuseIsotopes({fusionRadius:10,maxFusionSpeed:1,minFusionAtomicNumber:2,maxAtomicNumber:10}),0);
+  assert.equal([...runtime.store.entities.values()].filter(e=>e.type==="isotope"&&!e.parent).length,2);
+});
+
+
+
+test("hydrogen can be captured by a heavier isotope without hydrogen-only fusion",()=>{
+  const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
+  const make=(x,z,n)=>{
+    const properties={x,y:50,mass:z+n,protonCount:z,neutronCount:n,atomicNumber:z,massNumber:z+n,charge:z};
+    const nucleus=biology.create("atomic-nucleus",properties,0);
+    const isotope=biology.create("isotope",properties,0);
+    runtime.store.transact([{op:"compose",parent:isotope.id,child:nucleus.id}]);
+  };
+  make(48,1,0);make(52,2,2);
+  assert.equal(biology.fuseIsotopes({fusionRadius:10,maxFusionSpeed:1,minFusionAtomicNumber:2,maxAtomicNumber:10}),1);
+  const fused=[...runtime.store.entities.values()].find(e=>e.type==="isotope"&&!e.parent);
+  assert.equal(fused.properties.atomicNumber,3);
+});
+
+
 test("nuclear fusion respects the supported element ceiling",()=>{
   const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
   for(const x of [48,52]){

@@ -87,6 +87,7 @@ export const methods={
     const radius=Math.max(.01,finite(options.fusionRadius,finite(options.radius,18)*.55));
     const maxSpeed=Math.max(0,finite(options.maxFusionSpeed,1.5));
     const maxAtomicNumber=Number.isFinite(options.maxAtomicNumber)?Math.max(1,Math.floor(options.maxAtomicNumber)):Infinity;
+    const minFusionAtomicNumber=Number.isFinite(options.minFusionAtomicNumber)?Math.max(1,Math.floor(options.minFusionAtomicNumber)):1;
     const isotopes=[...this.store.entities.values()].filter(e=>e.type==='isotope'&&active(e)&&!e.parent);
     const used=new Set();let fused=0;
     for(let i=0;i<isotopes.length;i++) {
@@ -98,6 +99,7 @@ export const methods={
         const b=isotopes[j];if(used.has(b.id))continue;
         const nucleusB=this.store.outgoing(b.id,'contains').map(id=>this.store.get(id)).find(e=>e?.type==='atomic-nucleus');
         if(!nucleusB)continue;
+        if(finite(nucleusA.properties.protonCount,1)<minFusionAtomicNumber&&finite(nucleusB.properties.protonCount,1)<minFusionAtomicNumber)continue;
         const dx=finite(b.properties.x)-finite(a.properties.x),dy=finite(b.properties.y)-finite(a.properties.y),d=Math.hypot(dx,dy);
         const relativeSpeed=Math.hypot(finite(b.properties.vx)-finite(a.properties.vx),finite(b.properties.vy)-finite(a.properties.vy));
         if(d>radius||relativeSpeed>maxSpeed||d>=bestDistance)continue;
