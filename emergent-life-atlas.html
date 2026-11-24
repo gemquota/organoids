@@ -84,16 +84,27 @@ body.simple-mode #simple-atlas{display:block}
 .simple-heading .level-kicker{font:11px var(--mono);letter-spacing:.18em;color:var(--accent);text-transform:uppercase}
 .simple-heading h2{margin:8px 0;font-size:clamp(28px,5vw,48px)}
 .simple-heading p{color:var(--muted);font:15px/1.6 Georgia,serif}
-.simple-entities{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;padding:0 52px}
-.simple-entity{border:1px solid var(--line);background:linear-gradient(140deg,#202922,#151c17);padding:16px;min-height:115px}
-.simple-entity h3{font:19px Georgia,serif;color:var(--paper);margin:0 0 8px}
-.simple-entity p{font-size:12px;color:#c4c3ad;line-height:1.5;margin:0}
+.simple-browser{max-width:1320px;margin:0 auto;display:grid;grid-template-columns:minmax(150px,220px) minmax(0,1fr);gap:18px;padding:0 48px}
+.simple-entities{display:flex;flex-direction:column;gap:6px;max-height:calc(100vh - 270px);overflow:auto;padding:0 0 12px}
+.simple-entity{width:100%;text-align:left;border:1px solid var(--line);background:linear-gradient(140deg,#202922,#151c17);color:var(--paper);padding:10px 12px;cursor:pointer}
+.simple-entity[aria-pressed=true]{border-color:var(--accent);background:#2a3024;box-shadow:inset 3px 0 var(--accent)}
+.simple-entity strong{display:block;font:15px Georgia,serif;margin:0 0 4px}
+.simple-entity small{display:block;color:var(--muted);font:10px/1.4 var(--mono)}
+.simple-detail{min-width:0;min-height:calc(100vh - 280px);border:1px solid var(--line);background:linear-gradient(145deg,#202922dd,#151c17ee);padding:clamp(16px,3vw,32px)}
+.simple-detail .specimen{grid-template-columns:minmax(180px,min(30vw,330px)) minmax(0,1fr);gap:clamp(18px,3vw,32px)}
+.simple-detail .art{max-width:100%;max-height: min(48vh,420px);object-fit:contain}
+.simple-detail h2{font-size:clamp(25px,3.4vw,40px)}
+.simple-detail .summary{font-size:15px}
+.simple-detail dl{gap:8px 12px}
+.simple-detail dt{font-size:9px}
+.simple-detail dd{font-size:12px}
+.simple-heading{margin-bottom:18px}
 .level-arrow{display:none;position:fixed;z-index:25;top:50%;transform:translateY(-50%);width:44px;height:76px;border:1px solid var(--accent);background:#202a22;color:var(--acid);font:30px/1 var(--mono);cursor:pointer}
 #level-prev{left:8px}
 #level-next{right:8px}
 .level-arrow:disabled{opacity:.28;border-color:var(--line);color:var(--muted);cursor:not-allowed}
 body.simple-mode .level-arrow{display:block}
-@media(max-width:600px){.simple-entities{grid-template-columns:1fr;padding:0 34px}.level-arrow{width:34px;height:62px}#level-prev{left:2px}#level-next{right:2px}}
+@media(max-width:760px){.simple-browser{grid-template-columns:1fr;padding:0 30px}.simple-entities{flex-direction:row;max-height:none;overflow-x:auto;overflow-y:hidden;padding-bottom:8px}.simple-entity{flex:0 0 145px}.simple-detail{min-height:0}.simple-detail .specimen{grid-template-columns:minmax(0,1fr)}.simple-detail .art{max-width:min(100%,320px);margin:0 auto 12px}.simple-detail dl{grid-template-columns:100px minmax(0,1fr)}.level-arrow{width:34px;height:62px}#level-prev{left:2px}#level-next{right:2px}}
 
 </style>
 </head>
@@ -103,7 +114,12 @@ body.simple-mode .level-arrow{display:block}
 <div class="mode-switch" role="group" aria-label="Atlas display mode"><button type="button" id="detailed-mode" aria-pressed="true">Detailed atlas</button><button type="button" id="simple-mode" aria-pressed="false">Simplified level view</button></div>
 <section id="simple-atlas" aria-label="Simplified level browser">
 <div class="simple-heading"><div class="level-kicker" id="simple-level-kicker">LEVEL 0 / 30</div><h2 id="simple-level-title">Fields</h2><p id="simple-level-description"></p></div>
-<div class="simple-entities" id="simple-entities"></div>
+<div class="simple-browser">
+<div class="simple-entities" id="simple-entities" role="group" aria-label="Entities at this level"></div>
+<section class="simple-detail" id="simple-detail" aria-label="Selected entity" aria-live="polite">
+<div class="simple-detail-inner"><p class="hint">Select an entity to inspect it.</p></div>
+</section>
+</div>
 </section>
 <button type="button" class="level-arrow" id="level-prev" aria-label="Previous emergence level" disabled>‹</button>
 <button type="button" class="level-arrow" id="level-next" aria-label="Next emergence level">›</button>
@@ -467,7 +483,7 @@ for(const entry of E){if(!Number.isInteger(entry.level)||entry.level<0||entry.le
 
 
 const $=id=>document.getElementById(id);
-let simpleLevel=0;
+let simpleLevel=0,simpleActive=null;
 const detailedMode=$("detailed-mode"),simpleMode=$("simple-mode");
 function setAtlasMode(simple){
  document.body.classList.toggle("simple-mode",simple);
@@ -480,14 +496,29 @@ function renderSimpleLevel(){
  $("simple-level-kicker").textContent="LEVEL "+simpleLevel+" / "+(Object.keys(LEVELS).length-1);
  $("simple-level-title").textContent=level.label;
  $("simple-level-description").textContent=level.description;
- $("simple-entities").innerHTML=entries.length?entries.map(e=>'<article class="simple-entity"><h3>'+esc(e.name)+'</h3><p>'+esc(e.summary)+'</p></article>').join(""):'<p class="hint">No registered entities at this level yet.</p>';
+ $("simple-entities").innerHTML=entries.length?entries.map(e=>'<button type="button" class="simple-entity" data-simple-id="'+esc(e.id)+'" aria-pressed="'+(e.id===simpleActive)+'"><strong>'+esc(e.name)+'</strong><small>'+esc(statusLabels?.[e.epistemicStatus]||e.epistemicStatus)+'</small></button>').join(""):'<p class="hint">No registered entities at this level yet.</p>';
+ $("simple-entities").querySelectorAll("[data-simple-id]").forEach(b=>b.addEventListener("click",()=>renderSimpleEntity(b.dataset.simpleId)));
+ const current=entries.find(e=>e.id===simpleActive)||entries[0];
+ if(current){simpleActive=current.id;renderSimpleEntity(current.id)}
+ else $("simple-detail").innerHTML='<p class="hint">No registered entities at this level yet.</p>';
  $("level-prev").disabled=simpleLevel===0;
  $("level-next").disabled=simpleLevel===Object.keys(LEVELS).length-1;
 }
+function renderSimpleEntity(id){
+ const e=E.find(v=>v.id===id&&v.level===simpleLevel);if(!e)return;
+ simpleActive=id;
+ const known=e.next.map(id=>E.find(v=>v.id===id)).filter(Boolean);
+ const unknown=e.next.filter(id=>!E.some(v=>v.id===id));
+ const facts=[["Emergence level","Level "+e.level+" · "+LEVELS[e.level].label],["Semantic category",e.stage],["Structure",e.structure],["Energy",e.energy],["Growth",e.growth],["Division",e.division],["Entry kind",e.kind],["Evidence status",statusLabels[e.epistemicStatus]||e.epistemicStatus]];
+ if(known.length)facts.push(["Related entries",known.map(v=>v.name).join(", ")]);
+ if(unknown.length)facts.push(["Possible later forms",unknown.join(", ")+" (not yet in this catalogue)"]);
+ $("simple-detail").innerHTML='<div class="specimen">'+specimenArt(e)+'<div><h2>'+esc(e.name)+'</h2><p class="summary">'+esc(e.summary)+'</p><div class="tags">'+e.cap.map(t=>'<span class="tag">'+esc(t)+'</span>').join("")+'</div><dl>'+facts.map(([a,b])=>'<dt>'+esc(a)+'</dt><dd>'+esc(b)+'</dd>').join("")+'</dl></div></div>';
+ $("simple-entities").querySelectorAll("[data-simple-id]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.simpleId===id)));
+}
 detailedMode.addEventListener("click",()=>setAtlasMode(false));
 simpleMode.addEventListener("click",()=>setAtlasMode(true));
-$("level-prev").addEventListener("click",()=>{if(simpleLevel>0){simpleLevel--;renderSimpleLevel()}});
-$("level-next").addEventListener("click",()=>{if(simpleLevel<Object.keys(LEVELS).length-1){simpleLevel++;renderSimpleLevel()}});
+$("level-prev").addEventListener("click",()=>{if(simpleLevel>0){simpleLevel--;simpleActive=null;renderSimpleLevel()}});
+$("level-next").addEventListener("click",()=>{if(simpleLevel<Object.keys(LEVELS).length-1){simpleLevel++;simpleActive=null;renderSimpleLevel()}});
 
 
 const stages=[...new Set(E.map(e=>e.stage))].sort((a,b)=>a.localeCompare(b));
@@ -505,7 +536,9 @@ function refreshDependentOptions(){
   const counts=new Map();for(const entry of allowed){const key=field(entry);counts.set(key,(counts.get(key)||0)+1)}
   document.querySelectorAll('input[data-group="'+group+'"]').forEach(input=>{
    const count=counts.get(input.value)||0,label=input.closest(".check-option");
-   input.disabled=count===0;label.classList.toggle("is-unavailable",count===0);
+   input.disabled=count===0;
+   if(count===0){selected[group].delete(input.value);input.checked=false}
+   label.hidden=count===0;
    const counter=label.querySelector("[data-count]");if(counter)counter.textContent="("+count+")";
   });
  }
@@ -532,10 +565,10 @@ function select(id){
  render();
 }
 function render(){
+ refreshDependentOptions();
  const q=$("search").value.trim().toLowerCase();
  const list=E.filter(e=>selected.level.has(String(e.level))&&selected.stage.has(e.stage)&&selected.status.has(e.epistemicStatus)&&(!q||[e.name,e.summary,e.structure,e.energy,e.growth,e.division,...e.cap].join(" ").toLowerCase().includes(q)));
  const levelCount=selected.level.size;
- refreshDependentOptions();
  $("level-description").textContent=levelCount===Object.keys(LEVELS).length?"All emergence levels included.":levelCount?levelCount+" of "+Object.keys(LEVELS).length+" levels selected.":"No levels selected.";
  $("list-count").textContent=list.length+" / "+E.length+" entries";
  $("nav").innerHTML=list.map(e=>'<button type="button" class="item" data-id="'+e.id+'" aria-current="'+(e.id===active)+'">'+esc(e.name)+'<small>LEVEL '+e.level+' · '+esc(e.stage)+' · '+esc(statusLabels[e.epistemicStatus]||e.epistemicStatus)+'</small></button>').join("")||'<p class="hint">No matching entries. Re-enable a filter group to restore results.</p>';
