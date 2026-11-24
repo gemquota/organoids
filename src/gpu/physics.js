@@ -10,17 +10,44 @@ struct Particle {
 
 struct Parameters {
   count: u32,
+  gridCols: u32,
+  gridRows: u32,
+  gridCount: u32,
   radius: f32,
   strength: f32,
   softening: f32,
   maxAcceleration: f32,
   dt: f32,
+  cellSize: f32,
   _padding: vec2<f32>,
 };
 
 @group(0) @binding(0) var<storage, read> particles: array<Particle>;
 @group(0) @binding(1) var<storage, read_write> deltas: array<vec4<f32>>;
 @group(0) @binding(2) var<uniform> params: Parameters;
+@group(0) @binding(3) var<storage, read_write> cellHeads: array<atomic<u32>>;
+@group(0) @binding(4) var<storage, read_write> nextParticle: array<u32>;
+
+@compute @workgroup_size(64)
+fn clearCells(@builtin(global_invocation_id) invocation: vec3<u32>) {
+  let cell = invocation.x;
+  if (cell < params.gridCount) {
+    atomicStore(&cellHeads[cell], 0xffffffffu);
+  }
+}
+
+@compute @workgroup_size(64)
+fn insertParticles(@builtin(global_invocation_id) invocation: vec3<u32>) {
+  let i = invocation.x;
+  if (i >= params.count) { return; }
+  let position = max(particles[i].position, vec2<f32>(0.0));
+  let cell = min(
+    vec2<u32>(floor(position / params.cellSize)),
+    vec2<u32>(params.gridCols - 1u, params.gridRows - 1u)
+  );
+  let cellIndex = cell.y * params.gridCols + cell.x;
+  nextParticle[i] = atomicExchange(&cellHeads[cellIndex], i);
+}
 
 @compute @workgroup_size(64)
 fn electrostatics(@builtin(global_invocation_id) invocation: vec3<u32>) {
@@ -31,23 +58,44 @@ fn electrostatics(@builtin(global_invocation_id) invocation: vec3<u32>) {
   let mass = max(0.001, a.mass);
   let radiusSquared = params.radius * params.radius;
   let softeningSquared = params.softening * params.softening;
+  let position = max(a.position, vec2<f32>(0.0));
+  let cell = min(
+    vec2<i32>(floor(position / params.cellSize)),
+    vec2<i32>(i32(params.gridCols - 1u), i32(params.gridRows - 1u))
+  );
   var acceleration = vec2<f32>(0.0, 0.0);
 
-  for (var j = 0u; j < params.count; j = j + 1u) {
-    if (i == j) { continue; }
-    let b = particles[j];
-    let product = a.charge * b.charge;
-    if (abs(product) < 0.000000001) { continue; }
-
-    let displacement = b.position - a.position;
-    let distanceSquared = dot(displacement, displacement);
-    if (distanceSquared > radiusSquared) { continue; }
-
-    let distance = sqrt(distanceSquared);
-    let safeDistance = max(distance, params.softening);
-    let magnitude = params.strength * product / (distanceSquared + softeningSquared);
-    let force = sign(magnitude) * min(params.maxAcceleration * mass, abs(magnitude));
-    acceleration -= displacement / safeDistance * (force / mass);
+  for (var oy = -1; oy <= 1; oy = oy + 1) {
+    for (var ox = -1; ox <= 1; ox = ox + 1) {
+      let neighbor = cell + vec2<i32>(ox, oy);
+      if (neighbor.x < 0 || neighbor.y < 0 ||
+          neighbor.x >= i32(params.gridCols) || neighbor.y >= i32(params.gridRows)) {
+        continue;
+      }
+      let cellIndex = u32(neighbor.y) * params.gridCols + u32(neighbor.x);
+      var j = atomicLoad(&cellHeads[cellIndex]);
+      var traversed = 0u;
+      loop {
+        if (j == 0xffffffffu || traversed >= params.count) { break; }
+        if (j != i) {
+          let b = particles[j];
+          let product = a.charge * b.charge;
+          if (abs(product) >= 0.000000001) {
+            let displacement = b.position - a.position;
+            let distanceSquared = dot(displacement, displacement);
+            if (distanceSquared <= radiusSquared) {
+              let distance = sqrt(distanceSquared);
+              let safeDistance = max(distance, params.softening);
+              let magnitude = params.strength * product / (distanceSquared + softeningSquared);
+              let force = sign(magnitude) * min(params.maxAcceleration * mass, abs(magnitude));
+              acceleration -= displacement / safeDistance * (force / mass);
+            }
+          }
+        }
+        j = nextParticle[j];
+        traversed = traversed + 1u;
+      }
+    }
   }
 
   deltas[i] = vec4<f32>(acceleration * params.dt, 0.0, 0.0);
@@ -107,22 +155,24 @@ export function applyElectrostaticDeltas(store, ids, deltas, isActive) {
 export async function createGpuElectrostatics(device, options = {}) {
   if (!device || device.destroyed) throw new Error('A live WebGPU device is required');
   const shader = device.createShaderModule({label: 'Organoids electrostatics compute', code: ELECTROSTATICS_WGSL});
-  const pipeline = await device.createComputePipelineAsync({
-    label: 'Organoids pairwise electrostatics',
-    layout: 'auto',
-    compute: {module: shader, entryPoint: 'electrostatics'},
-  });
+  const layout = 'auto';
+  const clearPipeline = await device.createComputePipelineAsync({label: 'Clear electrostatics grid', layout, compute: {module: shader, entryPoint: 'clearCells'}});
+  const insertPipeline = await device.createComputePipelineAsync({label: 'Build electrostatics grid', layout, compute: {module: shader, entryPoint: 'insertParticles'}});
+  const forcePipeline = await device.createComputePipelineAsync({label: 'Spatial electrostatics', layout, compute: {module: shader, entryPoint: 'electrostatics'}});
 
   const paramsBuffer = device.createBuffer({
     label: 'Electrostatics parameters',
-    size: 32,
+    size: 48,
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
   });
   let inputBuffer = null;
   let outputBuffer = null;
   let readbackBuffer = null;
+  let nextBuffer = null;
+  let cellBuffer = null;
   let bindGroup = null;
   let capacity = 0;
+  let gridCapacity = 0;
   let packedStorage = new Float32Array(0);
   let pending = null;
   let inFlight = false;
@@ -130,43 +180,53 @@ export async function createGpuElectrostatics(device, options = {}) {
   let dispatches = 0;
   let lastError = null;
 
-  function ensureCapacity(count) {
-    if (count <= capacity) return;
-    const next = Math.max(64, 2 ** Math.ceil(Math.log2(count)));
-    const inputSize = next * INPUT_BYTES;
-    const outputSize = next * OUTPUT_BYTES;
-    if (inputSize > device.limits.maxStorageBufferBindingSize ||
-        outputSize > device.limits.maxStorageBufferBindingSize ||
-        outputSize > device.limits.maxBufferSize) {
-      throw new Error('Electrostatics buffers exceed this GPU device limit');
+  function ensureCapacity(count, gridCount) {
+    let changed = false;
+    if (count > capacity) {
+      const next = Math.max(64, 2 ** Math.ceil(Math.log2(count)));
+      const inputSize = next * INPUT_BYTES;
+      const outputSize = next * OUTPUT_BYTES;
+      const indexSize = next * Uint32Array.BYTES_PER_ELEMENT;
+      if (inputSize > device.limits.maxStorageBufferBindingSize ||
+          outputSize > device.limits.maxStorageBufferBindingSize ||
+          indexSize > device.limits.maxStorageBufferBindingSize ||
+          Math.max(inputSize, outputSize, indexSize) > device.limits.maxBufferSize) {
+        throw new Error('Electrostatics buffers exceed this GPU device limit');
+      }
+      inputBuffer?.destroy();
+      outputBuffer?.destroy();
+      readbackBuffer?.destroy();
+      nextBuffer?.destroy();
+      inputBuffer = device.createBuffer({label: 'Charged particle input', size: inputSize, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST});
+      outputBuffer = device.createBuffer({label: 'Electrostatic velocity deltas', size: outputSize, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC});
+      readbackBuffer = device.createBuffer({label: 'Electrostatic asynchronous readback', size: outputSize, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ});
+      nextBuffer = device.createBuffer({label: 'Spatial grid particle links', size: indexSize, usage: GPUBufferUsage.STORAGE});
+      capacity = next;
+      changed = true;
     }
-    inputBuffer?.destroy();
-    outputBuffer?.destroy();
-    readbackBuffer?.destroy();
-    inputBuffer = device.createBuffer({
-      label: 'Charged particle input',
-      size: inputSize,
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-    });
-    outputBuffer = device.createBuffer({
-      label: 'Electrostatic velocity deltas',
-      size: outputSize,
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
-    });
-    readbackBuffer = device.createBuffer({
-      label: 'Electrostatic asynchronous readback',
-      size: outputSize,
-      usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
-    });
-    capacity = next;
-    bindGroup = device.createBindGroup({
-      layout: pipeline.getBindGroupLayout(0),
-      entries: [
-        {binding: 0, resource: {buffer: inputBuffer}},
-        {binding: 1, resource: {buffer: outputBuffer}},
-        {binding: 2, resource: {buffer: paramsBuffer}},
-      ],
-    });
+    if (gridCount > gridCapacity) {
+      const nextGrid = Math.max(64, 2 ** Math.ceil(Math.log2(gridCount)));
+      const gridBytes = nextGrid * Uint32Array.BYTES_PER_ELEMENT;
+      if (gridBytes > device.limits.maxStorageBufferBindingSize || gridBytes > device.limits.maxBufferSize) {
+        throw new Error('Electrostatics spatial grid exceeds this GPU device limit');
+      }
+      cellBuffer?.destroy();
+      cellBuffer = device.createBuffer({label: 'Electrostatics spatial cell heads', size: gridBytes, usage: GPUBufferUsage.STORAGE});
+      gridCapacity = nextGrid;
+      changed = true;
+    }
+    if (changed) {
+      bindGroup = device.createBindGroup({
+        layout: forcePipeline.getBindGroupLayout(0),
+        entries: [
+          {binding: 0, resource: {buffer: inputBuffer}},
+          {binding: 1, resource: {buffer: outputBuffer}},
+          {binding: 2, resource: {buffer: paramsBuffer}},
+          {binding: 3, resource: {buffer: cellBuffer}},
+          {binding: 4, resource: {buffer: nextBuffer}},
+        ],
+      });
+    }
   }
 
   function consume(store, isActive) {
@@ -190,23 +250,36 @@ export async function createGpuElectrostatics(device, options = {}) {
     const maxAcceleration = Math.max(0, Number.isFinite(parameters.maxAcceleration) ? parameters.maxAcceleration : 0.08);
     const dt = Math.max(0, Number.isFinite(parameters.dt) ? parameters.dt : 1);
 
-    ensureCapacity(packed.count);
+    const worldWidth = Math.max(radius, Number.isFinite(parameters.worldWidth) ? parameters.worldWidth : radius);
+    const worldHeight = Math.max(radius, Number.isFinite(parameters.worldHeight) ? parameters.worldHeight : radius);
+    const gridCols = Math.max(1, Math.ceil(worldWidth / radius));
+    const gridRows = Math.max(1, Math.ceil(worldHeight / radius));
+    const gridCount = gridCols * gridRows;
+    ensureCapacity(packed.count, gridCount);
     device.queue.writeBuffer(inputBuffer, 0, packed.data);
-    const uniforms = new ArrayBuffer(32);
+    const uniforms = new ArrayBuffer(48);
     const f = new Float32Array(uniforms);
     const u = new Uint32Array(uniforms);
     u[0] = packed.count;
-    f[1] = radius;
-    f[2] = strength;
-    f[3] = softening;
-    f[4] = maxAcceleration;
-    f[5] = dt;
+    u[1] = gridCols;
+    u[2] = gridRows;
+    u[3] = gridCount;
+    f[4] = radius;
+    f[5] = strength;
+    f[6] = softening;
+    f[7] = maxAcceleration;
+    f[8] = dt;
+    f[9] = radius;
     device.queue.writeBuffer(paramsBuffer, 0, uniforms);
 
-    const encoder = device.createCommandEncoder({label: 'Organoids electrostatics dispatch'});
+    const encoder = device.createCommandEncoder({label: 'Organoids spatial electrostatics dispatch'});
     const pass = encoder.beginComputePass();
-    pass.setPipeline(pipeline);
     pass.setBindGroup(0, bindGroup);
+    pass.setPipeline(clearPipeline);
+    pass.dispatchWorkgroups(Math.ceil(gridCount / 64));
+    pass.setPipeline(insertPipeline);
+    pass.dispatchWorkgroups(Math.ceil(packed.count / 64));
+    pass.setPipeline(forcePipeline);
     pass.dispatchWorkgroups(Math.ceil(packed.count / 64));
     pass.end();
     encoder.copyBufferToBuffer(outputBuffer, 0, readbackBuffer, 0, packed.count * OUTPUT_BYTES);
@@ -234,6 +307,7 @@ export async function createGpuElectrostatics(device, options = {}) {
     dispatch,
     consume,
     get capacity() { return capacity; },
+    get gridCapacity() { return gridCapacity; },
     get dispatches() { return dispatches; },
     get pending() { return !!pending; },
     get inFlight() { return inFlight; },
@@ -244,6 +318,8 @@ export async function createGpuElectrostatics(device, options = {}) {
       inputBuffer?.destroy();
       outputBuffer?.destroy();
       readbackBuffer?.destroy();
+      nextBuffer?.destroy();
+      cellBuffer?.destroy();
       paramsBuffer.destroy();
     },
   };
