@@ -68,7 +68,7 @@ export const methods={
       const colony=this.formColony(group,{radius});
       const members=group.map(id=>this.store.get(id)),cx=finite(colony.properties.x),cy=finite(colony.properties.y),field=this.runtime.fields.fields.has('morphogen')?'morphogen':null;
       if(field)for(const member of members){const distance=Math.hypot(finite(member.properties.x)-cx,finite(member.properties.y)-cy),value=Math.min(1,distance/radius);this.runtime.fields.add(field,finite(member.properties.x),finite(member.properties.y),value)}
-      if(field)for(const member of members)if(!member.properties.phenotype)this.differentiateFromField(member.id,field,{defaultRole:'support',thresholds:options.thresholds||{boundary:.5,neural:.95,sensory:.85,secretory:.75,motile:.65,contractile:.55,interior:.12}});
+      if(field)for(const member of members)if(!member.properties.phenotype)this.differentiateFromField(member.id,field,{defaultRole:'support',thresholds:options.thresholds||{neural:.98,sensory:.95,secretory:.9,motile:.85,contractile:.8,boundary:.5,interior:.12}});
       this.morphogenesis(colony.id,{pattern:options.pattern||'radial',radius:Math.max(2,finite(options.morphogenesisRadius, radius*.6)),stiffness:.2});
       formed++;
     }
