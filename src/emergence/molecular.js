@@ -149,7 +149,7 @@ export const methods = {
     const proteins=this.translateAllRNA(options),complexes=this.assembleMacromolecularComplexes(options);
     const formed=[...this.store.entities.values()].filter(e=>e.type==='molecule'&&e.state==='active'&&!e.parent);
     const water=formed.filter(e=>e.properties.formula==='H2O').length;
-    const organic=formed.filter(e=>/[CN]/.test(e.properties.formula||'')).length;
+    const organic=formed.filter(e=>(e.properties.formula||'').includes('C')).length;
     return{elements,bonds,molecules,water,organic,proteins:proteins.length,complexes};
   },
   assembleMacromolecularComplexes(options={}) {
