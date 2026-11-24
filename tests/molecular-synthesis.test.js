@@ -96,3 +96,32 @@ test("organic synthesis searches for a local cluster instead of getting stuck on
   assert.equal(runtime.store.descendants(molecule.id).length,10);
   assert.equal(runtime.store.get(1).parent,null);
 });
+
+test("complementary monomers can form a multi-unit polymer chain",()=>{
+  const runtime=createRuntime(),biology=new EmergenceProgression(runtime,{seed:31});
+  for(const [i,monomerKind] of ["A","U","A","U"].entries())biology.create("monomer",{x:20+i*2,y:20,monomerKind,mass:1,valence:2},.1);
+  const bonds=biology.formChemicalBonds({types:["monomer"],radius:3,rate:10,dt:1,energyCost:0,activationEnergy:0,complementary:true});
+  assert.equal(bonds,3);
+  assert.equal(biology.polymerize({minLength:3,energyCost:0}),1);
+  const polymer=[...runtime.store.entities.values()].find(e=>e.type==="polymer");
+  assert.deepEqual(polymer.properties.sequence,["A","U","A","U"]);
+  assert.equal(runtime.store.descendants(polymer.id).length,4);
+});
+
+test("atomic feedstock can synthesize amphiphiles that assemble into a membrane and vesicle",()=>{
+  const runtime=createRuntime(),biology=new EmergenceProgression(runtime,{seed:41});
+  const centers=Array.from({length:8},(_,i)=>({x:80+Math.cos(i*Math.PI/4)*8,y:80+Math.sin(i*Math.PI/4)*8}));
+  for(const center of centers) {
+    for(let i=0;i<8;i++)biology.create("atom",{x:center.x+(i%4)*.03,y:center.y+Math.floor(i/4)*.03,atomicNumber:6,elementSymbol:"C",mass:12});
+    for(let i=0;i<16;i++)biology.create("atom",{x:center.x+(i%4)*.025,y:center.y+Math.floor(i/4)*.025+.2,atomicNumber:1,elementSymbol:"H",mass:1});
+    for(let i=0;i<2;i++)biology.create("atom",{x:center.x+i*.03,y:center.y-.2,atomicNumber:8,elementSymbol:"O",mass:16});
+  }
+  assert.equal(biology.assembleAmphiphiles({radius:3}),8);
+  const lipids=[...runtime.store.entities.values()].filter(e=>e.type==="lipid");
+  assert.equal(lipids.length,8);
+  assert.ok(lipids.every(e=>e.properties.formula==="C8H16O2"&&e.properties.headPolarity>.5&&e.properties.tailHydrophobicity>.5));
+  assert.equal(biology.selfAssembleMembranes({radius:18,minLipids:8}),1);
+  assert.equal(biology.formVesiclesFromMembranes(),1);
+  assert.equal(biology.metrics.membranes,1);
+  assert.equal(biology.metrics.vesicles,1);
+});
