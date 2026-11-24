@@ -1,9 +1,9 @@
-const PARTICLE_BYTES = 16;
+const PARTICLE_BYTES = 24;
 const MAX_CANDIDATES_PER_PARTICLE = 16;
 const OUTPUT_STRIDE = MAX_CANDIDATES_PER_PARTICLE + 1;
 
 export const MOLECULAR_CANDIDATES_WGSL = `
-struct Particle { position: vec2<f32>, atomicNumber: u32, id: u32 };
+struct Particle { position: vec2<f32>, atomicNumber: u32, id: u32, remainingValence: u32, _padding: u32 };
 struct Parameters { count: u32, gridCols: u32, gridRows: u32, gridCount: u32, radius: f32, cellSize: f32, _padding: vec2<f32> };
 @group(0) @binding(0) var<storage, read> particles: array<Particle>;
 @group(0) @binding(1) var<uniform> params: Parameters;
@@ -44,7 +44,7 @@ fn findCandidates(@builtin(global_invocation_id) invocation: vec3<u32>) {
       var traversed = 0u;
       loop {
         if (j == 0xffffffffu || traversed >= params.count) { break; }
-        if (j > i) {
+        if (j > i && particles[i].remainingValence > 0u && particles[j].remainingValence > 0u) {
           let delta = particles[j].position - position;
           if (dot(delta, delta) <= radiusSquared) {
             if (found < ${MAX_CANDIDATES_PER_PARTICLE}u) {
@@ -64,8 +64,17 @@ fn findCandidates(@builtin(global_invocation_id) invocation: vec3<u32>) {
 `;
 
 export function packMolecularParticles(entities, isActive) {
-  const source = entities instanceof Map ? entities.values() : entities;
-  const data = [];
+  const collection = entities instanceof Map ? entities : entities?.entities instanceof Map ? entities.entities : entities;
+  const source = collection instanceof Map ? collection.values() : collection;
+  const valence = new Map([[1, 1], [2, 0], [3, 1], [4, 2], [5, 3], [6, 4], [7, 3], [8, 2], [9, 1], [10, 0]]);
+  const degree = new Map();
+  for (const link of entities?.activeLinks || []) {
+    if (link.type !== 'bond') continue;
+    const order = Math.max(1, Number(link.properties?.order) || 1);
+    degree.set(link.a, (degree.get(link.a) || 0) + order);
+    degree.set(link.b, (degree.get(link.b) || 0) + order);
+  }
+  const records = [];
   const ids = [];
   for (const entity of source) {
     if (entity.type !== 'atom' || entity.state !== 'active' || entity.parent || !isActive(entity)) continue;
@@ -73,15 +82,18 @@ export function packMolecularParticles(entities, isActive) {
     const atomicNumber = Number(p.atomicNumber);
     if (!Number.isInteger(entity.id) || entity.id < 0 || entity.id > 0xffffffff ||
         !Number.isFinite(+p.x) || !Number.isFinite(+p.y) || !Number.isInteger(atomicNumber) || atomicNumber < 1 || atomicNumber > 118) continue;
-    data.push(+p.x, +p.y, atomicNumber, entity.id);
+    const remainingValence = Math.max(0, (valence.get(atomicNumber) || 0) - (degree.get(entity.id) || 0));
+    records.push([+p.x, +p.y, atomicNumber, entity.id, remainingValence, 0]);
     ids.push(entity.id);
   }
-  const packed = new ArrayBuffer(data.length * Float32Array.BYTES_PER_ELEMENT);
+  const packed = new ArrayBuffer(records.length * PARTICLE_BYTES);
   const floats = new Float32Array(packed);
   const uints = new Uint32Array(packed);
-  for (let i = 0; i < data.length; i += 4) {
-    floats[i] = data[i]; floats[i + 1] = data[i + 1];
-    uints[i + 2] = data[i + 2]; uints[i + 3] = data[i + 3];
+  for (let i = 0; i < records.length; i++) {
+    const offset = i * 6, record = records[i];
+    floats[offset] = record[0]; floats[offset + 1] = record[1];
+    uints[offset + 2] = record[2]; uints[offset + 3] = record[3];
+    uints[offset + 4] = record[4]; uints[offset + 5] = record[5];
   }
   return {data: floats, ids, count: ids.length};
 }

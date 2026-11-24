@@ -31,6 +31,14 @@ test('packs only active, charged, root entities for electrostatics', () => {
   assert.equal(OUTPUT_BYTES, 16);
 });
 
+test('accepts the EntityStore wrapper used by the live simulation', () => {
+  const entities = new Map([[7, {id: 7, state: 'active', properties: {x: 1, y: 2, charge: 1, mass: 1}}]]);
+  const store = {entities, get: id => entities.get(id)};
+  const packed = packElectrostaticParticles(store, active);
+  assert.equal(packed.count, 1);
+  assert.deepEqual(packed.ids, [7]);
+});
+
 test('uses finite defaults and excludes entities without positions', () => {
   const {data, ids, count} = packElectrostaticParticles([
     {id: 1, state: 'active', properties: {x: 1, y: 2, charge: 1}},

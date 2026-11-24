@@ -79,7 +79,7 @@ try{
   try{
     gpuPhysics=await createGpuElectrostatics(gpuRenderer.device,{onError:error=>log('warn','GPU electrostatics readback failed',{reason:error.message})});
     log('info','WebGPU electrostatics compute ready',{workgroupSize:64,mode:'asynchronous readback'});
-    try{gpuMolecular=await createGpuMolecularCandidates(gpuRenderer.device);log('info','WebGPU molecular candidate search ready',{workgroupSize:64,maxCandidatesPerAtom:16,mode:'asynchronous readback'});}catch(error){log('warn','GPU molecular search unavailable; using CPU spatial search',{reason:error.message})}
+    try{gpuMolecular=await createGpuMolecularCandidates(gpuRenderer.device);log('info','WebGPU chemical reaction candidate prefilter ready',{workgroupSize:64,maxCandidatesPerAtom:16,mode:'asynchronous readback'});}catch(error){log('warn','GPU molecular search unavailable; using CPU spatial search',{reason:error.message})}
     try{gpuConstraints=await createGpuMolecularConstraints(gpuRenderer.device);log('info','WebGPU molecular constraint solver ready',{workgroupSize:64,mode:'mass-weighted Jacobi'});}catch(error){log('warn','GPU molecular constraints unavailable; using CPU solver',{reason:error.message})}
   }catch(error){log('warn','GPU electrostatics unavailable; using CPU physics',{reason:error.message})}
 }catch(error){

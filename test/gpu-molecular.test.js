@@ -26,6 +26,22 @@ test('packs active, unbound atoms with finite positions and valid atomic numbers
   assert.equal(packed.data[1], 3.5);
   assert.equal(new Uint32Array(packed.data.buffer)[2], 8);
   assert.equal(new Uint32Array(packed.data.buffer)[3], 1);
+  assert.equal(new Uint32Array(packed.data.buffer)[4], 2);
+});
+
+test('accepts the EntityStore wrapper passed by the simulation loop', () => {
+  const entities = new Map([[9, {id: 9, type: 'atom', state: 'active', properties: {x: 1, y: 2, atomicNumber: 6}}]]);
+  const packed = packMolecularParticles({entities}, active);
+  assert.equal(packed.count, 1);
+  assert.deepEqual(packed.ids, [9]);
+});
+
+test('GPU reaction prefilter excludes saturated atoms before returning spatial candidates', () => {
+  const entities = new Map([[1, {id: 1, type: 'atom', state: 'active', properties: {x: 0, y: 0, atomicNumber: 6}}], [2, {id: 2, type: 'atom', state: 'active', properties: {x: 1, y: 0, atomicNumber: 1}}]]);
+  const store = {entities, activeLinks: Array.from({length: 4}, (_, i) => ({a: 1, b: 100 + i, type: 'bond', properties: {order: 1}}))};
+  const packed = packMolecularParticles(store, active);
+  assert.equal(new Uint32Array(packed.data.buffer)[4], 0);
+  assert.equal(new Uint32Array(packed.data.buffer)[10], 1);
 });
 
 test('unpacks unique upper-triangle candidate pairs', () => {
@@ -51,6 +67,7 @@ test('WGSL builds a spatial grid and emits bounded atom-pair candidates', () => 
   assert.match(MOLECULAR_CANDIDATES_WGSL, /atomicExchange/);
   assert.match(MOLECULAR_CANDIDATES_WGSL, /atomicLoad/);
   assert.match(MOLECULAR_CANDIDATES_WGSL, /findCandidates/);
+  assert.match(MOLECULAR_CANDIDATES_WGSL, /remainingValence > 0u/);
   assert.match(MOLECULAR_CANDIDATES_WGSL, /dot\(delta, delta\) <= radiusSquared/);
   assert.match(MOLECULAR_CANDIDATES_WGSL, /candidates\[base \+ 16u\] = 1u/);
 });

@@ -36,7 +36,8 @@ fn solveConstraints(@builtin(global_invocation_id) invocation: vec3<u32>) {
 `;
 
 export function packMolecularConstraints(entities, constraints, isActive) {
-  const source = entities instanceof Map ? entities.values() : entities;
+  const collection = entities instanceof Map ? entities : entities?.entities instanceof Map ? entities.entities : entities;
+  const source = collection instanceof Map ? collection.values() : collection;
   const particles = [], ids = [], indexById = new Map();
   for (const entity of source) {
     if (entity.type !== 'atom' || entity.state !== 'active' || entity.parent || !isActive(entity)) continue;

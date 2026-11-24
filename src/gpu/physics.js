@@ -107,8 +107,9 @@ const INPUT_BYTES = FLOATS_PER_INPUT * Float32Array.BYTES_PER_ELEMENT;
 const OUTPUT_BYTES = 16;
 
 export function packElectrostaticParticles(entities, isActive, target = null) {
-  const source = entities instanceof Map ? entities : Array.from(entities);
-  const isMap = entities instanceof Map;
+  const collection = entities instanceof Map ? entities : entities?.entities instanceof Map ? entities.entities : entities;
+  const source = collection instanceof Map ? collection : Array.from(collection);
+  const isMap = collection instanceof Map;
   const capacity = isMap ? source.size : source.length;
   const storage = target && target.length >= capacity * FLOATS_PER_INPUT
     ? target

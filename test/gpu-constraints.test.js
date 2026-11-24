@@ -27,6 +27,13 @@ test('packs GPU molecular bonds into particle and adjacency buffers', () => {
   assert.deepEqual([...packed.adjacency.slice(8, 16)], [0, 1, 0, 0, 0, 0, 0, 0]);
 });
 
+test('accepts the EntityStore wrapper passed by the simulation loop', () => {
+  const entities = new Map([[1, atom(1, 0)], [2, atom(2, 10)]]);
+  const packed = packMolecularConstraints({entities}, [{a: 1, b: 2, rest: 5, stiffness: .5, gpu: true}], active);
+  assert.equal(packed.count, 2);
+  assert.equal(packed.bondCount, 1);
+});
+
 test('GPU constraint results apply positional deltas without overwriting newer motion', () => {
   const entities = new Map([[1, atom(1, 3)], [2, atom(2, 12)]]);
   const result = {ids: [1, 2], baseline: new Float32Array([0, 0, 10, 0]), positions: new Float32Array([1, 2, 9, -1])};
