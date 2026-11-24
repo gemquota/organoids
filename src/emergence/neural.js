@@ -4,7 +4,7 @@ export const methods={
   formNervousSystem(organId,options={}) {
     const organ=this.store.get(organId);
     if(!organ||organ.type!=='organ')throw Error('Nervous-system formation requires an organ');
-    const existing=this.store.outgoing(organId,'contains').map(id=>this.store.get(id)).find(e=>e?.type==='nervous-system');
+    const existing=this.store.descendants(organId).map(id=>this.store.get(id)).find(e=>e?.type==='nervous-system');
     if(existing)return existing;
     const descendants=this.store.descendants(organId).map(id=>this.store.get(id)).filter(Boolean);
     const tissues=descendants.filter(e=>e.type==='tissue'&&['neural','sensory'].includes(e.properties.role));
@@ -25,7 +25,7 @@ export const methods={
   formBrain(nervousId,options={}) {
     const nervous=this.store.get(nervousId);
     if(!nervous||nervous.type!=='nervous-system')throw Error('Brain formation requires a nervous system');
-    const existing=this.store.outgoing(nervousId,'contains').map(id=>this.store.get(id)).find(e=>e?.type==='brain');
+    const existing=nervous.parent&&this.store.get(nervous.parent)?.type==='brain'?this.store.get(nervous.parent):null;
     if(existing)return existing;
     const neurons=this.store.descendants(nervousId).map(id=>this.store.get(id)).filter(e=>(e?.type==='cell'||e?.type==='protocell')&&['neural','sensory'].includes(e.properties.phenotype));
     const count=Math.max(neurons.length,finite(nervous.properties.neuronCount));
@@ -60,17 +60,17 @@ export const methods={
     const organoids=[...this.store.entities.values()].filter(e=>e.type==='organoid'&&active(e));
     let organs=0,nervousSystems=0,brains=0,cognitiveSystems=0;
     for(const organoid of organoids) {
-      const organ=this.formOrgan(organoid.id);
+      const beforeOrgan=this.metrics.organs,organ=this.formOrgan(organoid.id);
       if(!organ)continue;
-      if(organ.id!==organoid.parent)organs++;
-      const nervous=this.formNervousSystem(organ.id);
+      if(this.metrics.organs>beforeOrgan)organs++;
+      const beforeNervous=this.metrics.nervousSystems,nervous=this.formNervousSystem(organ.id);
       if(!nervous)continue;
-      if(!this.store.outgoing(organ.id,'contains').map(id=>this.store.get(id)).some(e=>e?.type==='nervous-system'))nervousSystems++;
-      const brain=this.formBrain(nervous.id);
+      if(this.metrics.nervousSystems>beforeNervous)nervousSystems++;
+      const beforeBrain=this.metrics.brains,brain=this.formBrain(nervous.id);
       if(!brain)continue;
-      if(!this.store.outgoing(nervous.id,'contains').map(id=>this.store.get(id)).some(e=>e?.type==='brain'))brains++;
-      const cognition=this.formCognition(brain.id);
-      if(cognition)cognitiveSystems++;
+      if(this.metrics.brains>beforeBrain)brains++;
+      const beforeCognition=this.metrics.cognitiveSystems,cognition=this.formCognition(brain.id);
+      if(cognition&&this.metrics.cognitiveSystems>beforeCognition)cognitiveSystems++;
     }
     return{organs,nervousSystems,brains,cognitiveSystems};
   },
