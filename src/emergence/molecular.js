@@ -22,7 +22,9 @@ export const methods = {
       const pa=a.properties,isAtom=a.type==='atom',profile=isAtom?(profiles.get(Math.floor(finite(pa.atomicNumber,0)))||{valence:0,electronegativity:0,radius:2}):null;
       const capacity=isAtom?profile.valence:Math.max(1,finite(pa.valence,2));
       if((degree.get(a.id)||0)>=capacity)continue;
-      for(const b of index.query(pa.x,pa.y,radius,[])) {
+      const candidates=index.query(pa.x,pa.y,radius,[]);
+      if(!isAtom)candidates.sort((left,right)=>Math.hypot(finite(left.properties.x)-finite(pa.x),finite(left.properties.y)-finite(pa.y))-Math.hypot(finite(right.properties.x)-finite(pa.x),finite(right.properties.y)-finite(pa.y)));
+      for(const b of candidates) {
         if(b.id<=a.id||!entities.includes(b)||a.type!==b.type)continue;
         const pb=b.properties,bProfile=isAtom?(profiles.get(Math.floor(finite(pb.atomicNumber,0)))||{valence:0,electronegativity:0,radius:2}):null;
         const bCapacity=isAtom?bProfile.valence:Math.max(1,finite(pb.valence,2));
@@ -49,6 +51,7 @@ export const methods = {
         if(isAtom)this.runtime.constraints.add({a:a.id,b:b.id,rest:optimal,stiffness:.62});
         this._record('bonding',{parents:[a.id,b.id],relation:'bond',properties:{kind,order,distance,electronegativityDelta,affinity}});
         formed++;
+        if(!isAtom)break;
       }
     }
     return formed;
@@ -190,9 +193,11 @@ export const methods = {
     const elements=this.formElements();
     // Specific low-complexity products compete for free atoms before the
     // general bond pass can lock those atoms into arbitrary aggregates.
-    const water=this.assembleWater({radius:finite(options.waterRadius,finite(options.radius,18))});
-    const organic=this.assembleOrganicMolecules({radius:finite(options.organicRadius,finite(options.radius,20))});
+    // Larger organic products claim their atoms before simpler water
+    // association, so water formation cannot starve more complex pathways.
     const lipids=this.assembleAmphiphiles({radius:finite(options.amphiphileRadius,finite(options.radius,20))});
+    const organic=this.assembleOrganicMolecules({radius:finite(options.organicRadius,finite(options.radius,20))});
+    const water=this.assembleWater({radius:finite(options.waterRadius,finite(options.radius,18))});
     const bonds=this.formChemicalBonds({types:['atom'],radius:finite(options.bondRadius,13),rate:finite(options.bondRate,.22),dt:finite(options.dt,1),energyCost:finite(options.bondEnergyCost,.0001),activationEnergy:finite(options.activationEnergy,.002)});
     const molecules=this.formMolecules({types:['atom'],minSize:2});
     const proteins=this.translateAllRNA(options),complexes=this.assembleMacromolecularComplexes(options);
