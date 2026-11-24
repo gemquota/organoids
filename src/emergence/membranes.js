@@ -87,7 +87,7 @@ export const methods = {
     return cell;
   },
   formProtocellsFromAssemblies(options={}) {
-    const membranes=[...this.store.entities.values()].filter(e=>e.type==='membrane'&&e.state==='active'&&!e.parent&&e.properties.closed);
+    const membranes=[...this.store.entities.values()].filter(e=>(e.type==='membrane'||e.type==='vesicle')&&e.state==='active'&&!e.parent&&e.properties.closed);
     const polymers=[...this.store.entities.values()].filter(e=>e.type==='polymer'&&e.state==='active'&&!e.parent);
     const networks=[...this.store.entities.values()].filter(e=>e.type==='autocatalytic-network'&&e.state==='active'&&!e.parent);
     let formed=0;
