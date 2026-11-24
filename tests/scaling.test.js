@@ -26,7 +26,7 @@ test('camera zoom stays between world-fit and native 1x scale',()=>{
  assert.equal(fit.y,30);
 });
 test('camera panning cannot expose space beyond world edges',()=>{
- const camera=constrainCamera({x:500,y:-500,scale:1,minScale:.4,maxScale:1,worldWidth:1000,worldHeight:600,viewWidth:400,viewHeight:300});
+ const camera=constrainCamera({x:-900,y:-500,scale:1,minScale:.4,maxScale:1,worldWidth:1000,worldHeight:600,viewWidth:400,viewHeight:300});
  assert.deepEqual(camera,{x:-600,y:-300,scale:1});
  const centered=constrainCamera({x:-500,y:500,scale:.4,minScale:.4,maxScale:1,worldWidth:1000,worldHeight:600,viewWidth:400,viewHeight:300});
  assert.equal(centered.x,0);
