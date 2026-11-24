@@ -282,12 +282,13 @@ export const methods = {
     const organic=this.assembleOrganicMolecules({radius:finite(options.organicRadius,finite(options.radius,20))});
     const monomers=this.assembleNucleobaseMonomers({radius:finite(options.monomerRadius,finite(options.radius,20))});
     const water=this.assembleWater({radius:finite(options.waterRadius,finite(options.radius,18))});
-    const monomerBonds=this.formChemicalBonds({types:['monomer'],radius:finite(options.bondRadius,13),rate:finite(options.bondRate,.22),dt:finite(options.dt,1),energyCost:finite(options.bondEnergyCost,.0001),activationEnergy:finite(options.activationEnergy,.002)});
+    const bondDissociations=this.breakChemicalBonds({rate:finite(options.bondBreakRate,.002),dt:finite(options.dt,1),activationEnergy:finite(options.bondBreakActivationEnergy,.004),bondEnergy:finite(options.bondEnergy,.001)});
+    const monomerBonds=this.formChemicalBonds({types:['monomer'],radius:finite(options.bondRadius,13),rate:finite(options.bondRate,.22),dt:finite(options.dt,1),energyCost:finite(options.bondEnergyCost,.0001),activationEnergy:finite(options.activationEnergy,.002),bondEnergy:finite(options.bondEnergy,.001)});
     const polymers=this.polymerize({monomerTypes:['monomer'],minLength:3,energyCost:finite(options.polymerEnergyCost,.002)});
     const bonds=this.formChemicalBonds({types:['atom'],radius:finite(options.bondRadius,13),rate:finite(options.bondRate,.22),dt:finite(options.dt,1),energyCost:finite(options.bondEnergyCost,.0001),activationEnergy:finite(options.activationEnergy,.002)});
     const molecules=this.formMolecules({types:['atom'],minSize:2});
     const proteins=this.translateAllRNA(options),networks=this.assembleAutocatalyticNetworks(options),complexes=this.assembleMacromolecularComplexes(options);
-    return{elements,bonds,monomerBonds,molecules,water,organic,lipids,monomers,polymers,proteins:proteins.length,networks,complexes};
+    return{elements,bonds,bondDissociations,monomerBonds,molecules,water,organic,lipids,monomers,polymers,proteins:proteins.length,networks,complexes};
   },
   assembleMacromolecularComplexes(options={}) {
     const rnas=[...this.store.entities.values()].filter(e=>e.type==='polymer'&&e.state==='active'&&!e.parent),proteins=[...this.store.entities.values()].filter(e=>e.type==='protein'&&e.state==='active'&&!e.parent),radius=Math.max(.01,finite(options.radius,28));let formed=0;
