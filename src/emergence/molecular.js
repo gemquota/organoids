@@ -9,7 +9,7 @@ const CODONS=Object.freeze({
 const HYDROPHOBIC=new Set(['A','V','I','L','M','F','W','Y']);
 export const methods = {
   formChemicalBonds(options={}) {
-    const types=new Set(options.types||['atom','monomer']),radius=Math.max(.001,finite(options.radius,13));
+    const types=new Set(options.types||['monomer']),radius=Math.max(.001,finite(options.radius,13));
     const rate=Math.max(0,finite(options.rate,.22)),dt=Math.max(0,finite(options.dt,1));
     const energyCost=Math.max(0,finite(options.energyCost,.0001)),activation=Math.max(0,finite(options.activationEnergy,.002));
     const profiles=new Map([[1,{valence:1,electronegativity:2.2,radius:2.1}],[2,{valence:0,electronegativity:0,radius:1.5}],[3,{valence:1,electronegativity:.98,radius:3.2}],[4,{valence:2,electronegativity:1.57,radius:2.5}],[5,{valence:3,electronegativity:2.04,radius:2.1}],[6,{valence:4,electronegativity:2.55,radius:1.9}],[7,{valence:3,electronegativity:3.04,radius:1.8}],[8,{valence:2,electronegativity:3.44,radius:1.7}],[9,{valence:1,electronegativity:3.98,radius:1.6}],[10,{valence:0,electronegativity:0,radius:1.5}]]);
@@ -50,7 +50,7 @@ export const methods = {
     return formed;
   },
   formMolecules(options={}) {
-    const types=options.types||['atom'],min=Math.max(2,options.minSize||2),groups=this._bondComponents(types).filter(g=>g.length>=min);
+    const types=options.types||['particle'],min=Math.max(2,options.minSize||2),groups=this._bondComponents(types).filter(g=>g.length>=min);
     const names={'H2':'Hydrogen','O2':'Oxygen','N2':'Nitrogen','H2O':'Water','CO2':'Carbon dioxide','CH4':'Methane','NH3':'Ammonia','HCl':'Hydrogen chloride','NO':'Nitric oxide','C2H5NO2':'Glycine'};
     let formed=0;
     for(const ids of groups) {
