@@ -47,3 +47,12 @@ test("guide inline JavaScript parses", () => {
   const result = spawnSync(process.execPath, ["--check", "--input-type=module"], {input: script, encoding: "utf8"});
   assert.equal(result.status, 0, result.stderr || result.stdout);
 });
+
+test("entries use atlas illustrations and consistent category colours", () => {
+  assert.match(html, /assets\/atlas\/entities\.svg#entity-/);
+  assert.match(html, /const PALETTE=/);
+  assert.match(script, /function colorFor\(/);
+  assert.match(script, /fill\x3d?['"]\+color/);
+  assert.match(script, /id="map-legend"/);
+  assert.match(script, /data-category=/);
+});
