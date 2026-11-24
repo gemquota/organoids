@@ -9,8 +9,15 @@ const script = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(match => 
 test("guide opens directly into the illustrated entity browser and map", () => {
   assert.match(html, /id="encyclopedia"/);
   assert.match(html, /id="emergence-map"/);
+  assert.match(html, /id="diagrams"/);
+  assert.match(html, /id="progression-diagram"/);
+  assert.match(html, /id="origins-diagram"/);
+  assert.match(html, /id="scale-diagram"/);
   assert.match(html, /id="chapter-nav"/);
   assert.match(script, /function renderGuide\(\)/);
+  assert.match(script, /function renderDiagrams\(\)/);
+  assert.match(script, /function renderMap\(\)/);
+  assert.match(script, /Every curated entity|Detailed node map/);
   assert.match(script, /renderGuide\(\);/);
   assert.doesNotMatch(html, /scale-index|data-view=|nav\.modes|Start with the things themselves/);
 });
@@ -60,6 +67,9 @@ test("entries use atlas illustrations and consistent category colours", () => {
 test("entity map uses a layered rectangular layout with larger labelled nodes", () => {
   assert.match(script, /const colW=190,nodeW=150,nodeH=42/);
   assert.match(script, /<rect x=/);
+  assert.match(script, /nodeW=218,nodeH=62/);
+  assert.match(script, /map-arrow/);
+  assert.match(script, /diagram-edge/);
   assert.match(script, /setAttribute\("viewBox"/);
   assert.doesNotMatch(script, /const angle=-Math\.PI\/2\+i\*2\*Math\.PI\/C\.length/);
 });
