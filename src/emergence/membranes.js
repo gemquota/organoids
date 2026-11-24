@@ -16,6 +16,7 @@ export const methods = {
     const result=this.store.transact(actions,{energy:this.energy,fields:this.energy.fields});
     if(!result.ok)throw result.error;
     const membrane=this.store.get(result.refs.membrane);
+    const rest=2*radius*Math.sin(Math.PI/ordered.length);for(let i=0;i<ordered.length;i++)this.runtime.constraints.add({a:ordered[i].id,b:ordered[(i+1)%ordered.length].id,rest,stiffness:.8});
     for(let i=0;i<ordered.length;i++)this._record('bonding',{parents:[ordered[i].id,ordered[(i+1)%ordered.length].id],relation:'bond',properties:{membrane:membrane.id}});
     this._record('membrane-assembly',{parents:ordered.map(e=>e.id),children:[membrane.id],count:members.length,radius});
     return membrane;
