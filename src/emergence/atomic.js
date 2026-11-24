@@ -42,7 +42,7 @@ export const methods={
     for(const a of nucleons)for(const b of index.query(a.properties.x,a.properties.y,radius,[]))if(b.id>a.id&&Math.hypot(a.properties.x-b.properties.x,a.properties.y-b.properties.y)<=radius){adj.get(a.id).push(b.id);adj.get(b.id).push(a.id)}
     const seen=new Set();let formed=0;
     for(const nucleon of nucleons){if(seen.has(nucleon.id))continue;const group=[],stack=[nucleon.id];seen.add(nucleon.id);while(stack.length){const id=stack.pop();group.push(this.store.get(id));for(const next of adj.get(id)||[])if(!seen.has(next)){seen.add(next);stack.push(next)}}
-      if(group.length<2||!group.some(e=>e.type==='proton'))continue;
+      if(!group.some(e=>e.type==='proton'))continue;
       const protons=group.filter(e=>e.type==='proton').length,neutrons=group.length-protons,x=group.reduce((s,e)=>s+e.properties.x,0)/group.length,y=group.reduce((s,e)=>s+e.properties.y,0)/group.length,mass=group.reduce((s,e)=>s+finite(e.properties.mass,1),0);
       const actions=[{op:'create',type:'atomic-nucleus',properties:{x,y,mass,protonCount:protons,neutronCount:neutrons,atomicNumber:protons,massNumber:group.length,charge:protons,catalogueId:'atomic-nuclei',name:'Atomic nucleus',categoryId:'particles',catalogueColor:'#a5b5ce'},energy:0,as:'nucleus'},...group.map(e=>({op:'compose',parent:{ref:'nucleus'},child:e.id}))];
       for(const e of group)if(e.energy>0)actions.push({op:'transfer',from:e.id,to:{ref:'nucleus'},amount:e.energy});
@@ -86,6 +86,7 @@ export const methods={
   fuseIsotopes(options={}) {
     const radius=Math.max(.01,finite(options.fusionRadius,finite(options.radius,18)*.55));
     const maxSpeed=Math.max(0,finite(options.maxFusionSpeed,1.5));
+    const maxAtomicNumber=Number.isFinite(options.maxAtomicNumber)?Math.max(1,Math.floor(options.maxAtomicNumber)):Infinity;
     const isotopes=[...this.store.entities.values()].filter(e=>e.type==='isotope'&&active(e)&&!e.parent);
     const used=new Set();let fused=0;
     for(let i=0;i<isotopes.length;i++) {
@@ -105,11 +106,11 @@ export const methods={
       if(!best)continue;
       const nucleusB=bestNucleus,protonCount=finite(nucleusA.properties.protonCount)+finite(nucleusB.properties.protonCount);
       const neutronCount=finite(nucleusA.properties.neutronCount)+finite(nucleusB.properties.neutronCount);
-      if(protonCount<1)continue;
+      if(protonCount<1||protonCount>maxAtomicNumber)continue;
       const mass=finite(a.properties.mass)+finite(best.properties.mass);
       const x=(finite(a.properties.x)*finite(a.properties.mass)+finite(best.properties.x)*finite(best.properties.mass))/Math.max(.001,mass);
       const y=(finite(a.properties.y)*finite(a.properties.mass)+finite(best.properties.y)*finite(best.properties.mass))/Math.max(.001,mass);
-      const isotopeProperties={x,y,mass,protonCount,neutronCount,atomicNumber:protonCount,massNumber:protonCount+neutronCount,charge:protonCount,catalogueId:'isotopes',name:'Isotope',categoryId:'atoms',catalogueColor:'#d6c18b'};
+      const isotopeProperties={x,y,mass,protonCount,neutronCount,atomicNumber:protonCount,massNumber:protonCount+neutronCount,charge:protonCount,formedAt:this.runtime.scheduler.time,catalogueId:'isotopes',name:'Isotope',categoryId:'atoms',catalogueColor:'#d6c18b'};
       const actions=[
         {op:'create',type:'atomic-nucleus',properties:{...isotopeProperties,name:'Fused atomic nucleus',catalogueId:'atomic-nuclei',categoryId:'particles',catalogueColor:'#a5b5ce'},energy:0,as:'nucleus'},
         {op:'unlink',from:a.id,to:nucleusA.id,type:'contains'},
@@ -132,7 +133,7 @@ export const methods={
 
   formIsotopes() {
     const nuclei=[...this.store.entities.values()].filter(e=>e.type==='atomic-nucleus'&&active(e)&&!e.parent);let formed=0;
-    for(const nucleus of nuclei){const properties={x:finite(nucleus.properties.x),y:finite(nucleus.properties.y),mass:finite(nucleus.properties.mass),protonCount:nucleus.properties.protonCount,atomicNumber:nucleus.properties.atomicNumber,neutronCount:nucleus.properties.neutronCount,massNumber:nucleus.properties.massNumber,charge:nucleus.properties.charge,catalogueId:'isotopes',name:'Isotope',categoryId:'atoms',catalogueColor:'#d6c18b'};
+    for(const nucleus of nuclei){const properties={x:finite(nucleus.properties.x),y:finite(nucleus.properties.y),mass:finite(nucleus.properties.mass),protonCount:nucleus.properties.protonCount,atomicNumber:nucleus.properties.atomicNumber,neutronCount:nucleus.properties.neutronCount,massNumber:nucleus.properties.massNumber,charge:nucleus.properties.charge,formedAt:this.runtime.scheduler.time,catalogueId:'isotopes',name:'Isotope',categoryId:'atoms',catalogueColor:'#d6c18b'};
       const actions=[{op:'create',type:'isotope',properties,energy:0,as:'isotope'},{op:'compose',parent:{ref:'isotope'},child:nucleus.id}];if(nucleus.energy>0)actions.push({op:'transfer',from:nucleus.id,to:{ref:'isotope'},amount:nucleus.energy});
       const result=this.store.transact(actions,{energy:this.energy,fields:this.energy.fields});if(!result.ok)throw result.error;
       this._record('isotope-formation',{parents:[nucleus.id],children:[result.refs.isotope],massNumber:properties.massNumber});formed++;
@@ -157,7 +158,8 @@ export const methods={
       for(const e of near)if(e.energy>0)actions.push({op:'transfer',from:e.id,to:atom.id,amount:e.energy});
       const result=this.store.transact(actions,{energy:this.energy,fields:this.energy.fields});if(!result.ok)throw result.error;
     }
-    const isotopes=[...this.store.entities.values()].filter(e=>e.type==='isotope'&&active(e)&&!e.parent);
+    const atomizationDelay=Math.max(0,finite(options.atomizationDelay,0));
+    const isotopes=[...this.store.entities.values()].filter(e=>e.type==='isotope'&&active(e)&&!e.parent&&this.runtime.scheduler.time-finite(e.properties.formedAt,this.runtime.scheduler.time)>=atomizationDelay);
     for(const isotope of isotopes) {
       const atomicNumber=Math.max(1,Math.floor(finite(isotope.properties.atomicNumber,1)));
       const near=electrons().filter(e=>Math.hypot(e.properties.x-isotope.properties.x,e.properties.y-isotope.properties.y)<=radius)
@@ -195,7 +197,7 @@ export const methods={
   },
 
   assembleAtomicMatter(options={}) {
-    const hadrons=this.formHadrons(options),nuclei=this.formNuclei(options),isotopes=this.formIsotopes(),accretions=this.accreteNucleons(options),fusions=this.fuseIsotopes(options),atoms=this.formAtoms(options),elements=this.formElements();
+    const hadrons=this.formHadrons({...options,radius:finite(options.hadronRadius,finite(options.radius,12))}),nuclei=this.formNuclei({...options,radius:finite(options.nuclearRadius,finite(options.radius,18))}),isotopes=this.formIsotopes(),accretions=this.accreteNucleons({...options,radius:finite(options.nuclearRadius,finite(options.radius,18))}),fusions=this.fuseIsotopes(options),atoms=this.formAtoms({...options,radius:finite(options.atomRadius,finite(options.radius,24))}),elements=this.formElements();
     return{hadrons,nuclei,isotopes,accretions,fusions,atoms,elements};
   }
 };

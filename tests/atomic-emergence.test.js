@@ -136,6 +136,58 @@ test("multi-proton nuclei form positive ions and neutralise through later electr
 });
 
 
+
+
+test("an isolated proton can become a neutral hydrogen atom",()=>{
+  const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
+  biology.create("proton",{x:50,y:50,mass:1,charge:1},.1);
+  biology.create("lepton",{x:51,y:50,leptonKind:"electron",charge:-1,mass:.0005},.05);
+  const result=biology.assembleAtomicMatter({radius:10});
+  assert.equal(result.nuclei,1);
+  assert.equal(result.isotopes,1);
+  assert.equal(result.atoms,1);
+  const atom=[...runtime.store.entities.values()].find(e=>e.type==="atom");
+  assert.equal(atom.properties.atomicNumber,1);
+  assert.equal(atom.properties.neutronCount,0);
+  assert.equal(atom.properties.charge,0);
+  assert.equal(runtime.energy.audit(runtime.store,.15).balanced,true);
+});
+
+
+test("isotopes remain fusible during the atomisation window",()=>{
+  const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
+  const makeHelium=(x)=>{
+    const properties={x,y:50,mass:4,protonCount:2,neutronCount:2,atomicNumber:2,massNumber:4,charge:2};
+    const nucleus=biology.create("atomic-nucleus",properties,0);
+    const isotope=biology.create("isotope",properties,0);
+    runtime.store.transact([{op:"compose",parent:isotope.id,child:nucleus.id}]);
+    return isotope;
+  };
+  makeHelium(48);makeHelium(52);
+  for(let i=0;i<4;i++)biology.create("lepton",{x:50+i*.1,y:50,leptonKind:"electron",charge:-1,mass:.0005},.05);
+  assert.equal(biology.formAtoms({radius:10,atomizationDelay:5}),0);
+  assert.equal(biology.fuseIsotopes({fusionRadius:10,maxFusionSpeed:1,maxAtomicNumber:10}),1);
+  runtime.scheduler.time=5;
+  assert.equal(biology.formAtoms({radius:10,atomizationDelay:5}),1);
+  const atom=[...runtime.store.entities.values()].find(e=>e.type==="atom");
+  assert.equal(atom.properties.atomicNumber,4);
+  assert.equal(atom.properties.charge,0);
+  assert.equal(runtime.energy.audit(runtime.store,.2).balanced,true);
+});
+
+test("nuclear fusion respects the supported element ceiling",()=>{
+  const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
+  for(const x of [48,52]){
+    const properties={x,y:50,mass:4,protonCount:2,neutronCount:2,atomicNumber:2,massNumber:4,charge:2};
+    const nucleus=biology.create("atomic-nucleus",properties,0);
+    const isotope=biology.create("isotope",properties,0);
+    runtime.store.transact([{op:"compose",parent:isotope.id,child:nucleus.id}]);
+  }
+  assert.equal(biology.fuseIsotopes({fusionRadius:10,maxFusionSpeed:1,maxAtomicNumber:3}),0);
+  assert.equal([...runtime.store.entities.values()].filter(e=>e.type==="isotope"&&!e.parent).length,2);
+});
+
+
 test("unatomized nuclei accrete nearby free nucleons without losing constituents",()=>{
   const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
   const nucleus=biology.create("atomic-nucleus",{x:50,y:50,mass:4,protonCount:2,neutronCount:2,atomicNumber:2,massNumber:4,charge:2},0);
