@@ -8,11 +8,11 @@ export const methods = {
     const maxAcceleration=Math.max(0,finite(options.maxAcceleration,.08));
     const dt=Math.max(0,finite(options.dt,1));
     const charged=[...this.store.entities.values()].filter(e=>active(e)&&!e.parent&&Number.isFinite(e.properties.x)&&Number.isFinite(e.properties.y)&&Math.abs(finite(e.properties.charge))>1e-9);
-    const index=this.runtime.spatial.rebuild(charged);
+    const index=this.runtime.spatial.rebuild(charged),nearby=[];
     let pairs=0;
     for(const a of charged) {
       const pa=a.properties,qa=finite(pa.charge),ma=Math.max(.001,finite(pa.mass,1));
-      for(const b of index.query(pa.x,pa.y,radius,[])) {
+      for(const b of index.query(pa.x,pa.y,radius,nearby)) {
         if(b.id<=a.id||!active(b)||b.parent)continue;
         const pb=b.properties,qb=finite(pb.charge),product=qa*qb;
         if(Math.abs(product)<1e-9)continue;
@@ -36,11 +36,11 @@ export const methods = {
     const dt=Math.max(0,finite(options.dt,1));
     if(!conductance||!dt)return 0;
     const entities=[...this.store.entities.values()].filter(e=>active(e)&&!e.parent&&Number.isFinite(e.properties.x)&&Number.isFinite(e.properties.y)&&finite(e.properties.heatCapacity)>0);
-    const index=this.runtime.spatial.rebuild(entities);
+    const index=this.runtime.spatial.rebuild(entities),nearby=[];
     let transfers=0;
     for(const a of entities) {
       const ca=Math.max(.001,finite(a.properties.heatCapacity,1));
-      for(const b of index.query(a.properties.x,a.properties.y,radius,[])) {
+      for(const b of index.query(a.properties.x,a.properties.y,radius,nearby)) {
         if(b.id<=a.id||!active(b)||b.parent)continue;
         const cb=Math.max(.001,finite(b.properties.heatCapacity,1));
         const ta=a.energy/ca,tb=b.energy/cb,distance=Math.hypot(b.properties.x-a.properties.x,b.properties.y-a.properties.y);

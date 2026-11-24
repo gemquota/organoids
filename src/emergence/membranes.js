@@ -60,7 +60,7 @@ export const methods = {
     const vesicle=this.store.get(result.refs.vesicle);this._record('vesicle-formation',{parents:[membrane.id],children:[vesicle.id]});return vesicle;
   },
   formVesiclesFromMembranes() {
-    const membranes=[...this.store.entities.values()].filter(e=>(e.type==='membrane'||e.type==='vesicle')&&e.state==='active'&&!e.parent&&e.properties.closed);let formed=0;
+    const membranes=[...this.store.entities.values()].filter(e=>e.type==='membrane'&&e.state==='active'&&!e.parent&&e.properties.closed);let formed=0;
     for(const membrane of membranes){this.wrapVesicle(membrane.id);formed++}
     return formed;
   },
@@ -87,18 +87,18 @@ export const methods = {
     return cell;
   },
   formProtocellsFromAssemblies(options={}) {
-    const membranes=[...this.store.entities.values()].filter(e=>(e.type==='membrane'||e.type==='vesicle')&&e.state==='active'&&!e.parent&&e.properties.closed);
-    const polymers=[...this.store.entities.values()].filter(e=>e.type==='polymer'&&e.state==='active'&&!e.parent);
-    const networks=[...this.store.entities.values()].filter(e=>e.type==='autocatalytic-network'&&e.state==='active'&&!e.parent);
-    let formed=0;
-    for(const membrane of membranes) {
-      const radius=Math.max(2,finite(options.radius,finite(membrane.properties.radius,10)*.95));
-      const near=e=>Math.hypot(finite(e.properties.x)-finite(membrane.properties.x),finite(e.properties.y)-finite(membrane.properties.y))<=radius;
-      const polymer=polymers.find(e=>near(e)&&Array.isArray(e.properties.sequence)&&e.properties.sequence.length>=3);
-      const network=networks.find(near);
-      if(!polymer||!network)continue;
-      const cell=this.encapsulateProtocell(membrane.id,[polymer.id,network.id],options);
-      if(cell)formed++;
+    const compartments=[...this.store.entities.values()].filter(e=>(e.type==='membrane'||e.type==='vesicle')&&e.state==='active'&&!e.parent&&e.properties.closed);
+    const networks=[...this.store.entities.values()].filter(e=>e.type==='autocatalytic-network'&&e.state==='active'&&!e.parent);let formed=0;
+    for(const compartment of compartments){
+      const radius=Math.max(2,finite(options.radius,finite(compartment.properties.radius,10)*1.5));
+      const near=e=>Math.hypot(finite(e.properties.x)-finite(compartment.properties.x),finite(e.properties.y)-finite(compartment.properties.y))<=radius;
+      const network=networks.find(near);if(!network)continue;
+      const internal=this.store.descendants(network.id).map(id=>this.store.get(id)).find(e=>e?.type==='polymer'&&Array.isArray(e.properties.sequence)&&e.properties.sequence.length>=3);
+      const external=[...this.store.entities.values()].find(e=>e.type==='polymer'&&e.state==='active'&&!e.parent&&near(e)&&Array.isArray(e.properties.sequence)&&e.properties.sequence.length>=3);
+      const polymer=internal||external;if(!polymer)continue;
+      const genome={sequence:polymer.properties.sequence.join(''),traits:{replicationRate:.02,mutationRate:.002,adhesion:.5}};
+      const contents=internal?[network.id]:[network.id,polymer.id];
+      const cell=this.encapsulateProtocell(compartment.id,contents,{...options,genome});if(cell)formed++;
     }
     return formed;
   },

@@ -23,6 +23,14 @@ test("a membrane, polymer and catalytic network become one protocell",()=>{
   assert.equal(biology.metrics.protocells,1);
 });
 
+test("repeated vesicle assembly ignores already wrapped vesicles",()=>{
+  const runtime=createRuntime(),biology=new EmergenceProgression(runtime,{seed:14});
+  biology.assembleMembrane({x:20,y:20,count:8,radius:8});
+  assert.equal(biology.formVesiclesFromMembranes(),1);
+  assert.equal(biology.formVesiclesFromMembranes(),0);
+  assert.equal([...runtime.store.entities.values()].filter(e=>e.type==="vesicle").length,1);
+});
+
 test("cellular metabolism transports substrate through a membrane and funds growth",()=>{
   const runtime=createRuntime(),biology=new EmergenceProgression(runtime,{seed:3});
   const cell=biology.formProtocell({x:20,y:20,energy:1,biomass:1,lipidCount:8,genome:{sequence:"ACGT",traits:{}}});
