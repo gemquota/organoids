@@ -91,6 +91,9 @@ jobs:
           path: _site
           name: ${{ env.PAGES_ARTIFACT_NAME }}
 
+      - name: Wait for artifact metadata to propagate
+        run: sleep 8
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
