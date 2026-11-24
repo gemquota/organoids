@@ -6,6 +6,8 @@ on:
     paths:
       - 'accretion.html'
       - 'emergent-life-atlas.html'
+      - 'hitchhikers-guide.html'
+      - 'archive/**'
       - 'assets/**'
       - 'src/**'
       - 'docs/**'
@@ -46,9 +48,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p _site/src _site/experiments _site/assets
+          mkdir -p _site/src _site/experiments _site/assets _site/archive/assets
           cp accretion.html _site/index.html
           cp emergent-life-atlas.html _site/emergent-life-atlas.html
+          cp hitchhikers-guide.html _site/hitchhikers-guide.html
+          cp archive/emergent-life-atlas-exploratory.html _site/archive/emergent-life-atlas-exploratory.html
+          cp -R assets/atlas _site/archive/assets/
           cp -R src/. _site/src/
           cp -R assets/. _site/assets/
           touch _site/.nojekyll
@@ -65,7 +70,8 @@ jobs:
           <h1>Organoids experiments</h1>
           <p class="muted">Standalone browser experiences published from the Organoids repository.</p>
           <a class="item" href="../"><strong>Main simulation</strong><br>Particle accretion and emergence runtime.</a>
-          <a class="item" href="../emergent-life-atlas.html"><strong>Emergent Life Atlas</strong><br>Visual catalogue of forms and possible transitions.</a>
+          <a class="item" href="../hitchhikers-guide.html"><strong>Hitchhiker's Guide to Emergence</strong><br>Field guide, emergence map, hierarchy explorer and entity register.</a>
+          <a class="item" href="../archive/emergent-life-atlas-exploratory.html"><strong>Archived Emergent Life Atlas</strong><br>Preserved exploratory edition.</a>
           <h2>Earlier evolutionary-ecology experiments</h2>
           <a class="item" href="https://gemquota.github.io/boids/"><strong>Evolutionary ecology simulation</strong><br>Earlier integrated simulation.</a>
           <a class="item" href="https://gemquota.github.io/boids/emergence-lab.html"><strong>Emergence lab</strong><br>Standalone emergence experiments.</a>
