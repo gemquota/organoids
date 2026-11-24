@@ -77,30 +77,30 @@ function particleColor(entity, cache) {
 }
 
 export function packParticles(entities, isActive, cameraScale = 1, target = null) {
-  let count = 0;
-  for (const entity of entities) if (isActive(entity)) count++;
-  const required = count * FLOATS_PER_PARTICLE;
+  const source = Number.isInteger(entities?.size) ? entities : Array.isArray(entities) ? entities : Array.from(entities);
+  const capacityCount = Number.isInteger(source.size) ? source.size : source.length;
+  const required = capacityCount * FLOATS_PER_PARTICLE;
   const storage = target && target.length >= required ? target : new Float32Array(required);
-  const data = storage.subarray(0, required);
   const scale = Number.isFinite(cameraScale) && cameraScale > 0 ? cameraScale : 1;
   const colors = new Map();
-  let index = 0;
-  for (const entity of entities) {
+  let count = 0;
+  for (const entry of source) {
+    const entity = Number.isInteger(source.size) ? entry[1] : entry;
     if (!isActive(entity)) continue;
     const p = entity.properties || {};
     const mass = Number.isFinite(+p.mass) ? +p.mass : 1;
-    const offset = index++ * FLOATS_PER_PARTICLE;
+    const offset = count++ * FLOATS_PER_PARTICLE;
     const color = particleColor(entity, colors);
-    data[offset] = Number.isFinite(+p.x) ? +p.x : 0;
-    data[offset + 1] = Number.isFinite(+p.y) ? +p.y : 0;
-    data[offset + 2] = Math.max(1.1 / scale, 3 * Math.sqrt(Math.max(0, mass)));
-    data[offset + 3] = 0;
-    data[offset + 4] = color[0];
-    data[offset + 5] = color[1];
-    data[offset + 6] = color[2];
-    data[offset + 7] = 0.55 + Math.min(0.4, Math.max(0, mass) / 35);
+    storage[offset] = Number.isFinite(+p.x) ? +p.x : 0;
+    storage[offset + 1] = Number.isFinite(+p.y) ? +p.y : 0;
+    storage[offset + 2] = Math.max(1.1 / scale, 3 * Math.sqrt(Math.max(0, mass)));
+    storage[offset + 3] = 0;
+    storage[offset + 4] = color[0];
+    storage[offset + 5] = color[1];
+    storage[offset + 6] = color[2];
+    storage[offset + 7] = 0.55 + Math.min(0.4, Math.max(0, mass) / 35);
   }
-  return {data, storage, count};
+  return {data: storage.subarray(0, count * FLOATS_PER_PARTICLE), storage, count};
 }
 
 export async function createGpuParticleRenderer(canvas, options = {}) {
