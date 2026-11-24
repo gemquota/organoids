@@ -77,15 +77,16 @@ function particleColor(entity, cache) {
 }
 
 export function packParticles(entities, isActive, cameraScale = 1, target = null) {
-  const source = Number.isInteger(entities?.size) ? entities : Array.isArray(entities) ? entities : Array.from(entities);
-  const capacityCount = Number.isInteger(source.size) ? source.size : source.length;
+  const isMap = entities instanceof Map;
+  const source = isMap || Array.isArray(entities) ? entities : Array.from(entities);
+  const capacityCount = isMap ? source.size : source.length;
   const required = capacityCount * FLOATS_PER_PARTICLE;
   const storage = target && target.length >= required ? target : new Float32Array(required);
   const scale = Number.isFinite(cameraScale) && cameraScale > 0 ? cameraScale : 1;
   const colors = new Map();
   let count = 0;
   for (const entry of source) {
-    const entity = Number.isInteger(source.size) ? entry[1] : entry;
+    const entity = isMap ? entry[1] : entry;
     if (!isActive(entity)) continue;
     const p = entity.properties || {};
     const mass = Number.isFinite(+p.mass) ? +p.mass : 1;
