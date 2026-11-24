@@ -111,7 +111,7 @@ export async function createGpuMolecularConstraints(device) {
   });
   const paramsBuffer = device.createBuffer({size: 16, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST});
   let particleBuffer = null, bondBuffer = null, adjacencyBuffer = null, outputBuffer = null, readbackBuffer = null, bindGroup = null;
-  let particleCapacity = 0, bondCapacity = 0, pending = null, inFlight = false, destroyed = false, dispatches = 0, lastError = null;
+  let particleCapacity = 0, bondCapacity = 0, pending = null, inFlight = false, destroyed = false, dispatches = 0, lastError = null, skippedInFlight = 0, skippedPending = 0, completed = 0, empty = 0, lastReadbackMs = 0, totalReadbackMs = 0, maxReadbackMs = 0, lastInputCount = 0, lastBondCount = 0;
 
   function ensure(count, bondCount) {
     let changed = false;
@@ -149,10 +149,12 @@ export async function createGpuMolecularConstraints(device) {
   function dispatch(entities, constraints, isActive, options = {}) {
     if (destroyed) throw new Error('Molecular constraint pipeline was destroyed');
     if (lastError) throw lastError;
-    if (inFlight || pending) return false;
+    if (inFlight) { skippedInFlight++; return false; }
+    if (pending) { skippedPending++; return false; }
     const packed = packMolecularConstraints(entities, constraints, isActive);
     if (packed.overflow) throw new Error('Molecular constraint adjacency capacity exceeded; use CPU solver');
-    if (!packed.count || !packed.bondCount) return false;
+    lastInputCount = packed.count; lastBondCount = packed.bondCount;
+    if (!packed.count || !packed.bondCount) { empty++; return false; }
     if (Math.ceil(packed.count / 64) > device.limits.maxComputeWorkgroupsPerDimension) throw new Error('Molecular constraint dispatch exceeds GPU workgroup limits');
     ensure(packed.count, packed.bondCount);
     const baseline = new Float32Array(packed.count * 2);
@@ -166,13 +168,14 @@ export async function createGpuMolecularConstraints(device) {
     pass.setPipeline(pipeline); pass.setBindGroup(0, bindGroup); pass.dispatchWorkgroups(Math.ceil(packed.count / 64)); pass.end();
     encoder.copyBufferToBuffer(outputBuffer, 0, readbackBuffer, 0, packed.count * 8);
     device.queue.submit([encoder.finish()]);
-    const ids = packed.ids.slice(); inFlight = true; dispatches++;
+    const ids = packed.ids.slice(), submittedAt = performance.now(); inFlight = true; dispatches++;
     readbackBuffer.mapAsync(GPUMapMode.READ).then(() => {
       const positions = new Float32Array(readbackBuffer.getMappedRange().slice(0)); readbackBuffer.unmap();
+      lastReadbackMs = performance.now() - submittedAt; totalReadbackMs += lastReadbackMs; maxReadbackMs = Math.max(maxReadbackMs, lastReadbackMs); completed++;
       if (!destroyed) pending = {ids, positions, baseline};
       inFlight = false;
     }).catch(error => { inFlight = false; lastError = error; options.onError?.(error); });
     return true;
   }
-  return {dispatch, consume, get dispatches() { return dispatches; }, get pending() { return !!pending; }, get inFlight() { return inFlight; }, get lastError() { return lastError; }, destroy() { destroyed = true; pending = null; particleBuffer?.destroy(); bondBuffer?.destroy(); adjacencyBuffer?.destroy(); outputBuffer?.destroy(); readbackBuffer?.destroy(); paramsBuffer.destroy(); }};
+  return {dispatch, consume, get dispatches() { return dispatches; }, get telemetry() { return {skippedInFlight, skippedPending, completed, empty, lastInputCount, lastBondCount, lastReadbackMs, averageReadbackMs: completed ? totalReadbackMs / completed : 0, maxReadbackMs}; }, get pending() { return !!pending; }, get inFlight() { return inFlight; }, get lastError() { return lastError; }, destroy() { destroyed = true; pending = null; particleBuffer?.destroy(); bondBuffer?.destroy(); adjacencyBuffer?.destroy(); outputBuffer?.destroy(); readbackBuffer?.destroy(); paramsBuffer.destroy(); }};
 }
