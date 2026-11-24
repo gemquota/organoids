@@ -224,6 +224,8 @@ export async function createGpuElectrostatics(device, options = {}) {
   let inFlight = false;
   let destroyed = false;
   let dispatches = 0;
+  let skippedInFlight = 0, skippedPending = 0, completed = 0, empty = 0;
+  let lastReadbackMs = 0, totalReadbackMs = 0, maxReadbackMs = 0, lastInputCount = 0;
   let lastError = null;
 
   function ensureCapacity(count, gridCount) {
@@ -285,11 +287,13 @@ export async function createGpuElectrostatics(device, options = {}) {
   function dispatch(entities, isActive, parameters = {}) {
     if (destroyed) throw new Error('Electrostatics compute pipeline was destroyed');
     if (lastError) throw lastError;
-    if (inFlight || pending) return false;
+    if (inFlight) { skippedInFlight++; return false; }
+    if (pending) { skippedPending++; return false; }
 
     const packed = packElectrostaticParticles(entities, isActive, packedStorage);
     packedStorage = packed.storage;
-    if (!packed.count) return false;
+    lastInputCount = packed.count;
+    if (!packed.count) { empty++; return false; }
 
     const radius = Math.max(0.001, Number.isFinite(parameters.radius) ? parameters.radius : 120);
     const strength = Number.isFinite(parameters.strength) ? parameters.strength : 1;
@@ -335,12 +339,17 @@ export async function createGpuElectrostatics(device, options = {}) {
 
     const ids = packed.ids.slice();
     const count = packed.count;
+    const submittedAt = performance.now();
     inFlight = true;
     dispatches++;
     readbackBuffer.mapAsync(GPUMapMode.READ).then(() => {
       const mapped = readbackBuffer.getMappedRange();
       const deltas = new Float32Array(mapped.slice(0));
       readbackBuffer.unmap();
+      lastReadbackMs = performance.now() - submittedAt;
+      totalReadbackMs += lastReadbackMs;
+      maxReadbackMs = Math.max(maxReadbackMs, lastReadbackMs);
+      completed++;
       if (!destroyed) pending = {ids, deltas, count};
       inFlight = false;
     }).catch(error => {
@@ -357,6 +366,7 @@ export async function createGpuElectrostatics(device, options = {}) {
     get capacity() { return capacity; },
     get gridCapacity() { return gridCapacity; },
     get dispatches() { return dispatches; },
+    get telemetry() { return {skippedInFlight, skippedPending, completed, empty, lastInputCount, lastReadbackMs, averageReadbackMs: completed ? totalReadbackMs / completed : 0, maxReadbackMs}; },
     get pending() { return !!pending; },
     get inFlight() { return inFlight; },
     get lastError() { return lastError; },
