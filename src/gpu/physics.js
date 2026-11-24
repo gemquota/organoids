@@ -139,6 +139,44 @@ export function packElectrostaticParticles(entities, isActive, target = null) {
   return {data: storage.subarray(0, count * FLOATS_PER_INPUT), storage, ids, count};
 }
 
+export function computeElectrostaticDeltasReference(entities, isActive, options = {}) {
+  const packed = packElectrostaticParticles(entities, isActive);
+  const {data, ids, count} = packed;
+  const radius = Math.max(0.001, Number.isFinite(options.radius) ? options.radius : 120);
+  const strength = Number.isFinite(options.strength) ? options.strength : 1;
+  const softening = Math.max(0.001, Number.isFinite(options.softening) ? options.softening : 6);
+  const maxAcceleration = Math.max(0, Number.isFinite(options.maxAcceleration) ? options.maxAcceleration : 0.08);
+  const dt = Math.max(0, Number.isFinite(options.dt) ? options.dt : 1);
+  const output = new Float32Array(count * 4);
+  const radiusSquared = radius * radius;
+  const softeningSquared = softening * softening;
+
+  for (let i = 0; i < count; i++) {
+    const offset = i * FLOATS_PER_INPUT;
+    const ax = data[offset], ay = data[offset + 1];
+    const charge = data[offset + 4], mass = Math.max(0.001, data[offset + 5]);
+    let vx = 0, vy = 0;
+    for (let j = 0; j < count; j++) {
+      if (i === j) continue;
+      const other = j * FLOATS_PER_INPUT;
+      const product = charge * data[other + 4];
+      if (Math.abs(product) < 1e-9) continue;
+      const dx = data[other] - ax, dy = data[other + 1] - ay;
+      const distanceSquared = dx * dx + dy * dy;
+      if (distanceSquared > radiusSquared) continue;
+      const distance = Math.sqrt(distanceSquared);
+      const magnitude = strength * product / (distanceSquared + softeningSquared);
+      const force = Math.sign(magnitude) * Math.min(maxAcceleration * mass, Math.abs(magnitude));
+      const safeDistance = Math.max(distance, softening);
+      vx -= dx / safeDistance * (force / mass);
+      vy -= dy / safeDistance * (force / mass);
+    }
+    output[i * 4] = vx * dt;
+    output[i * 4 + 1] = vy * dt;
+  }
+  return {ids, deltas: output, count};
+}
+
 export function applyElectrostaticDeltas(store, ids, deltas, isActive) {
   let applied = 0;
   for (let i = 0; i < ids.length; i++) {
