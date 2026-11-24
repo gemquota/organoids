@@ -64,6 +64,9 @@ test('WGSL computes pairwise Coulomb-like velocity deltas on the GPU', () => {
   assert.match(ELECTROSTATICS_WGSL, /@compute @workgroup_size\(64\)/);
   assert.match(ELECTROSTATICS_WGSL, /params\.strength \* product/);
   assert.match(ELECTROSTATICS_WGSL, /deltas\[i\]/);
+  assert.match(ELECTROSTATICS_WGSL, /atomicExchange/);
+  assert.match(ELECTROSTATICS_WGSL, /atomicLoad/);
+  assert.match(ELECTROSTATICS_WGSL, /nextParticle\[j\]/);
 });
 
 test('reference electrostatics produces equal-and-opposite acceleration for equal masses', () => {
