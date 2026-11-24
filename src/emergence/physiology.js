@@ -1,6 +1,30 @@
 import {clamp,finite,active} from './shared.js';
 
 export const methods={
+  advanceCellularProcesses(options={}) {
+    const cells=[...this.store.entities.values()].filter(e=>(e.type==='protocell'||e.type==='cell')&&active(e)&&!e.parent);
+    const uptakeRadius=Math.max(1,finite(options.uptakeRadius,48)),uptakeAmount=Math.max(0,finite(options.uptakeAmount,.04));
+    let transported=0,metabolised=0,grown=0,divided=0;
+    const index=this.runtime.spatial.rebuild(this.store.entities.values());
+    for(const cell of cells) {
+      const membrane=this.store.outgoing(cell.id,'contains').map(id=>this.store.get(id)).find(e=>e?.type==='membrane');
+      if(membrane&&uptakeAmount>0) {
+        const nearby=index.query(finite(cell.properties.x),finite(cell.properties.y),uptakeRadius,[]);
+        for(const nutrient of nearby)if(nutrient.type==='substrate'&&nutrient.state==='active'&&nutrient.parent!==cell.id&&this.energy.quantity(nutrient,'substrate')>0) {
+          const amount=this.transport(membrane.id,nutrient.id,cell.id,'substrate',uptakeAmount);
+          if(amount>0){transported+=amount;break}
+        }
+      }
+      const available=this.energy.quantity(cell,'substrate');
+      if(available>0){const result=this.metabolize(cell.id,{substrate:'substrate',amount:Math.min(available,Math.max(0,finite(options.metabolismAmount,.03))),efficiency:clamp(finite(options.efficiency,.72))});metabolised+=result.consumed}
+      if(cell.energy>=Math.max(0,finite(options.growthCost,.0005))&&this.grow(cell.id,{biomass:Math.max(0,finite(options.growthAmount,.002)),energyCost:Math.max(0,finite(options.growthCost,.0005)),maturity:Math.max(.1,finite(options.maturity,1.5))}))grown++;
+      const interval=Math.max(1,Math.floor(finite(options.reproductionInterval,1800)));
+      if(this.lifecycle.stage(cell)==='mature'&&(options.forceReproduction||this.runtime.scheduler.tick>0&&this.runtime.scheduler.tick%interval===0)&&cell.energy>finite(options.reproductionCost,.01)) {
+        try{if(this.fission(cell.id,{share:clamp(finite(options.reproductionShare,.25)),energyCost:Math.max(0,finite(options.reproductionCost,.01)),alphabet:options.alphabet||'ACGU'}))divided++}catch(error){if(!/energy budget/.test(error.message))throw error}
+      }
+    }
+    return{cells:cells.length,transported,metabolised,grown,divided};
+  },
   transport(membraneId,fromId,toId,key,requested,options={}){
     const membrane=this.store.get(membraneId),from=this.store.get(fromId),to=this.store.get(toId);
     if(!membrane||membrane.type!=="membrane"||!from||!to||!active(from)||!active(to))throw Error("Transport requires a membrane and two active entities");
