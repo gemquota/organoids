@@ -27,11 +27,26 @@ test("lipid clusters self-assemble into closed membranes using their own compone
   assert.ok(membrane);
   assert.equal(membrane.properties.closed,true);
   assert.equal(membrane.properties.lipidCount,8);
+  assert.equal(membrane.properties.bilayer,true);
+  assert.equal(membrane.properties.leafletCount,2);
+  assert.equal(membrane.properties.outerLeafletCount,4);
+  assert.equal(membrane.properties.innerLeafletCount,4);
   assert.deepEqual(runtime.store.descendants(membrane.id).sort((a,b)=>a-b),lipids.map(e=>e.id).sort((a,b)=>a-b));
   assert.equal(runtime.store.activeLinks.filter(e=>e.type==="bond").length,8);
+  assert.equal(lipids.filter(e=>e.properties.leaflet==="outer").length,4);
+  assert.equal(lipids.filter(e=>e.properties.leaflet==="inner").length,4);
+  for(const lipid of lipids){const dot=lipid.properties.headDirection.x*lipid.properties.tailDirection.x+lipid.properties.headDirection.y*lipid.properties.tailDirection.y;assert.ok(dot<-.999);assert.ok(Math.abs(Math.hypot(lipid.properties.headDirection.x,lipid.properties.headDirection.y)-1)<1e-9)}
   assert.equal(biology.metrics.membranes,1);
 });
 
+
+
+test("bilayer self-assembly rejects amphiphiles without a hydrophobic tail",()=>{
+  const runtime=createRuntime(),biology=new EmergenceProgression(runtime);
+  for(let i=0;i<8;i++){const angle=i*Math.PI/4;biology.create("lipid",{x:20+Math.cos(angle),y:20+Math.sin(angle),headPolarity:1,tailHydrophobicity:i===0?0:1})}
+  assert.equal(biology.selfAssembleMembranes({radius:5,minLipids:8}),0);
+  assert.equal([...runtime.store.entities.values()].filter(entity=>entity.type==="membrane").length,0);
+});
 
 test("bond activation cost is shared by both reactants in one conserved transaction",()=>{
   const runtime=createRuntime(),biology=new EmergenceProgression(runtime);

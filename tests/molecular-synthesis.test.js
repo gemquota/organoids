@@ -108,6 +108,30 @@ test("complementary monomers can form a multi-unit polymer chain",()=>{
   assert.equal(runtime.store.descendants(polymer.id).length,4);
 });
 
+
+test("polymer sequence follows bond topology rather than entity creation order",()=>{
+  const runtime=createRuntime(),biology=new EmergenceProgression(runtime,{seed:61});
+  const a=biology.create("monomer",{x:0,y:0,monomerKind:"A",mass:1});
+  const u=biology.create("monomer",{x:1,y:0,monomerKind:"U",mass:1});
+  const c=biology.create("monomer",{x:2,y:0,monomerKind:"C",mass:1});
+  const g=biology.create("monomer",{x:3,y:0,monomerKind:"G",mass:1});
+  runtime.store.link(a.id,c.id,"bond");runtime.store.link(c.id,u.id,"bond");runtime.store.link(u.id,g.id,"bond");
+  assert.equal(biology.polymerize({minLength:3,energyCost:0}),1);
+  const polymer=[...runtime.store.entities.values()].find(entity=>entity.type==="polymer");
+  assert.deepEqual(polymer.properties.sequence,["A","C","U","G"]);
+  assert.equal(polymer.properties.topology,"linear");
+  assert.equal(polymer.properties.bondCount,3);
+  assert.deepEqual(runtime.store.descendants(polymer.id),[a.id,c.id,u.id,g.id]);
+});
+
+test("branched monomer clusters are not misrepresented as linear polymers",()=>{
+  const runtime=createRuntime(),biology=new EmergenceProgression(runtime,{seed:67});
+  const monomers=["A","U","A","U"].map((kind,i)=>biology.create("monomer",{x:i,y:0,monomerKind:kind,mass:1}));
+  runtime.store.link(monomers[0].id,monomers[1].id,"bond");runtime.store.link(monomers[1].id,monomers[2].id,"bond");runtime.store.link(monomers[1].id,monomers[3].id,"bond");
+  assert.equal(biology.polymerize({minLength:3,energyCost:0}),0);
+  assert.equal([...runtime.store.entities.values()].filter(entity=>entity.type==="polymer").length,0);
+});
+
 test("atomic feedstock can synthesize amphiphiles that assemble into a membrane and vesicle",()=>{
   const runtime=createRuntime(),biology=new EmergenceProgression(runtime,{seed:41});
   const centers=Array.from({length:8},(_,i)=>({x:80+Math.cos(i*Math.PI/4)*8,y:80+Math.sin(i*Math.PI/4)*8}));
@@ -143,7 +167,11 @@ test("atomic feedstock produces nucleobase analogues that polymerise into an inf
   assert.equal(biology.polymerize({monomerTypes:["monomer"],minLength:3,energyCost:0}),1);
   const polymer=[...runtime.store.entities.values()].find(e=>e.type==="polymer");
   assert.equal(polymer.properties.length,6);
+  assert.equal(polymer.properties.polymerClass,"nucleobase-analogue-chain");
+  assert.equal(polymer.properties.backboneType,"base-only");
+  assert.equal(polymer.properties.translationEligible,false);
   assert.equal(runtime.store.descendants(polymer.id).filter(id=>runtime.store.get(id)?.type==="monomer").length,6);
+  assert.deepEqual(biology.translateAllRNA(),[]);
 });
 
 test("nearby translated proteins can organise into a catalytic network",()=>{

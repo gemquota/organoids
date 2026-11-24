@@ -5,25 +5,46 @@ export const methods = {
   assembleMembrane(options={}){const plan=this._membranePlan(options),result=this.store.transact(plan.actions,{energy:this.energy,fields:this.energy.fields});if(!result.ok)throw result.error;return this._recordMembrane(plan,result.refs)},
   assembleMembraneFromLipids(ids,options={}) {
     const members=[...new Set(ids)].map(id=>this.store.get(id));
-    if(members.length<3||members.some(e=>!e||e.type!=='lipid'||e.state!=='active'||e.parent))throw Error('Membrane assembly requires at least three free lipids');
-    const x=members.reduce((s,e)=>s+finite(e.properties.x),0)/members.length;
-    const y=members.reduce((s,e)=>s+finite(e.properties.y),0)/members.length;
-    const ordered=members.slice().sort((a,b)=>Math.atan2(a.properties.y-y,a.properties.x-x)-Math.atan2(b.properties.y-y,b.properties.x-x));
+    if(members.length<6||members.some(e=>!e||e.type!=="lipid"||e.state!=="active"||e.parent))throw Error("Bilayer assembly requires at least six free amphiphilic lipids");
+    if(members.some(e=>finite(e.properties.headPolarity)<.25||finite(e.properties.tailHydrophobicity)<.25))throw Error("Bilayer assembly requires both hydrophilic heads and hydrophobic tails");
+    const x=members.reduce((sum,e)=>sum+finite(e.properties.x),0)/members.length;
+    const y=members.reduce((sum,e)=>sum+finite(e.properties.y),0)/members.length;
+    const ordered=members.slice().sort((a,b)=>Math.atan2(finite(a.properties.y)-y,finite(a.properties.x)-x)-Math.atan2(finite(b.properties.y)-y,finite(b.properties.x)-x));
     const radius=Math.max(2,finite(options.radius,Math.sqrt(members.length)*2.5));
+    const thickness=Math.max(1,finite(options.thickness,4));
     const permeability=clamp(finite(options.permeability,.2));
-    const actions=[{op:'create',type:'membrane',properties:{x,y,radius,permeability,lipidCount:members.length,closed:true,catalogueId:'membranes',name:'Lipid membrane',categoryId:'selforg',catalogueColor:'#e58b9d'},energy:0,as:'membrane'}];
-    ordered.forEach((e,i)=>{const angle=2*Math.PI*i/ordered.length;actions.push({op:'compose',parent:{ref:'membrane'},child:e.id},{op:'set',id:e.id,key:'x',value:x+Math.cos(angle)*radius},{op:'set',id:e.id,key:'y',value:y+Math.sin(angle)*radius},{op:'set',id:e.id,key:'angle',value:angle},{op:'link',from:e.id,to:ordered[(i+1)%ordered.length].id,type:'bond',properties:{membrane:true}})});
+    const outer=ordered.filter((entity,index)=>index%2===0),inner=ordered.filter((entity,index)=>index%2===1);
+    if(outer.length<3||inner.length<3)throw Error("A stable coarse-grained bilayer requires at least three lipids in each leaflet");
+    const properties={x,y,radius,thickness,permeability,lipidCount:members.length,leafletCount:2,outerLeafletCount:outer.length,innerLeafletCount:inner.length,bilayer:true,closed:true,catalogueId:"membranes",name:"Lipid bilayer",categoryId:"selforg",catalogueColor:"#e58b9d"};
+    const actions=[{op:"create",type:"membrane",properties,energy:0,as:"membrane"}],leaflets=[outer,inner];
+    for(let side=0;side<leaflets.length;side++) {
+      const leaflet=leaflets[side],isOuter=side===0,leafletRadius=radius+(isOuter?thickness/2:-thickness/2);
+      for(const lipid of leaflet) {
+        const angle=Math.atan2(finite(lipid.properties.y)-y,finite(lipid.properties.x)-x);
+        const headAngle=isOuter?angle:angle+Math.PI,tailAngle=headAngle+Math.PI;
+        actions.push(
+          {op:"compose",parent:{ref:"membrane"},child:lipid.id},
+          {op:"set",id:lipid.id,key:"x",value:x+Math.cos(angle)*leafletRadius},
+          {op:"set",id:lipid.id,key:"y",value:y+Math.sin(angle)*leafletRadius},
+          {op:"set",id:lipid.id,key:"angle",value:angle},
+          {op:"set",id:lipid.id,key:"leaflet",value:isOuter?"outer":"inner"},
+          {op:"set",id:lipid.id,key:"headDirection",value:{x:Math.cos(headAngle),y:Math.sin(headAngle)}},
+          {op:"set",id:lipid.id,key:"tailDirection",value:{x:Math.cos(tailAngle),y:Math.sin(tailAngle)}}
+        );
+      }
+      for(let i=0;i<leaflet.length;i++)actions.push({op:"link",from:leaflet[i].id,to:leaflet[(i+1)%leaflet.length].id,type:"bond",properties:{membrane:true,leaflet:isOuter?"outer":"inner"}});
+    }
     const result=this.store.transact(actions,{energy:this.energy,fields:this.energy.fields});
     if(!result.ok)throw result.error;
     const membrane=this.store.get(result.refs.membrane);
-    const rest=2*radius*Math.sin(Math.PI/ordered.length);for(let i=0;i<ordered.length;i++)this.runtime.constraints.add({a:ordered[i].id,b:ordered[(i+1)%ordered.length].id,rest,stiffness:.8});
-    for(let i=0;i<ordered.length;i++)this._record('bonding',{parents:[ordered[i].id,ordered[(i+1)%ordered.length].id],relation:'bond',properties:{membrane:membrane.id}});
-    this._record('membrane-assembly',{parents:ordered.map(e=>e.id),children:[membrane.id],count:members.length,radius});
+    for(const leaflet of leaflets)for(let i=0;i<leaflet.length;i++)this.runtime.constraints.add({a:leaflet[i].id,b:leaflet[(i+1)%leaflet.length].id,rest:2*radius*Math.sin(Math.PI/leaflet.length),stiffness:.8});
+    for(const leaflet of leaflets)for(let i=0;i<leaflet.length;i++)this._record("bonding",{parents:[leaflet[i].id,leaflet[(i+1)%leaflet.length].id],relation:"bond",properties:{membrane:membrane.id,leaflet:leaflet===outer?"outer":"inner"}});
+    this._record("membrane-assembly",{parents:members.map(e=>e.id),children:[membrane.id],count:members.length,radius,thickness,bilayer:true,leaflets:2});
     return membrane;
   },
   selfAssembleMembranes(options={}) {
-    const radius=Math.max(.001,finite(options.radius,12)),minimum=Math.max(3,Math.floor(options.minLipids||8));
-    const lipids=[...this.store.entities.values()].filter(e=>e.type==='lipid'&&e.state==='active'&&!e.parent);
+    const radius=Math.max(.001,finite(options.radius,12)),minimum=Math.max(6,Math.floor(options.minLipids||8));
+    const lipids=[...this.store.entities.values()].filter(e=>e.type==='lipid'&&e.state==='active'&&!e.parent&&finite(e.properties.headPolarity)>=.25&&finite(e.properties.tailHydrophobicity)>=.25);
     const index=this.runtime.spatial.rebuild(lipids),adjacency=new Map(lipids.map(e=>[e.id,[]]));
     for(const a of lipids)for(const b of index.query(a.properties.x,a.properties.y,radius,[]))if(b.id>a.id&&Math.hypot(b.properties.x-a.properties.x,b.properties.y-a.properties.y)<=radius){adjacency.get(a.id).push(b.id);adjacency.get(b.id).push(a.id)}
     const seen=new Set();let formed=0;
@@ -88,7 +109,7 @@ export const methods = {
   },
   formProtocellsFromAssemblies(options={}) {
     const membranes=[...this.store.entities.values()].filter(e=>(e.type==='membrane'||e.type==='vesicle')&&e.state==='active'&&!e.parent&&e.properties.closed);
-    const polymers=[...this.store.entities.values()].filter(e=>e.type==='polymer'&&e.state==='active'&&!e.parent);
+    const polymers=[...this.store.entities.values()].filter(e=>e.type==='polymer'&&e.state==='active'&&!e.parent&&e.properties.translationEligible!==false);
     const networks=[...this.store.entities.values()].filter(e=>e.type==='autocatalytic-network'&&e.state==='active'&&!e.parent);
     let formed=0;
     for(const membrane of membranes) {

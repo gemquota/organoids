@@ -120,7 +120,46 @@ export const methods = {
     }
     return formed;
   },
-  polymerize(options={}){const types=options.monomerTypes||["monomer"],min=Math.max(2,options.minLength||3),groups=this._bondComponents(types).filter(g=>g.length>=min);let formed=0;for(const ids of groups){const monomers=ids.map(id=>this.store.get(id)).filter(Boolean),sequence=monomers.map(e=>e.properties.monomerKind||e.type),mass=monomers.reduce((s,e)=>s+finite(e.properties.mass,1),0),x=monomers.reduce((s,e)=>s+finite(e.properties.x),0)/monomers.length,y=monomers.reduce((s,e)=>s+finite(e.properties.y),0)/monomers.length;const energyCost=Math.max(0,finite(options.energyCost)),payments=new Map();let remaining=energyCost;for(const e of monomers){const paid=Math.min(Math.max(0,e.energy),remaining);payments.set(e.id,paid);remaining-=paid}if(remaining>1e-12)continue;const actions=[{op:"create",type:"polymer",properties:{sequence,mass,x,y,length:ids.length,catalogueId:sequence.every(x=>['A','U','C','G'].includes(x))?'rna':'macromolecules',name:'Polymer',categoryId:'chemistry',catalogueColor:'#f0a66e'},as:"polymer"},...ids.map(id=>({op:"compose",parent:{ref:"polymer"},child:id}))];for(const e of monomers){const paid=payments.get(e.id)||0,available=Math.max(0,e.energy-paid);if(paid)actions.push({op:"dissipate",id:e.id,amount:paid});if(available)actions.push({op:"transfer",from:e.id,to:{ref:"polymer"},amount:available})}const result=this.store.transact(actions,{energy:this.energy,fields:this.energy.fields});if(result.ok){formed++;this._record("polymerisation",{parents:ids,children:[result.refs.polymer],sequence,energyCost})}}return formed},
+  polymerize(options={}) {
+    const types=options.monomerTypes||["monomer"],minimum=Math.max(2,Math.floor(options.minLength||3));
+    const groups=this._bondComponents(types).filter(group=>group.length>=minimum);
+    let formed=0;
+    for(const ids of groups) {
+      const members=ids.map(id=>this.store.get(id)).filter(Boolean);
+      if(members.length<minimum)continue;
+      const memberIds=new Set(ids),adjacency=new Map(ids.map(id=>[id,[]]));
+      for(const link of this.store.activeLinks) {
+        if(link.type!=="bond"||!memberIds.has(link.a)||!memberIds.has(link.b))continue;
+        adjacency.get(link.a).push(link.b);adjacency.get(link.b).push(link.a);
+      }
+      // A polymer is a linear chain, not merely any connected component.
+      // Reject branches and cycles rather than inventing a sequence for them.
+      if([...adjacency.values()].some(neighbours=>neighbours.length>2))continue;
+      const endpoints=ids.filter(id=>adjacency.get(id).length===1);
+      if(endpoints.length!==2||this.store.activeLinks.filter(link=>link.type==="bond"&&memberIds.has(link.a)&&memberIds.has(link.b)).length!==ids.length-1)continue;
+      const ordered=[],visited=new Set();let current=endpoints.sort((a,b)=>a-b)[0],previous=null;
+      while(current!==undefined&&!visited.has(current)) {
+        ordered.push(current);visited.add(current);
+        const next=(adjacency.get(current)||[]).filter(id=>id!==previous&&!visited.has(id)).sort((a,b)=>a-b)[0];
+        previous=current;current=next;
+      }
+      if(ordered.length!==ids.length)continue;
+      const monomers=ordered.map(id=>this.store.get(id)),sequence=monomers.map(entity=>entity.properties.monomerKind||entity.type);
+      const mass=monomers.reduce((sum,entity)=>sum+Math.max(0,finite(entity.properties.mass,1)),0);
+      const x=monomers.reduce((sum,entity)=>sum+finite(entity.properties.x),0)/monomers.length;
+      const y=monomers.reduce((sum,entity)=>sum+finite(entity.properties.y),0)/monomers.length;
+      let remaining=Math.max(0,finite(options.energyCost)),payments=new Map();
+      for(const entity of monomers){const paid=Math.min(Math.max(0,entity.energy),remaining);payments.set(entity.id,paid);remaining-=paid}
+      if(remaining>1e-12)continue;
+      const translationEligible=monomers.every(entity=>entity.properties.sugarBackbone===true&&finite(entity.properties.phosphateGroups)>0);
+      const polymerClass=translationEligible?"rna":"nucleobase-analogue-chain";
+      const actions=[{op:"create",type:"polymer",properties:{sequence,mass,x,y,length:ordered.length,bondCount:ordered.length-1,topology:"linear",polymerClass,backboneType:translationEligible?"ribose-phosphate":"base-only",translationEligible,catalogueId:translationEligible?"rna":"macromolecules",name:translationEligible?"RNA polymer":"Nucleobase analogue polymer",categoryId:"chemistry",catalogueColor:"#f0a66e"},energy:0,as:"polymer"},...ordered.map(id=>({op:"compose",parent:{ref:"polymer"},child:id}))];
+      for(const entity of monomers){const paid=payments.get(entity.id)||0,available=Math.max(0,entity.energy-paid);if(paid)actions.push({op:"dissipate",id:entity.id,amount:paid});if(available)actions.push({op:"transfer",from:entity.id,to:{ref:"polymer"},amount:available})}
+      const result=this.store.transact(actions,{energy:this.energy,fields:this.energy.fields});
+      if(result.ok){formed++;this._record("polymerisation",{parents:ordered,children:[result.refs.polymer],sequence,topology:"linear",energyCost:finite(options.energyCost)})}
+    }
+    return formed;
+  },
   translateRNA(rnaId,options={}) {
     const rna=this.store.get(rnaId);
     if(!rna||rna.type!=='polymer'||rna.parent)throw Error('Translation requires a free RNA polymer');
@@ -142,7 +181,7 @@ export const methods = {
     const protein=this.store.get(result.refs.protein);this._record('translation',{parents:[rna.id],children:[protein.id],sequence:protein.properties.sequence,folded});return protein;
   },
   translateAllRNA(options={}) {
-    const rnas=[...this.store.entities.values()].filter(e=>e.type==='polymer'&&e.state==='active'&&!e.parent),proteins=[];
+    const rnas=[...this.store.entities.values()].filter(e=>e.type==='polymer'&&e.state==='active'&&!e.parent&&e.properties.translationEligible!==false),proteins=[];
     for(const rna of rnas){const protein=this.translateRNA(rna.id,options);if(protein)proteins.push(protein)}
     return proteins;
   },
