@@ -15,10 +15,11 @@ test('packs active entities into the GPU particle layout', () => {
   assert.equal(data.length, 16);
   assert.equal(data[0], 12);
   assert.equal(data[1], 24);
-  assert.equal(data[2], 2.2);
+  assert.equal(data[2], 6);
   assert.equal(data[4], 1);
   assert.ok(Math.abs(data[5] - 128 / 255) < 1e-6);
   assert.equal(data[8], 30);
+  assert.equal(data[10], 9);
   assert.equal(data[12], 0.6901960784313725);
 });
 
