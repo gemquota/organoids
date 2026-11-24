@@ -20,7 +20,7 @@ test('packs active entities into the GPU particle layout', () => {
   assert.ok(Math.abs(data[5] - 128 / 255) < 1e-6);
   assert.equal(data[8], 30);
   assert.equal(data[10], 9);
-  assert.equal(data[12], 0.6901960784313725);
+  assert.ok(Math.abs(data[12] - 176 / 255) < 1e-6);
 });
 
 test('uses finite defaults for incomplete particle properties', () => {
@@ -37,4 +37,16 @@ test('WGSL renderer declares storage-backed instanced particles', () => {
   assert.match(PARTICLE_WGSL, /var<storage, read> particles/);
   assert.match(PARTICLE_WGSL, /@builtin\(instance_index\)/);
   assert.equal(BYTES_PER_PARTICLE, 32);
+});
+
+test('packs Map-backed entity stores in one pass', () => {
+  const store = new Map([
+    [1, {type: 'atom', state: 'active', properties: {x: 4, y: 5, mass: 1}}],
+    [2, {type: 'atom', state: 'inactive', properties: {x: 8, y: 9, mass: 1}}],
+  ]);
+  const {data, count} = packParticles(store, active);
+  assert.equal(count, 1);
+  assert.equal(data.length, 8);
+  assert.equal(data[0], 4);
+  assert.equal(data[1], 5);
 });
