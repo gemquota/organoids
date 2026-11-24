@@ -93,10 +93,8 @@ renderCatalogueChoices();selectCatalogueEntity(selectedCatalogueId);function mer
   const before=sim.store.entities.size;
   biology.aggregateContacts({radius:8,types:['particle']});
   biology.formMolecules({types:['particle'],minSize:2});
-  biology.formChemicalBonds({types:['monomer'],radius:params.bondRadius,rate:params.bondRate,dt:1,energyCost:params.reactionEnergy,complementary:true});
-  biology.polymerize({minLength:3,energyCost:.002});
-  const chemistry=biology.assembleMolecularMatter({radius:params.moleculeRadius,waterRadius:params.moleculeRadius,organicRadius:params.moleculeRadius,amphiphileRadius:params.moleculeRadius,bondRadius:params.bondRadius,bondRate:params.bondRate,bondEnergyCost:params.reactionEnergy,dt:1});
-  if(chemistry.bonds||chemistry.molecules||chemistry.water||chemistry.organic||chemistry.lipids||chemistry.proteins||chemistry.complexes)log('event','Molecular synthesis',chemistry);
+  const chemistry=biology.assembleMolecularMatter({radius:params.moleculeRadius,waterRadius:params.moleculeRadius,organicRadius:params.moleculeRadius,amphiphileRadius:params.moleculeRadius,monomerRadius:params.moleculeRadius,polymerEnergyCost:.002,bondRadius:params.bondRadius,bondRate:params.bondRate,bondEnergyCost:params.reactionEnergy,dt:1});
+  if(chemistry.bonds||chemistry.monomerBonds||chemistry.molecules||chemistry.water||chemistry.organic||chemistry.lipids||chemistry.monomers||chemistry.polymers||chemistry.proteins||chemistry.networks||chemistry.complexes)log('event','Molecular synthesis',chemistry);
   const micelles=biology.selfAssembleMicelles({radius:12,minLipids:3,maxLipids:7});
   const membranes=biology.selfAssembleMembranes({radius:18,minLipids:8,permeability:.15});
   const vesicles=biology.formVesiclesFromMembranes();
