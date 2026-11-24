@@ -86,3 +86,29 @@ test("nucleons bind into nuclei, isotopes capture electrons and elements are cla
   assert.equal(biology.metrics.atoms,1);
   assert.equal(biology.metrics.elements,1);
 });
+
+
+test("composite atomic assembly conserves constituent mass, charge and energy",()=>{
+  const runtime=createRuntime(),biology=new EmergenceProgression(runtime);
+  seedHelium(biology);
+  const result=biology.assembleAtomicMatter({radius:10});
+  assert.deepEqual(result,{hadrons:4,nuclei:1,isotopes:1,atoms:1,elements:1});
+  const entities=[...runtime.store.entities.values()];
+  const hadrons=entities.filter(e=>e.type==="proton"||e.type==="neutron");
+  const nucleus=entities.find(e=>e.type==="atomic-nucleus");
+  const isotope=entities.find(e=>e.type==="isotope");
+  const atom=entities.find(e=>e.type==="atom");
+  const electrons=runtime.store.descendants(atom.id).map(id=>runtime.store.get(id)).filter(e=>e?.type==="lepton");
+  const quarks=runtime.store.descendants(nucleus.id).map(id=>runtime.store.get(id)).filter(e=>e?.type==="quark");
+  assert.equal(quarks.length,12);
+  assert.equal(quarks.reduce((sum,e)=>sum+e.properties.mass,0),nucleus.properties.mass);
+  assert.equal(hadrons.reduce((sum,e)=>sum+e.properties.mass,0),nucleus.properties.mass);
+  assert.equal(hadrons.reduce((sum,e)=>sum+e.properties.charge,0),nucleus.properties.charge);
+  assert.equal(nucleus.properties.atomicNumber,nucleus.properties.protonCount);
+  assert.equal(isotope.properties.mass,nucleus.properties.mass);
+  assert.equal(isotope.properties.protonCount,nucleus.properties.protonCount);
+  assert.equal(atom.properties.mass,isotope.properties.mass+electrons.reduce((sum,e)=>sum+e.properties.mass,0));
+  assert.equal(atom.properties.charge,atom.properties.atomicNumber-electrons.length);
+  assert.equal(atom.properties.charge,0);
+  assert.equal(runtime.energy.audit(runtime.store,1.38).balanced,true);
+});
