@@ -117,15 +117,32 @@ export const methods = {
     return formed;
   },
   assembleOrganicMolecules(options={}) {
-    const atoms=[...this.store.entities.values()].filter(e=>e.type==='atom'&&e.state==='active'&&!e.parent),radius=Math.max(.01,finite(options.radius,20));let formed=0;
-    const available=number=>atoms.filter(e=>!e.parent&&e.properties.atomicNumber===number);
-    while(available(6).length>=2&&available(1).length>=5&&available(7).length>=1&&available(8).length>=2) {
-      const carbon=available(6).slice(0,2),hydrogen=available(1).slice(0,5),nitrogen=available(7)[0],oxygen=available(8).slice(0,2),members=[...carbon,...hydrogen,nitrogen,...oxygen];
-      const x=members.reduce((s,e)=>s+e.properties.x,0)/members.length,y=members.reduce((s,e)=>s+e.properties.y,0)/members.length;
-      if(members.some(e=>Math.hypot(e.properties.x-x,e.properties.y-y)>radius))break;
-      const actions=[{op:'create',type:'organic-molecule',properties:{x,y,mass:members.reduce((s,e)=>s+e.properties.mass,0),formula:'C2H5NO2',moleculeName:'Glycine',functionalGroup:'amino-acid',atomCount:members.length,catalogueId:'organic-molecules',name:'Organic molecule',categoryId:'chemistry',catalogueColor:'#f0a66e'},energy:0,as:'molecule'},...members.map(e=>({op:'compose',parent:{ref:'molecule'},child:e.id}))];
+    const atoms=[...this.store.entities.values()].filter(e=>e.type==='atom'&&e.state==='active'&&!e.parent);
+    const radius=Math.max(.01,finite(options.radius,20)),used=new Set();
+    const available=number=>atoms.filter(e=>!e.parent&&!used.has(e.id)&&e.properties.atomicNumber===number);
+    const nearest=(pool,x,y,count)=>pool.slice().sort((a,b)=>Math.hypot(finite(a.properties.x)-x,finite(a.properties.y)-y)-Math.hypot(finite(b.properties.x)-x,finite(b.properties.y)-y)).slice(0,count);
+    let formed=0;
+    for(const anchor of available(6)) {
+      if(anchor.parent||used.has(anchor.id))continue;
+      const ax=finite(anchor.properties.x),ay=finite(anchor.properties.y);
+      const carbon=nearest(available(6).filter(e=>e.id!==anchor.id),ax,ay,1);
+      if(!carbon.length||Math.hypot(finite(carbon[0].properties.x)-ax,finite(carbon[0].properties.y)-ay)>radius)continue;
+      const nitrogen=nearest(available(7),ax,ay,1);
+      const oxygen=nearest(available(8),ax,ay,2);
+      if(!nitrogen.length||oxygen.length<2)continue;
+      const core=[anchor,...carbon,...nitrogen,...oxygen];
+      const cx=core.reduce((sum,e)=>sum+finite(e.properties.x),0)/core.length;
+      const cy=core.reduce((sum,e)=>sum+finite(e.properties.y),0)/core.length;
+      const hydrogen=nearest(available(1),cx,cy,5);
+      if(hydrogen.length<5)continue;
+      const members=[...core,...hydrogen],x=members.reduce((sum,e)=>sum+finite(e.properties.x),0)/members.length,y=members.reduce((sum,e)=>sum+finite(e.properties.y),0)/members.length;
+      if(members.some(e=>Math.hypot(finite(e.properties.x)-x,finite(e.properties.y)-y)>radius))continue;
+      const mass=members.reduce((sum,e)=>sum+Math.max(0,finite(e.properties.mass)),0);
+      const actions=[{op:'create',type:'organic-molecule',properties:{x,y,mass,formula:'C2H5NO2',moleculeName:'Glycine',functionalGroup:'amino-acid',atomCount:members.length,catalogueId:'organic-molecules',name:'Organic molecule',categoryId:'chemistry',catalogueColor:'#f0a66e'},energy:0,as:'molecule'},...members.map(e=>({op:'compose',parent:{ref:'molecule'},child:e.id}))];
       for(const e of members)if(e.energy>0)actions.push({op:'transfer',from:e.id,to:{ref:'molecule'},amount:e.energy});
-      const result=this.store.transact(actions,{energy:this.energy,fields:this.energy.fields});if(!result.ok)throw result.error;
+      const result=this.store.transact(actions,{energy:this.energy,fields:this.energy.fields});
+      if(!result.ok)continue;
+      for(const e of members)used.add(e.id);
       this._record('organic-molecule-formation',{parents:members.map(e=>e.id),children:[result.refs.molecule],formula:'C2H5NO2',moleculeName:'Glycine'});formed++;
     }
     return formed;
