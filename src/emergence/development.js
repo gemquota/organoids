@@ -20,7 +20,7 @@ export const methods={
     const result=this.store.transact(actions);
     if(!result.ok)throw result.error;
     const tissues=created.map(x=>this.store.get(result.refs[x.ref]));
-    this._record('tissue-formation',{parents:cells.map(e=>e.id),children:tissues.map(e=>e.id),roles:created.map(x=>x.role)});
+    this._record('tissue-formation',{parents:cells.map(e=>e.id),children:tissues.map(e=>e.id),roles:created.map(x=>x.role),count:tissues.length});
     return tissues;
   },
   formOrganoid(colonyId,options={}) {
@@ -53,14 +53,14 @@ export const methods={
       const colony=this.formColony(group,{radius});
       const members=group.map(id=>this.store.get(id)),cx=finite(colony.properties.x),cy=finite(colony.properties.y),field=this.runtime.fields.fields.has('morphogen')?'morphogen':null;
       if(field)for(const member of members){const distance=Math.hypot(finite(member.properties.x)-cx,finite(member.properties.y)-cy),value=Math.min(1,distance/radius);this.runtime.fields.add(field,finite(member.properties.x),finite(member.properties.y),value)}
-      if(field)for(const member of members)if(!member.properties.phenotype)this.differentiateFromField(member.id,field,{defaultRole:'support'});
+      if(field)for(const member of members)if(!member.properties.phenotype)this.differentiateFromField(member.id,field,{defaultRole:'support',thresholds:options.thresholds||{boundary:.5,secretory:.4,motile:.3,interior:.12}});
       this.morphogenesis(colony.id,{pattern:options.pattern||'radial',radius:Math.max(2,finite(options.morphogenesisRadius, radius*.6)),stiffness:.2});
       formed++;
     }
     for(const colony of colonies.concat([...this.store.entities.values()].filter(e=>e.type==='colony'&&active(e)&&!e.parent&&!colonies.includes(e)))){
       const members=this.store.descendants(colony.id).map(id=>this.store.get(id)).filter(e=>e&&active(e)&&(e.type==='cell'||e.type==='protocell'));
       const field=this.runtime.fields.fields.has('morphogen')?'morphogen':null;
-      if(field)for(const member of members)if(!member.properties.phenotype){const distance=Math.hypot(finite(member.properties.x)-finite(colony.properties.x),finite(member.properties.y)-finite(colony.properties.y)),value=Math.min(1,distance/radius);this.runtime.fields.add(field,finite(member.properties.x),finite(member.properties.y),value);this.differentiateFromField(member.id,field,{defaultRole:'support'})}
+      if(field)for(const member of members)if(!member.properties.phenotype){const distance=Math.hypot(finite(member.properties.x)-finite(colony.properties.x),finite(member.properties.y)-finite(colony.properties.y)),value=Math.min(1,distance/radius);this.runtime.fields.add(field,finite(member.properties.x),finite(member.properties.y),value);this.differentiateFromField(member.id,field,{defaultRole:'support',thresholds:options.thresholds||{boundary:.5,secretory:.4,motile:.3,interior:.12}})}
       const newTissues=this.formTissues(colony.id,options);tissues+=newTissues.length;
       const organoid=this.formOrganoid(colony.id,options);if(organoid)organoids++;
     }
