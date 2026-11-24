@@ -169,9 +169,10 @@ test("forward and reverse bond rates share one activation barrier and bond energ
   assert.equal(link.properties.bondEnergy,.02);
   assert.ok(link.properties.attemptRate>0);
   assert.equal(biology.breakChemicalBonds({rate:100,dt:100,activationEnergy:.9,bondEnergy:.9}),1);
-  const event=biology.events.at(-1);
-  assert.equal(event.type,"bond-dissociation");
-  assert.equal(event.properties.activationEnergy,.003);
-  assert.equal(event.properties.reverseBarrier,.023);
-  assert.equal(event.properties.attemptRate,link.properties.attemptRate);
+  const event=biology.lineage.events.at(-1);
+  assert.equal(event.kind,"bond-dissociation");
+  assert.equal(event.activationEnergy,.003);
+  assert.equal(event.reverseBarrier,.023);
+  assert.equal(event.attemptRate,link.properties.attemptRate);
+  assert.equal(runtime.store.activeLinks.some(edge=>edge.type==="bond"),false);
 });
