@@ -36,7 +36,7 @@ test("nucleons bind into nuclei, isotopes capture electrons and elements are cla
   assert.equal(atom.properties.atomicNumber,2);
   assert.equal(atom.properties.electronCount,2);
   assert.equal(isotope.properties.massNumber,4);
-  assert.equal(runtime.store.descendants(element.id).includes(atom.id),true);
+  assert.equal(runtime.store.neighbours(element.id,'classifies').includes(atom.id),true);assert.equal(atom.parent,null);
   assert.equal(biology.metrics.isotopes,1);
   assert.equal(biology.metrics.atoms,1);
   assert.equal(biology.metrics.elements,1);
