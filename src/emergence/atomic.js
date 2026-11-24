@@ -73,13 +73,18 @@ export const methods={
   },
 
   formElements() {
-    const atoms=[...this.store.entities.values()].filter(e=>e.type==='atom'&&active(e)&&!e.parent),groups=new Map();
+    const atoms=[...this.store.entities.values()].filter(e=>e.type==='atom'&&active(e)),groups=new Map();
     for(const atom of atoms){const key=atom.properties.atomicNumber;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(atom)}
+    this.store.defineRelation?.('classifies',{direction:'directed'});
     let formed=0;
-    for(const[number,members]of groups){const info=ELEMENTS[number]||['X','Unknown'],x=members.reduce((s,e)=>s+e.properties.x,0)/members.length,y=members.reduce((s,e)=>s+e.properties.y,0)/members.length,properties={x,y,atomicNumber:number,symbol:info[0],elementName:info[1],atomCount:members.length,catalogueId:'elements',name:info[1],categoryId:'atoms',catalogueColor:'#d6c18b'};
-      const actions=[{op:'create',type:'element',properties,energy:0,as:'element'},...members.map(e=>({op:'compose',parent:{ref:'element'},child:e.id}))];for(const e of members)if(e.energy>0)actions.push({op:'transfer',from:e.id,to:{ref:'element'},amount:e.energy});
-      const result=this.store.transact(actions,{energy:this.energy,fields:this.energy.fields});if(!result.ok)throw result.error;
-      this._record('element-formation',{parents:members.map(e=>e.id),children:[result.refs.element],atomicNumber:number,symbol:info[0]});formed++;
+    for(const[number,members]of groups){const info=ELEMENTS[number]||['X','Unknown'];let element=[...this.store.entities.values()].find(e=>e.type==='element'&&e.properties.atomicNumber===number);
+      if(!element){const x=members.reduce((s,e)=>s+e.properties.x,0)/members.length,y=members.reduce((s,e)=>s+e.properties.y,0)/members.length,properties={x,y,atomicNumber:number,symbol:info[0],elementName:info[1],atomCount:0,catalogueId:'elements',name:info[1],categoryId:'atoms',catalogueColor:'#d6c18b'};
+        const result=this.store.transact([{op:'create',type:'element',properties,energy:0,as:'element'}]);if(!result.ok)throw result.error;element=this.store.get(result.refs.element);
+        this._record('element-formation',{parents:members.map(e=>e.id),children:[element.id],atomicNumber:number,symbol:info[0]});formed++;
+      }
+      const linked=new Set(this.store.neighbours(element.id,'classifies'));
+      for(const atom of members)if(!linked.has(atom.id))this.store.link(element.id,atom.id,'classifies',{atomicNumber:number,symbol:info[0]});
+      this.store.transact([{op:'set',id:element.id,key:'atomCount',value:this.store.neighbours(element.id,'classifies').length}]);
     }
     return formed;
   },
