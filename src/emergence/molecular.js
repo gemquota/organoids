@@ -15,7 +15,7 @@ export const methods = {
         if(b.id<=a.id||!entities.includes(b)||(degree.get(b.id)||0)>=Math.max(1,finite(b.properties.valence,2)))continue;
         if(complementary&&COMPLEMENT[pa.monomerKind]!==b.properties.monomerKind)continue;
         const dx=b.properties.x-pa.x,dy=b.properties.y-pa.y,d=Math.hypot(dx,dy);
-        if(d>radius||this.store.neighbours(a.id,'bond').includes(b.id))continue;
+        if(d>radius||this.store.neighbours(a.id,'bond').includes(b.id)||((degree.get(a.id)||0)>0&&(degree.get(b.id)||0)>0))continue;
         const affinity=clamp(finite(pa.bondAffinity,1)*finite(b.properties.bondAffinity,1));
         const temperature=(a.energy/Math.max(.001,finite(pa.heatCapacity,1))+b.energy/Math.max(.001,finite(b.properties.heatCapacity,1)))*.5;
         const activation=Math.max(0,finite(options.activationEnergy,.01));
