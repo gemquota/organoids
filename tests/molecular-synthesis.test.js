@@ -45,3 +45,39 @@ test("RNA translates into a folded protein and can form a ribonucleoprotein comp
   assert.equal(biology.metrics.proteins,1);
   assert.equal(biology.metrics.macromolecularComplexes,1);
 });
+
+test("the integrated molecular pass synthesizes water and organic feedstock from free atoms",()=>{
+  const runtime=createRuntime(),biology=new EmergenceProgression(runtime,{seed:19});
+  biology.create("atom",{x:10,y:10,atomicNumber:8,elementSymbol:"O",mass:16},.1);
+  biology.create("atom",{x:9,y:10,atomicNumber:1,elementSymbol:"H",mass:1},.1);
+  biology.create("atom",{x:11,y:10,atomicNumber:1,elementSymbol:"H",mass:1},.1);
+  for(let i=0;i<2;i++)biology.create("atom",{x:50+i,y:50,atomicNumber:6,elementSymbol:"C",mass:12},.1);
+  for(let i=0;i<5;i++)biology.create("atom",{x:49+i*.5,y:52,atomicNumber:1,elementSymbol:"H",mass:1},.1);
+  biology.create("atom",{x:50,y:51,atomicNumber:7,elementSymbol:"N",mass:14},.1);
+  for(let i=0;i<2;i++)biology.create("atom",{x:51+i,y:51,atomicNumber:8,elementSymbol:"O",mass:16},.1);
+
+  const result=biology.assembleMolecularMatter({waterRadius:5,organicRadius:8,bondRadius:1,bondRate:0,bondEnergyCost:.0005});
+  assert.equal(result.water,1);
+  assert.equal(result.organic,1);
+  assert.equal([...runtime.store.entities.values()].filter(e=>e.type==="water").length,1);
+  assert.equal([...runtime.store.entities.values()].filter(e=>e.type==="organic-molecule").length,1);
+  assert.equal(biology.metrics.water,1);
+  assert.equal(biology.metrics.organicMolecules,1);
+});
+
+test("the molecular pass forwards live chemistry parameters to atomic bonding",()=>{
+  const runtime=createRuntime(),biology=new EmergenceProgression(runtime);
+  let received=null;
+  biology.formChemicalBonds=options=>(received=options,0);
+  biology.formMolecules=()=>0;
+  biology.translateAllRNA=()=>[];
+  biology.assembleMacromolecularComplexes=()=>0;
+  biology.assembleWater=()=>0;
+  biology.assembleOrganicMolecules=()=>0;
+  biology.assembleMolecularMatter({bondRadius:27,bondRate:.73,bondEnergyCost:.004,dt:.5,activationEnergy:.01});
+  assert.equal(received.radius,27);
+  assert.equal(received.rate,.73);
+  assert.equal(received.energyCost,.004);
+  assert.equal(received.dt,.5);
+  assert.equal(received.activationEnergy,.01);
+});
