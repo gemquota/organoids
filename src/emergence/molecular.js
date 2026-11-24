@@ -26,7 +26,7 @@ export const methods = {
         if(b.id<=a.id||!entities.includes(b)||a.type!==b.type)continue;
         const pb=b.properties,bProfile=isAtom?(profiles.get(Math.floor(finite(pb.atomicNumber,0)))||{valence:0,electronegativity:0,radius:2}):null;
         const bCapacity=isAtom?bProfile.valence:Math.max(1,finite(pb.valence,2));
-        if((degree.get(b.id)||0)>=bCapacity||this.store.neighbours(a.id,'bond').includes(b.id)||(!isAtom&&(degree.get(a.id)||0)>0&&(degree.get(b.id)||0)>0))continue;
+        if((degree.get(b.id)||0)>=bCapacity||this.store.neighbours(a.id,'bond').includes(b.id))continue;
         if(isAtom&&(capacity===0||bCapacity===0))continue;
         if(!isAtom&&options.complementary!==false&&COMPLEMENT[pa.monomerKind]!==pb.monomerKind)continue;
         const dx=finite(pb.x)-finite(pa.x),dy=finite(pb.y)-finite(pa.y),distance=Math.hypot(dx,dy);
@@ -147,6 +147,33 @@ export const methods = {
     }
     return formed;
   },
+  assembleAmphiphiles(options={}) {
+    const atoms=[...this.store.entities.values()].filter(e=>e.type==='atom'&&e.state==='active'&&!e.parent);
+    const radius=Math.max(.01,finite(options.radius,20)),used=new Set();
+    const available=number=>atoms.filter(e=>!e.parent&&!used.has(e.id)&&e.properties.atomicNumber===number);
+    const nearest=(pool,x,y,count)=>pool.slice().sort((a,b)=>Math.hypot(finite(a.properties.x)-x,finite(a.properties.y)-y)-Math.hypot(finite(b.properties.x)-x,finite(b.properties.y)-y)).slice(0,count);
+    let formed=0;
+    for(const anchor of available(6)) {
+      if(anchor.parent||used.has(anchor.id))continue;
+      const ax=finite(anchor.properties.x),ay=finite(anchor.properties.y);
+      const carbon=[anchor,...nearest(available(6).filter(e=>e.id!==anchor.id),ax,ay,7)];
+      const oxygen=nearest(available(8),ax,ay,2);
+      if(carbon.length<8||oxygen.length<2)continue;
+      const core=[...carbon,...oxygen],cx=core.reduce((sum,e)=>sum+finite(e.properties.x),0)/core.length,cy=core.reduce((sum,e)=>sum+finite(e.properties.y),0)/core.length;
+      const hydrogen=nearest(available(1),cx,cy,16);
+      if(hydrogen.length<16)continue;
+      const members=[...core,...hydrogen],x=members.reduce((sum,e)=>sum+finite(e.properties.x),0)/members.length,y=members.reduce((sum,e)=>sum+finite(e.properties.y),0)/members.length;
+      if(members.some(e=>Math.hypot(finite(e.properties.x)-x,finite(e.properties.y)-y)>radius))continue;
+      const mass=members.reduce((sum,e)=>sum+Math.max(0,finite(e.properties.mass)),0);
+      const actions=[{op:'create',type:'lipid',properties:{x,y,mass,formula:'C8H16O2',moleculeName:'Octanoic acid',amphiphileKind:'fatty-acid',headPolarity:.9,tailHydrophobicity:.95,hydrophobicTailLength:7,catalogueId:'lipids',name:'Fatty-acid amphiphile',categoryId:'selforg',catalogueColor:'#e58b9d'},energy:0,as:'lipid'},...members.map(e=>({op:'compose',parent:{ref:'lipid'},child:e.id}))];
+      for(const e of members)if(e.energy>0)actions.push({op:'transfer',from:e.id,to:{ref:'lipid'},amount:e.energy});
+      const result=this.store.transact(actions,{energy:this.energy,fields:this.energy.fields});
+      if(!result.ok)continue;
+      for(const e of members)used.add(e.id);
+      this._record('lipid-synthesis',{parents:members.map(e=>e.id),children:[result.refs.lipid],formula:'C8H16O2',amphiphileKind:'fatty-acid'});formed++;
+    }
+    return formed;
+  },
   buildAutocatalyticNetwork(spec={}) {
     const members=(spec.members||[]).map(idOf);
     if(members.length<2||members.some(id=>!this.store.get(id)))throw Error('An autocatalytic network requires at least two existing members');
@@ -165,10 +192,11 @@ export const methods = {
     // general bond pass can lock those atoms into arbitrary aggregates.
     const water=this.assembleWater({radius:finite(options.waterRadius,finite(options.radius,18))});
     const organic=this.assembleOrganicMolecules({radius:finite(options.organicRadius,finite(options.radius,20))});
+    const lipids=this.assembleAmphiphiles({radius:finite(options.amphiphileRadius,finite(options.radius,20))});
     const bonds=this.formChemicalBonds({types:['atom'],radius:finite(options.bondRadius,13),rate:finite(options.bondRate,.22),dt:finite(options.dt,1),energyCost:finite(options.bondEnergyCost,.0001),activationEnergy:finite(options.activationEnergy,.002)});
     const molecules=this.formMolecules({types:['atom'],minSize:2});
     const proteins=this.translateAllRNA(options),complexes=this.assembleMacromolecularComplexes(options);
-    return{elements,bonds,molecules,water,organic,proteins:proteins.length,complexes};
+    return{elements,bonds,molecules,water,organic,lipids,proteins:proteins.length,complexes};
   },
   assembleMacromolecularComplexes(options={}) {
     const rnas=[...this.store.entities.values()].filter(e=>e.type==='polymer'&&e.state==='active'&&!e.parent),proteins=[...this.store.entities.values()].filter(e=>e.type==='protein'&&e.state==='active'&&!e.parent),radius=Math.max(.01,finite(options.radius,28));let formed=0;
