@@ -32,5 +32,43 @@ export const methods = {
     }
     return formed;
   },
+  encapsulateProtocell(membraneId,contents=[],options={}) {
+    const membrane=this.store.get(membraneId);
+    if(!membrane||membrane.type!=='membrane'||membrane.state!=='active'||membrane.parent||!membrane.properties.closed)throw Error('A free closed membrane is required');
+    const members=[...new Set(contents)].map(id=>this.store.get(id));
+    if(members.some(e=>!e||e.state!=='active'||e.parent||e.id===membrane.id))throw Error('Protocell contents must be active, uncontained entities');
+    const polymer=members.find(e=>e.type==='polymer');
+    const sequence=options.genome?.sequence||(polymer?.properties.sequence||[]).join('');
+    if(typeof sequence!=='string'||sequence.length<3)throw Error('Protocell formation requires a replicable polymer sequence');
+    const genome=copy(options.genome||{sequence,traits:{replicationRate:.02,mutationRate:.002,adhesion:.5}});
+    const x=finite(membrane.properties.x),y=finite(membrane.properties.y);
+    const properties=this.contracts.defaults('protocell',{x,y,genome,age:0,biomass:Math.max(1,finite(options.biomass,members.length)),permeability:finite(membrane.properties.permeability,.2),lifeStage:'nascent',lineageId:options.lineageId||'emergent'});
+    properties.catalogueId='protocells';properties.name='Protocell';properties.categoryId='life';properties.catalogueColor='#8ec6a6';
+    this.contracts.assert('protocell',properties);
+    const energySources=[membrane,...members,...this.store.descendants(membrane.id).map(id=>this.store.get(id)).filter(Boolean)];
+    const actions=[{op:'create',type:'protocell',properties,energy:0,as:'cell'},{op:'compose',parent:{ref:'cell'},child:membrane.id},...members.map(e=>({op:'compose',parent:{ref:'cell'},child:e.id}))];
+    for(const source of energySources)if(source.energy>0)actions.push({op:'transfer',from:source.id,to:{ref:'cell'},amount:source.energy});
+    const result=this.store.transact(actions,{energy:this.energy,fields:this.energy.fields});
+    if(!result.ok)throw result.error;
+    const cell=this.store.get(result.refs.cell);
+    this._record('protocell-formation',{parents:[membrane.id,...members.map(e=>e.id)],children:[cell.id],genome:genome.sequence});
+    return cell;
+  },
+  formProtocellsFromAssemblies(options={}) {
+    const membranes=[...this.store.entities.values()].filter(e=>e.type==='membrane'&&e.state==='active'&&!e.parent&&e.properties.closed);
+    const polymers=[...this.store.entities.values()].filter(e=>e.type==='polymer'&&e.state==='active'&&!e.parent);
+    const networks=[...this.store.entities.values()].filter(e=>e.type==='autocatalytic-network'&&e.state==='active'&&!e.parent);
+    let formed=0;
+    for(const membrane of membranes) {
+      const radius=Math.max(2,finite(options.radius,finite(membrane.properties.radius,10)*.95));
+      const near=e=>Math.hypot(finite(e.properties.x)-finite(membrane.properties.x),finite(e.properties.y)-finite(membrane.properties.y))<=radius;
+      const polymer=polymers.find(e=>near(e)&&Array.isArray(e.properties.sequence)&&e.properties.sequence.length>=3);
+      const network=networks.find(near);
+      if(!polymer||!network)continue;
+      const cell=this.encapsulateProtocell(membrane.id,[polymer.id,network.id],options);
+      if(cell)formed++;
+    }
+    return formed;
+  },
   formProtocell(options={}){const genome=copy(options.genome||{sequence:"ACGT",traits:{replicationRate:.05,mutationRate:.001,adhesion:.5}});if(typeof genome.sequence!=="string"||!genome.sequence.length)throw Error("Protocell genome requires a sequence");const properties=this.contracts.defaults("protocell",{x:finite(options.x),y:finite(options.y),genome,age:0,biomass:finite(options.biomass,1),permeability:clamp(finite(options.permeability,.2)),lifeStage:"nascent",lineageId:options.lineageId||"root"});this.contracts.assert("protocell",properties);const plan=this._membranePlan({x:properties.x,y:properties.y,radius:finite(options.radius,12),count:options.lipidCount||12,permeability:properties.permeability}),actions=[{op:"create",type:"protocell",properties,energy:Math.max(0,finite(options.energy,5)),as:"cell"},...plan.actions,{op:"compose",parent:{ref:"cell"},child:{ref:plan.prefix}},...(options.contents||[]).map(id=>({op:"compose",parent:{ref:"cell"},child:id}))],result=this.store.transact(actions,{energy:this.energy,fields:this.energy.fields});if(!result.ok)throw result.error;const cell=this.store.get(result.refs.cell);this._recordMembrane(plan,result.refs);this._record("protocell-formation",{parents:options.contents||[],children:[cell.id],genome:genome.sequence});return cell}
 };
