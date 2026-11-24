@@ -7,7 +7,7 @@ Organoids is an artificial-life and emergence sandbox. It explores how organisat
 The GitHub Pages site is deployed from `main`.
 
 - **[Organoids simulation](https://gemquota.github.io/organoids/)** — the main accretion and emergence sandbox.
-- **[The Hitchhikers Guide to Emergence](https://gemquota.github.io/organoids/hitchhikers-guide.html)** — the curated field guide, relationship map, scale explorer and searchable entity register.
+- **[The Hitchhiker's Guide to Emergence](https://gemquota.github.io/organoids/hitchhikers-guide.html)** — the curated field guide, relationship map, scale explorer and searchable entity register.
 - **[Archived Emergent Life Atlas](https://gemquota.github.io/organoids/archive/emergent-life-atlas-exploratory.html)** — the preserved exploratory edition.
 - **[Emergent Life Atlas](https://gemquota.github.io/organoids/emergent-life-atlas.html)** — legacy route retained for compatibility.
 - **[Experiment index](https://gemquota.github.io/organoids/experiments/)** — a directory of the separately hosted interactive experiences and their supporting material.
