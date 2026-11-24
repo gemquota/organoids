@@ -2,7 +2,7 @@ import {clamp,finite,active} from './shared.js';
 
 export const methods={
   advanceCellularProcesses(options={}) {
-    const cells=[...this.store.entities.values()].filter(e=>(e.type==='protocell'||e.type==='cell')&&active(e)&&!e.parent);
+    const cells=[...this.store.entities.values()].filter(e=>(e.type==='protocell'||e.type==='cell')&&active(e));
     const uptakeRadius=Math.max(1,finite(options.uptakeRadius,48)),uptakeAmount=Math.max(0,finite(options.uptakeAmount,.04));
     let transported=0,metabolised=0,grown=0,divided=0;
     const index=this.runtime.spatial.rebuild(this.store.entities.values());
