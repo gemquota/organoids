@@ -91,6 +91,10 @@ export const methods = {
     }
     return formed;
   },
+  assembleMolecularMatter(options={}) {
+    const elements=this.formElements(),water=this.assembleWater(options),organic=this.assembleOrganicMolecules(options),proteins=this.translateAllRNA(options),complexes=this.assembleMacromolecularComplexes(options);
+    return{elements,water,organic,proteins:proteins.length,complexes};
+  },
   assembleMacromolecularComplexes(options={}) {
     const rnas=[...this.store.entities.values()].filter(e=>e.type==='polymer'&&e.state==='active'&&!e.parent),proteins=[...this.store.entities.values()].filter(e=>e.type==='protein'&&e.state==='active'&&!e.parent),radius=Math.max(.01,finite(options.radius,28));let formed=0;
     for(const rna of rnas){const protein=proteins.find(p=>!p.parent&&Math.hypot(p.properties.x-rna.properties.x,p.properties.y-rna.properties.y)<=radius);if(!protein)continue;
