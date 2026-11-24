@@ -49,7 +49,30 @@ export const methods = {
     }
     return formed;
   },
-  formMolecules(options={}){const types=options.types||["particle"],min=Math.max(2,options.minSize||2),groups=this._bondComponents(types).filter(g=>g.length>=min);let formed=0;for(const ids of groups){const members=ids.map(id=>this.store.get(id)).filter(Boolean),mass=members.reduce((s,e)=>s+Math.max(0,finite(e.properties.mass,1)),0)||members.length,energy=members.reduce((s,e)=>s+Math.max(0,e.energy),0),x=members.reduce((s,e)=>s+finite(e.properties.x)*Math.max(0,finite(e.properties.mass,1)),0)/mass,y=members.reduce((s,e)=>s+finite(e.properties.y)*Math.max(0,finite(e.properties.mass,1)),0)/mass;const actions=[{op:"create",type:options.productType||"molecule",properties:{x,y,mass,memberCount:ids.length,formedAt:this.runtime.scheduler.time},energy:0,as:"product"}];for(const id of ids)actions.push({op:"compose",parent:{ref:"product"},child:id});if(energy>0)for(const e of members)if(e.energy>0)actions.push({op:"transfer",from:e.id,to:{ref:"product"},amount:e.energy});const result=this.store.transact(actions,{energy:this.energy,fields:this.energy.fields});if(result.ok){formed++;this._record("molecular-formation",{parents:ids,children:[result.refs.product],mass,energy})}}return formed},
+  formMolecules(options={}) {
+    const types=options.types||['atom'],min=Math.max(2,options.minSize||2),groups=this._bondComponents(types).filter(g=>g.length>=min);
+    const names={'H2':'Hydrogen','O2':'Oxygen','N2':'Nitrogen','H2O':'Water','CO2':'Carbon dioxide','CH4':'Methane','NH3':'Ammonia','HCl':'Hydrogen chloride','NO':'Nitric oxide','C2H5NO2':'Glycine'};
+    let formed=0;
+    for(const ids of groups) {
+      const members=ids.map(id=>this.store.get(id)).filter(Boolean);
+      if(members.length<min)continue;
+      const counts=new Map();
+      for(const e of members){const symbol=e.properties.elementSymbol||({1:'H',2:'He',3:'Li',4:'Be',5:'B',6:'C',7:'N',8:'O',9:'F',10:'Ne'})[e.properties.atomicNumber]||'X';counts.set(symbol,(counts.get(symbol)||0)+1)}
+      const order=[...counts.keys()].sort((x,y)=>(x==='C'?-2:x==='H'?-1:0)-(y==='C'?-2:y==='H'?-1:0)||x.localeCompare(y));
+      const formula=order.map(symbol=>symbol+(counts.get(symbol)>1?counts.get(symbol):'')).join('');
+      const mass=members.reduce((sum,e)=>sum+Math.max(0,finite(e.properties.mass,1)),0)||members.length;
+      const x=members.reduce((sum,e)=>sum+finite(e.properties.x)*Math.max(0,finite(e.properties.mass,1)),0)/mass;
+      const y=members.reduce((sum,e)=>sum+finite(e.properties.y)*Math.max(0,finite(e.properties.mass,1)),0)/mass;
+      const bonds=members.reduce((sum,e)=>sum+this.store.neighbours(e.id,'bond').filter(id=>ids.includes(id)).length,0)/2;
+      const name=names[formula]||'Molecule';
+      const productType=options.productType||'molecule';
+      const properties={x,y,mass,formula,moleculeName:name,memberCount:ids.length,atomCount:members.length,bondCount:bonds,structure:members.map(e=>({element:e.properties.elementSymbol||e.properties.atomicNumber,atomicNumber:e.properties.atomicNumber,x:finite(e.properties.x)-x,y:finite(e.properties.y)-y})),geometry:members.length===2?'diatomic':'polyatomic',formedAt:this.runtime.scheduler.time,catalogueId:formula==='H2O'?'water':'molecular-structures',name,categoryId:'chemistry',catalogueColor:'#f0a66e'};
+      const actions=[{op:'create',type:productType,properties,energy:0,as:'product'},...ids.map(id=>({op:'compose',parent:{ref:'product'},child:id}))];
+      const result=this.store.transact(actions,{energy:this.energy,fields:this.energy.fields});
+      if(result.ok){formed++;this._record('molecular-formation',{parents:ids,children:[result.refs.product],formula,name,bondCount:bonds,geometry:properties.geometry,reaction:'association'})}
+    }
+    return formed;
+  },
   polymerize(options={}){const types=options.monomerTypes||["monomer"],min=Math.max(2,options.minLength||3),groups=this._bondComponents(types).filter(g=>g.length>=min);let formed=0;for(const ids of groups){const monomers=ids.map(id=>this.store.get(id)).filter(Boolean),sequence=monomers.map(e=>e.properties.monomerKind||e.type),mass=monomers.reduce((s,e)=>s+finite(e.properties.mass,1),0),x=monomers.reduce((s,e)=>s+finite(e.properties.x),0)/monomers.length,y=monomers.reduce((s,e)=>s+finite(e.properties.y),0)/monomers.length;const energyCost=Math.max(0,finite(options.energyCost));if(energyCost>monomers[0].energy)continue;const actions=[{op:"create",type:"polymer",properties:{sequence,mass,x,y,length:ids.length,catalogueId:sequence.every(x=>['A','U','C','G'].includes(x))?'rna':'macromolecules',name:'Polymer',categoryId:'chemistry',catalogueColor:'#f0a66e'},as:"polymer"},...ids.map(id=>({op:"compose",parent:{ref:"polymer"},child:id}))];if(energyCost)actions.push({op:"dissipate",id:ids[0],amount:energyCost});for(const e of monomers){const available=Math.max(0,e.energy-(e.id===ids[0]?energyCost:0));if(available)actions.push({op:"transfer",from:e.id,to:{ref:"polymer"},amount:available})}const result=this.store.transact(actions,{energy:this.energy,fields:this.energy.fields});if(result.ok){formed++;this._record("polymerisation",{parents:ids,children:[result.refs.polymer],sequence,energyCost})}}return formed},
   translateRNA(rnaId,options={}) {
     const rna=this.store.get(rnaId);
