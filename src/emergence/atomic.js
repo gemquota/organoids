@@ -4,33 +4,39 @@ const ELEMENTS={1:['H','Hydrogen'],2:['He','Helium'],3:['Li','Lithium'],4:['Be',
 
 export const methods={
   formHadrons(options={}) {
-    const quarks=[...this.store.entities.values()].filter(e=>e.type==='quark'&&active(e)&&!e.parent),radius=Math.max(.01,finite(options.radius,12)),groups=new Map();
-    for(const q of quarks){const key=q.properties.baryonGroup??'default';if(!groups.has(key))groups.set(key,[]);groups.get(key).push(q)}
+    const quarks=[...this.store.entities.values()].filter(e=>e.type==='quark'&&active(e)&&!e.parent),radius=Math.max(.01,finite(options.radius,12)),index=this.runtime.spatial.rebuild(quarks),used=new Set();
     let formed=0;
-    for(const members of groups.values()) {
-      const used=new Set(),colors=['red','green','blue'];
-      while(true) {
-        const triple=colors.map(color=>members.find(q=>!used.has(q.id)&&q.properties.colorCharge===color));
-        if(triple.some(q=>!q))break;
-        const x=triple.reduce((s,e)=>s+finite(e.properties.x),0)/3,y=triple.reduce((s,e)=>s+finite(e.properties.y),0)/3;
-        if(Math.max(...triple.map(e=>Math.hypot(e.properties.x-x,e.properties.y-y)))>radius)break;
+    for(const anchor of quarks) {
+      if(used.has(anchor.id)||anchor.parent)continue;
+      const nearby=index.query(anchor.properties.x,anchor.properties.y,radius,[])
+        .filter(q=>q.type==='quark'&&active(q)&&!q.parent&&!used.has(q.id)&&q.id!==anchor.id);
+      let best=null,bestScore=Infinity;
+      for(let i=0;i<nearby.length;i++)for(let j=i+1;j<nearby.length;j++) {
+        const triple=[anchor,nearby[i],nearby[j]],colors=new Set(triple.map(q=>q.properties.colorCharge));
+        if(colors.size!==3||!['red','green','blue'].every(color=>colors.has(color)))continue;
         const up=triple.filter(q=>q.properties.flavor==='up').length,down=triple.filter(q=>q.properties.flavor==='down').length;
-        if(!((up===2&&down===1)||(up===1&&down===2))){for(const q of triple)used.add(q.id);continue}
-        const type=up===2?'proton':'neutron',charge=up*2/3-down/3,mass=triple.reduce((s,e)=>s+finite(e.properties.mass,1),0);
-        const gluons=[...this.store.entities.values()].filter(e=>e.type==='gluon'&&active(e)&&!e.parent&&(e.properties.baryonGroup===undefined||e.properties.baryonGroup===triple[0].properties.baryonGroup)&&Math.hypot(e.properties.x-x,e.properties.y-y)<=radius).slice(0,2);
-        const actions=[{op:'create',type,properties:{x,y,mass,charge,quarkCount:3,colorNeutral:true,catalogueId:'protons-neutrons',name:type==='proton'?'Proton':'Neutron',categoryId:'particles',catalogueColor:'#a5b5ce'},energy:0,as:'hadron'},...triple.map(q=>({op:'compose',parent:{ref:'hadron'},child:q.id}))];
-        for(const q of triple)if(q.energy>0)actions.push({op:'transfer',from:q.id,to:{ref:'hadron'},amount:q.energy});
-        for(const gluon of gluons)actions.push({op:'link',from:{ref:'hadron'},to:gluon.id,type:'exchanges',properties:{interaction:'strong',mediator:true}});
-        const result=this.store.transact(actions,{energy:this.energy,fields:this.energy.fields});if(!result.ok)throw result.error;
-        for(const q of triple)used.add(q.id);
-        for(const q of triple)this.runtime.constraints.add({a:result.refs.hadron,b:q.id,rest:Math.hypot(q.properties.x-x,q.properties.y-y),stiffness:.8});
-        this._record('hadron-formation',{parents:triple.map(q=>q.id),children:[result.refs.hadron],kind:type,charge,gluons:gluons.map(g=>g.id)});
-        formed++;
+        if(!((up===2&&down===1)||(up===1&&down===2)))continue;
+        const distances=[0,1,2].flatMap(a=>[a+1,a+2].filter(b=>b<3).map(b=>Math.hypot(triple[a].properties.x-triple[b].properties.x,triple[a].properties.y-triple[b].properties.y)));
+        if(Math.max(...distances)>radius)continue;
+        const score=distances.reduce((sum,d)=>sum+d*d,0);
+        if(score<bestScore){best=triple;bestScore=score}
       }
+      if(!best)continue;
+      const triple=best,up=triple.filter(q=>q.properties.flavor==='up').length,down=3-up;
+      const x=triple.reduce((s,e)=>s+finite(e.properties.x),0)/3,y=triple.reduce((s,e)=>s+finite(e.properties.y),0)/3;
+      const type=up===2?'proton':'neutron',charge=up*2/3-down/3,mass=triple.reduce((s,e)=>s+finite(e.properties.mass,1),0);
+      const gluons=[...this.store.entities.values()].filter(e=>e.type==='gluon'&&active(e)&&!e.parent&&Math.hypot(e.properties.x-x,e.properties.y-y)<=radius).slice(0,2);
+      const actions=[{op:'create',type,properties:{x,y,mass,charge,quarkCount:3,colorNeutral:true,catalogueId:'protons-neutrons',name:type==='proton'?'Proton':'Neutron',categoryId:'particles',catalogueColor:'#a5b5ce'},energy:0,as:'hadron'},...triple.map(q=>({op:'compose',parent:{ref:'hadron'},child:q.id}))];
+      for(const q of triple)if(q.energy>0)actions.push({op:'transfer',from:q.id,to:{ref:'hadron'},amount:q.energy});
+      for(const gluon of gluons)actions.push({op:'link',from:{ref:'hadron'},to:gluon.id,type:'exchanges',properties:{interaction:'strong',mediator:true}});
+      const result=this.store.transact(actions,{energy:this.energy,fields:this.energy.fields});if(!result.ok)throw result.error;
+      for(const q of triple)used.add(q.id);
+      for(const q of triple)this.runtime.constraints.add({a:result.refs.hadron,b:q.id,rest:Math.hypot(q.properties.x-x,q.properties.y-y),stiffness:.8});
+      this._record('hadron-formation',{parents:triple.map(q=>q.id),children:[result.refs.hadron],kind:type,charge,gluons:gluons.map(g=>g.id)});
+      formed++;
     }
     return formed;
   },
-
   formNuclei(options={}) {
     const nucleons=[...this.store.entities.values()].filter(e=>(e.type==='proton'||e.type==='neutron')&&active(e)&&!e.parent),radius=Math.max(.01,finite(options.radius,18)),index=this.runtime.spatial.rebuild(nucleons),adj=new Map(nucleons.map(e=>[e.id,[]]));
     for(const a of nucleons)for(const b of index.query(a.properties.x,a.properties.y,radius,[]))if(b.id>a.id&&Math.hypot(a.properties.x-b.properties.x,a.properties.y-b.properties.y)<=radius){adj.get(a.id).push(b.id);adj.get(b.id).push(a.id)}
