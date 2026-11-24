@@ -6,23 +6,23 @@ import {spawnSync} from "node:child_process";
 const html = readFileSync(new URL("../hitchhikers-guide.html", import.meta.url), "utf8");
 const script = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(match => match[1]).join("\n");
 
-test("guide presents the encyclopedia as the default continuous page", () => {
+test("guide opens directly into the illustrated entity browser and map", () => {
   assert.match(html, /id="encyclopedia"/);
   assert.match(html, /id="emergence-map"/);
-  assert.match(html, /id="scale-index"/);
+  assert.match(html, /id="chapter-nav"/);
   assert.match(script, /function renderGuide\(\)/);
   assert.match(script, /renderGuide\(\);/);
-  assert.doesNotMatch(html, /data-view=/);
-  assert.doesNotMatch(html, /nav\.modes/);
+  assert.doesNotMatch(html, /scale-index|data-view=|nav\.modes|Start with the things themselves/);
 });
 
-test("all entity information is rendered directly into each entry", () => {
+test("entity descriptions, mechanisms, evidence, scales and relationships remain visible", () => {
   for (const field of ["d[3]", "d[4]", "d[5]", "d[6]", "d[7]", "d[8]"]) {
     assert.ok(script.includes(field), "entity card should render " + field);
   }
   assert.match(script, /data-entity-card/);
-  assert.match(script, /Constituents \/ precursors/);
-  assert.match(script, /Enables \/ contributes to/);
+  assert.match(script, /relation-label/);
+  assert.match(script, /links\(d\[8\]/);
+  assert.match(script, /links\(next/);
 });
 
 test("curated entities have unique IDs and valid references", () => {
@@ -46,4 +46,13 @@ test("curated entities have unique IDs and valid references", () => {
 test("guide inline JavaScript parses", () => {
   const result = spawnSync(process.execPath, ["--check", "--input-type=module"], {input: script, encoding: "utf8"});
   assert.equal(result.status, 0, result.stderr || result.stdout);
+});
+
+test("entries use atlas illustrations and consistent category colours", () => {
+  assert.match(html, /assets\/atlas\/entities\.svg#entity-/);
+  assert.match(html, /const PALETTE=/);
+  assert.match(script, /function colorFor\(/);
+  assert.match(script, /colorFor\(d\[2\]\)/);
+  assert.match(html, /id="map-legend"/);
+  assert.match(script, /data-category=/);
 });
