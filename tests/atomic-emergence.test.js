@@ -49,6 +49,18 @@ test("atomic valence limits bonds and produces a methane molecular structure",()
   assert.equal(molecule.properties.bondCount,4);
 });
 
+test("diatomic oxygen and nitrogen acquire double and triple bonds",()=>{
+  for(const [atomicNumber,symbol,expectedOrder] of [[8,"O",2],[7,"N",3]]) {
+    const runtime=createRuntime(),biology=new EmergenceProgression(runtime);
+    const props={atomicNumber,elementSymbol:symbol,valence:atomicNumber===8?2:3,electronegativity:atomicNumber===8?3.44:3.04,mass:atomicNumber===8?16:14};
+    const a=biology.create("atom",{...props,x:20,y:20},1),b=biology.create("atom",{...props,x:24,y:20},1);
+    assert.equal(biology.formChemicalBonds({types:["atom"],radius:5,rate:10,dt:10,energyCost:0,activationEnergy:0}),1);
+    const bond=runtime.store.activeLinks.find(link=>link.type==="bond");
+    assert.equal(bond.properties.order,expectedOrder);
+    assert.equal(runtime.constraints.items.length>0,true);
+  }
+});
+
 test("closed-shell noble gases do not form covalent bonds",()=>{
   const runtime=createRuntime(),biology=new EmergenceProgression(runtime);
   biology.create("atom",{x:20,y:20,atomicNumber:2,elementSymbol:"He",valence:0,electronegativity:0},1);
