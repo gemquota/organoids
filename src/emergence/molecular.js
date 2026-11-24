@@ -177,7 +177,6 @@ export const methods = {
         if(!result.ok)continue;
         for(const e of members)used.add(e.id);
         this._record('nucleobase-analogue-formation',{parents:members.map(e=>e.id),children:[result.refs.monomer],kind:recipe.kind,formula:recipe.formula});formed++;
-        break;
       }
     }
     return formed;
