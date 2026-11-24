@@ -92,7 +92,7 @@ test("composite atomic assembly conserves constituent mass, charge and energy",(
   const runtime=createRuntime(),biology=new EmergenceProgression(runtime);
   seedHelium(biology);
   const result=biology.assembleAtomicMatter({radius:10});
-  assert.deepEqual(result,{hadrons:4,nuclei:1,isotopes:1,atoms:1,elements:1});
+  assert.deepEqual(result,{hadrons:4,nuclei:1,isotopes:1,accretions:0,fusions:0,atoms:1,elements:1});
   const entities=[...runtime.store.entities.values()];
   const hadrons=entities.filter(e=>e.type==="proton"||e.type==="neutron");
   const nucleus=entities.find(e=>e.type==="atomic-nucleus");
