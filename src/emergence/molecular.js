@@ -91,6 +91,18 @@ export const methods = {
     }
     return formed;
   },
+  buildAutocatalyticNetwork(spec={}) {
+    const members=(spec.members||[]).map(idOf);
+    if(members.length<2||members.some(id=>!this.store.get(id)))throw Error('An autocatalytic network requires at least two existing members');
+    const parts=members.map(id=>this.store.get(id)),properties={memberCount:members.length,cycleGain:finite(spec.cycleGain,1),reactionIds:spec.reactionIds||[],x:parts.reduce((s,e)=>s+finite(e.properties.x),0)/parts.length,y:parts.reduce((s,e)=>s+finite(e.properties.y),0)/parts.length,catalogueId:'autocatalytic-networks',name:'Autocatalytic network',categoryId:'selforg',catalogueColor:'#e58b9d'};
+    const actions=[{op:'create',type:'autocatalytic-network',properties,energy:0,as:'network'},...members.map(id=>({op:'compose',parent:{ref:'network'},child:id})),...members.map((id,i)=>({op:'link',from:id,to:members[(i+1)%members.length],type:'catalyses',properties:{cycle:true}}))];
+    const result=this.store.transact(actions);if(!result.ok)throw result.error;
+    const root=this.store.get(result.refs.network);this._record('autocatalytic-network',{parents:members,children:[root.id],cycleGain:root.properties.cycleGain});return root;
+  },
+  registerAutocatalysis(rule) {
+    if(!rule?.id||!rule.inputs?.length||!rule.outputs?.length||!rule.catalysts?.length)throw Error('Autocatalysis needs inputs, outputs and at least one catalyst');
+    return this.runtime.rules.register({...copy(rule),autocatalytic:true});
+  },
   assembleMolecularMatter(options={}) {
     const elements=this.formElements(),water=this.assembleWater(options),organic=this.assembleOrganicMolecules(options),proteins=this.translateAllRNA(options),complexes=this.assembleMacromolecularComplexes(options);
     return{elements,water,organic,proteins:proteins.length,complexes};
