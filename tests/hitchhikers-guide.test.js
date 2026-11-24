@@ -56,3 +56,10 @@ test("entries use atlas illustrations and consistent category colours", () => {
   assert.match(html, /id="map-legend"/);
   assert.match(script, /data-category=/);
 });
+
+test("entity map uses a layered rectangular layout with larger labelled nodes", () => {
+  assert.match(script, /const colW=190,nodeW=150,nodeH=42/);
+  assert.match(script, /<rect x=/);
+  assert.match(script, /setAttribute\("viewBox"/);
+  assert.doesNotMatch(script, /const angle=-Math\.PI\/2\+i\*2\*Math\.PI\/C\.length/);
+});
