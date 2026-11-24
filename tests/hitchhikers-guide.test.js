@@ -17,7 +17,7 @@ test("guide opens directly into the illustrated entity browser and map", () => {
   assert.match(script, /function renderGuide\(\)/);
   assert.match(script, /function renderDiagrams\(\)/);
   assert.match(script, /function renderMap\(\)/);
-  assert.match(script, /Every curated entity|Detailed node map/);
+  assert.match(html, /Detailed node map/);
   assert.match(script, /renderGuide\(\);/);
   assert.doesNotMatch(html, /scale-index|data-view=|nav\.modes|Start with the things themselves/);
 });
@@ -65,7 +65,7 @@ test("entries use atlas illustrations and consistent category colours", () => {
 });
 
 test("entity map uses a layered rectangular layout with larger labelled nodes", () => {
-  assert.match(script, /const colW=190,nodeW=150,nodeH=42/);
+  assert.match(script, /const colW=260,nodeW=218,nodeH=62/);
   assert.match(script, /<rect x=/);
   assert.match(script, /nodeW=218,nodeH=62/);
   assert.match(script, /map-arrow/);
