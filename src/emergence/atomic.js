@@ -112,7 +112,7 @@ export const methods={
     const minFusionAtomicNumber=Number.isFinite(options.minFusionAtomicNumber)?Math.max(1,Math.floor(options.minFusionAtomicNumber)):1;
     const fusionProbability=Math.max(0,Math.min(1,finite(options.fusionProbability,1)));
     const atomizationDelay=Math.max(0,finite(options.atomizationDelay,Infinity));
-    const channels=Array.isArray(options.fusionChannels)?options.fusionChannels.map(channel=>({reactants:[...channel.reactants].sort((a,b)=>a-b),maxPerTick:Math.max(1,Math.floor(finite(channel.maxPerTick,Infinity))),maxProducts:Math.max(1,Math.floor(finite(channel.maxProducts,Infinity)))})):null;
+    const channels=Array.isArray(options.fusionChannels)?options.fusionChannels.map(channel=>({reactants:[...channel.reactants].sort((a,b)=>a-b),maxPerTick:Math.max(1,Math.floor(finite(channel.maxPerTick,Infinity))),maxProducts:Math.max(1,Math.floor(finite(channel.maxProducts,Infinity))),reserveReactants:Object.fromEntries(Object.entries(channel.reserveReactants||{}).map(([z,n])=>[Math.max(1,Math.floor(finite(z,1))),Math.max(0,Math.floor(finite(n)))]))})):null;
     const channelCounts=new Map(),channelTotals=this._fusionChannelTotals||(this._fusionChannelTotals=new Map());
     const isotopes=[...this.store.entities.values()].filter(e=>e.type==='isotope'&&active(e)&&!e.parent).sort((a,b)=>finite(a.properties.protonCount)-finite(b.properties.protonCount)||finite(a.properties.massNumber)-finite(b.properties.massNumber)||a.id-b.id);
     const nucleusByIsotope=new Map(isotopes.map(isotope=>[isotope.id,this.store.outgoing(isotope.id,'contains').map(id=>this.store.get(id)).find(e=>e?.type==='atomic-nucleus')]).filter(([,nucleus])=>!!nucleus));
@@ -139,7 +139,7 @@ export const methods={
       // before a later channel gets a chance to build its own products.
       for(let channelIndex=0;channelIndex<channels.length;channelIndex++){
         const channel=channels[channelIndex];let made=0;
-        const [za,zb]=channel.reactants,downstreamReserve=new Map();
+        const [za,zb]=channel.reactants,downstreamReserve=new Map(Object.entries(channel.reserveReactants||{}).map(([z,n])=>[Number(z),n]));
         for(let next=channelIndex+1;next<channels.length;next++)for(const z of channels[next].reactants)downstreamReserve.set(z,(downstreamReserve.get(z)||0)+1);
         const available=z=>(isotopesByZ.get(z)||[]).reduce((count,e)=>count+(!used.has(e.id)&&young(e)?1:0),0);
         while(made<channel.maxPerTick&&(channelTotals.get(channelIndex)||0)<channel.maxProducts){
@@ -246,7 +246,7 @@ export const methods={
   },
 
   diagnoseAtomicFusion(options={}) {
-    const radius=Math.max(.01,finite(options.fusionRadius,18)),maxSpeed=Math.max(0,finite(options.maxFusionSpeed,1.5)),maxAtomicNumber=Math.max(1,Math.floor(finite(options.maxAtomicNumber,18))),minFusionAtomicNumber=Math.max(1,Math.floor(finite(options.minFusionAtomicNumber,1))),atomizationDelay=Math.max(0,finite(options.atomizationDelay,Infinity)),channels=Array.isArray(options.fusionChannels)?options.fusionChannels.map(channel=>({reactants:[...channel.reactants].sort((a,b)=>a-b),maxPerTick:Math.max(1,Math.floor(finite(channel.maxPerTick,Infinity))),maxProducts:Math.max(1,Math.floor(finite(channel.maxProducts,Infinity)))})):null;
+    const radius=Math.max(.01,finite(options.fusionRadius,18)),maxSpeed=Math.max(0,finite(options.maxFusionSpeed,1.5)),maxAtomicNumber=Math.max(1,Math.floor(finite(options.maxAtomicNumber,18))),minFusionAtomicNumber=Math.max(1,Math.floor(finite(options.minFusionAtomicNumber,1))),atomizationDelay=Math.max(0,finite(options.atomizationDelay,Infinity)),channels=Array.isArray(options.fusionChannels)?options.fusionChannels.map(channel=>({reactants:[...channel.reactants].sort((a,b)=>a-b),maxPerTick:Math.max(1,Math.floor(finite(channel.maxPerTick,Infinity))),maxProducts:Math.max(1,Math.floor(finite(channel.maxProducts,Infinity))),reserveReactants:{...(channel.reserveReactants||{})}})):null;
     const channelIndex=(a,b)=>channels?channels.findIndex(channel=>channel.reactants[0]===Math.min(a,b)&&channel.reactants[1]===Math.max(a,b)):-1;
     const isotopes=[...this.store.entities.values()].filter(e=>e.type==='isotope'&&active(e)&&!e.parent),nuclei=isotopes.map(e=>({isotope:e,nucleus:this.store.outgoing(e.id,'contains').map(id=>this.store.get(id)).find(n=>n?.type==='atomic-nucleus')})).filter(x=>x.nucleus);
     let nearestDistance=Infinity,withinRadius=0,withinSpeed=0,eligible=0,nearestPair=null,maturedIsotopes=0;
@@ -259,7 +259,7 @@ export const methods={
     }
     const isotopeElements={};for(const {nucleus} of nuclei){const z=finite(nucleus.properties.protonCount);isotopeElements[z]=(isotopeElements[z]||0)+1}
     const freeNucleons=[...this.store.entities.values()].filter(e=>active(e)&&!e.parent&&(e.type==='proton'||e.type==='neutron'));
-    const channelProducts=channels?Object.fromEntries(channels.map((channel,index)=>[channel.reactants.join('+'),this._fusionChannelTotals?.get(index)||0])):{},channelCapacity=channels?Object.fromEntries(channels.map((channel,index)=>{const produced=this._fusionChannelTotals?.get(index)||0;return[channel.reactants.join('+'),{produced,maxProducts:channel.maxProducts,remaining:Math.max(0,channel.maxProducts-produced)}]})):{};
+    const channelProducts=channels?Object.fromEntries(channels.map((channel,index)=>[channel.reactants.join('+'),this._fusionChannelTotals?.get(index)||0])):{},channelCapacity=channels?Object.fromEntries(channels.map((channel,index)=>{const produced=this._fusionChannelTotals?.get(index)||0;return[channel.reactants.join('+'),{produced,maxProducts:channel.maxProducts,remaining:Math.max(0,channel.maxProducts-produced),reserveReactants:channel.reserveReactants}]})):{};
     return{isotopesByAtomicNumber:isotopeElements,isotopeCount:isotopes.length,nucleusCount:nuclei.length,maturedIsotopes,channelPairs,channelCount:channels?.length||0,channelProducts,channelCapacity,nearestPair,nearestDistance:Number.isFinite(nearestDistance)?nearestDistance:null,searchRadius:radius,maxRelativeSpeed:maxSpeed,minFusionAtomicNumber,atomizationDelay,pairsWithinRadius:withinRadius,pairsWithinSpeed:withinSpeed,eligibleFusionPairs:eligible,freeProtons:freeNucleons.filter(e=>e.type==='proton').length,freeNeutrons:freeNucleons.filter(e=>e.type==='neutron').length,maxAtomicNumber};
   },
   diagnoseAtomization(options={}) {

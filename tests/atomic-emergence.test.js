@@ -275,6 +275,19 @@ test("primordial fusion channels preserve enough helium and beryllium to build C
   assert.ok([...runtime.store.entities.values()].some(e=>e.type==='isotope'&&!e.parent&&e.properties.atomicNumber===15));
 });
 
+test("fusion channels preserve explicitly reserved elemental feedstock",()=>{
+  const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
+  const make=(x,z)=>{const p={x,y:50,vx:0,vy:0,mass:z*2,protonCount:z,neutronCount:z,atomicNumber:z,massNumber:z*2,charge:z,formedAt:0};const n=biology.create('atomic-nucleus',p);const i=biology.create('isotope',p);runtime.store.link(i.id,n.id,'contains')};
+  make(40,7);make(42,7);make(50,8);make(52,8);
+  const channels=[{reactants:[7,8],maxPerTick:10,maxProducts:10,reserveReactants:{7:1,8:1}}];
+  assert.equal(biology.fuseIsotopes({fusionRadius:20,maxFusionSpeed:1,maxAtomicNumber:18,fusionProbability:1,fusionChannels:channels}),1);
+  const remaining=[...runtime.store.entities.values()].filter(e=>e.type==='isotope'&&!e.parent);
+  assert.equal(remaining.length,3);
+  assert.equal(remaining.filter(e=>e.properties.atomicNumber===7).length,1);
+  assert.equal(remaining.filter(e=>e.properties.atomicNumber===8).length,1);
+  assert.equal(remaining.filter(e=>e.properties.atomicNumber===15).length,1);
+});
+
 test("fusion channels enforce a deterministic run-wide product ceiling",()=>{
   const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
   for(const [x,z] of [[20,7],[30,8],[40,7],[50,8]]){const p={x,y:50,mass:z*2,protonCount:z,neutronCount:z,atomicNumber:z,massNumber:z*2,charge:z,formedAt:0};const n=biology.create('atomic-nucleus',p);const i=biology.create('isotope',p);runtime.store.link(i.id,n.id,'contains')}
