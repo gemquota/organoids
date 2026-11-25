@@ -67,17 +67,20 @@ export class WebGpuElectrostatics {
   }
 
   ensureCapacity(count, neighbourCount) {
-    if (count <= this.capacity) return;
-    this.particleBuffer?.destroy();
-    this.velocityBuffer?.destroy();
-    this.capacity = Math.max(256, 2 ** Math.ceil(Math.log2(count)));
-    this.particleBuffer = this.device.createBuffer({ size: this.capacity * 32, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
-    this.velocityBuffer = this.device.createBuffer({ size: this.capacity * 8, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
-    this.offsetBuffer?.destroy();
-    this.offsetBuffer = this.device.createBuffer({ size: (this.capacity + 1) * 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
-    this.neighbourCapacity = Math.max(256, 2 ** Math.ceil(Math.log2(Math.max(1, neighbourCount))));
-    this.neighbourBuffer?.destroy();
-    this.neighbourBuffer = this.device.createBuffer({ size: this.neighbourCapacity * 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+    if (count > this.capacity) {
+      this.particleBuffer?.destroy();
+      this.velocityBuffer?.destroy();
+      this.offsetBuffer?.destroy();
+      this.capacity = Math.max(256, 2 ** Math.ceil(Math.log2(count)));
+      this.particleBuffer = this.device.createBuffer({ size: this.capacity * 32, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+      this.velocityBuffer = this.device.createBuffer({ size: this.capacity * 8, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
+      this.offsetBuffer = this.device.createBuffer({ size: (this.capacity + 1) * 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+    }
+    if (neighbourCount > this.neighbourCapacity) {
+      this.neighbourBuffer?.destroy();
+      this.neighbourCapacity = Math.max(256, 2 ** Math.ceil(Math.log2(neighbourCount)));
+      this.neighbourBuffer = this.device.createBuffer({ size: this.neighbourCapacity * 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+    }
   }
 
   async apply(entities, options, spatial, isActive = entity => entity.state === 'active' || entity.state === 'bound') {
@@ -91,10 +94,10 @@ export class WebGpuElectrostatics {
     const count = charged.length;
     if (count < 2) return 0;
     spatial.rebuild(charged);
-    const offsets = new Uint32Array(count + 1), edges = [];
+    const offsets = new Uint32Array(count + 1), edges = [], entityIndices = new Map(charged.map((entity, index) => [entity, index]));
     for (let i = 0; i < count; i++) {
       const nearby = spatial.query(charged[i].properties.x, charged[i].properties.y, options.radius, []);
-      for (const entity of nearby) { const index = charged.indexOf(entity); if (index >= 0 && index !== i) edges.push(index); }
+      for (const entity of nearby) { const index = entityIndices.get(entity); if (index !== undefined && index !== i) edges.push(index); }
       offsets[i + 1] = edges.length;
     }
     const neighbourCount = edges.length;
