@@ -76,7 +76,7 @@ export class WebGpuElectrostatics {
       this.velocityBuffer = this.device.createBuffer({ size: this.capacity * 8, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
       this.offsetBuffer = this.device.createBuffer({ size: (this.capacity + 1) * 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
     }
-    if (neighbourCount > this.neighbourCapacity) {
+    if (!this.neighbourBuffer || neighbourCount > this.neighbourCapacity) {
       this.neighbourBuffer?.destroy();
       this.neighbourCapacity = Math.max(256, 2 ** Math.ceil(Math.log2(neighbourCount)));
       this.neighbourBuffer = this.device.createBuffer({ size: this.neighbourCapacity * 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
