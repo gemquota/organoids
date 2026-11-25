@@ -362,6 +362,21 @@ test("hydrogen isotopes can enter the fusion pathway when no threshold is impose
 });
 
 
+test("primordial fusion channels convert paired hydrogen nuclei into helium",()=>{
+  const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
+  for(const x of [48,52]){
+    const properties={x,y:50,mass:2,protonCount:1,neutronCount:1,atomicNumber:1,massNumber:2,charge:1,formedAt:0};
+    const nucleus=biology.create("atomic-nucleus",properties,0);
+    const isotope=biology.create("isotope",properties,0);
+    runtime.store.link(isotope.id,nucleus.id,"contains");
+  }
+  const channels=[{reactants:[1,1],maxPerTick:1,maxProducts:1}];
+  assert.equal(biology.fuseIsotopes({fusionRadius:10,maxFusionSpeed:1,maxAtomicNumber:18,minFusionAtomicNumber:1,fusionProbability:1,fusionChannels:channels}),1);
+  const helium=[...runtime.store.entities.values()].find(e=>e.type==="isotope"&&!e.parent);
+  assert.equal(helium.properties.atomicNumber,2);
+  assert.equal(helium.properties.neutronCount,2);
+});
+
 test("nuclear fusion respects the supported element ceiling",()=>{
   const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
   for(const x of [48,52]){

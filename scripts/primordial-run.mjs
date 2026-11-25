@@ -17,14 +17,14 @@ const sampleEvery=Math.max(1,Math.floor(Number(args.sampleEvery??300)));
 const spread=Math.max(.01,Math.min(1,Number(args.spread??1)));
 const fusionProbability=Math.max(0,Math.min(1,Number(args.fusionProbability??.01)));
 const fusionRadius=Math.max(1,Number(args.fusionRadius??80));
-const minFusionAtomicNumber=Math.max(1,Math.floor(Number(args.minFusionAtomicNumber??2)));
+const minFusionAtomicNumber=Math.max(1,Math.floor(Number(args.minFusionAtomicNumber??1)));
 const atomizationDelay=Math.max(0,Number(args.atomizationDelay??180));
 const atomizationRadius=Math.max(1,Number(args.atomizationRadius??420));
-const populationScale=Math.max(.1,Number(args.populationScale??1));
+const populationScale=Math.max(.1,Number(args.populationScale??10));
 const physicsEvery=Math.max(1,Math.floor(Number(args.physicsEvery??1)));
 
 const smallNucleusFraction=Math.max(0,Math.min(1,Number(args.smallNucleusFraction??.08)));
-const fusionChannels=[{reactants:[2,2],maxPerTick:Math.max(8,6*populationScale),maxProducts:Math.max(16,Math.round(6*populationScale))},{reactants:[4,4],maxPerTick:Math.max(4,2*populationScale),maxProducts:Math.max(4,Math.round(2*populationScale))},{reactants:[1,2],maxPerTick:Math.max(6,2.5*populationScale),maxProducts:Math.max(8,Math.round(2.5*populationScale))},{reactants:[2,4],maxPerTick:Math.max(4,1.5*populationScale),maxProducts:Math.max(4,Math.round(1.5*populationScale))},{reactants:[3,4],maxPerTick:Math.max(4,.5*populationScale),maxProducts:Math.max(4,Math.round(.5*populationScale))},{reactants:[7,8],maxPerTick:Math.max(2,.2*populationScale),maxProducts:1}];
+const fusionChannels=[{reactants:[1,1],maxPerTick:Math.max(80,8*populationScale),maxProducts:Math.max(800,Math.round(80*populationScale))},{reactants:[2,2],maxPerTick:Math.max(40,6*populationScale),maxProducts:Math.max(160,Math.round(16*populationScale))},{reactants:[4,4],maxPerTick:Math.max(20,2*populationScale),maxProducts:Math.max(40,Math.round(4*populationScale))},{reactants:[1,2],maxPerTick:Math.max(30,2.5*populationScale),maxProducts:Math.max(80,Math.round(8*populationScale))},{reactants:[2,4],maxPerTick:Math.max(20,1.5*populationScale),maxProducts:Math.max(40,Math.round(4*populationScale))},{reactants:[3,4],maxPerTick:Math.max(20,.5*populationScale),maxProducts:Math.max(40,Math.round(4*populationScale))},{reactants:[7,8],maxPerTick:Math.max(10,.2*populationScale),maxProducts:10}];
 const output=args.output||'';
 const W=14700,H=29115,scale=15,distance=n=>n*scale,velocity=n=>n*scale;
 const sim=createRuntime({width:W,height:H,cols:120,rows:68,cellSize:distance(24),constraintIterations:2});
