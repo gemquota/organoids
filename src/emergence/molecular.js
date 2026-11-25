@@ -458,6 +458,29 @@ export const methods = {
     if(!rule?.id||!rule.inputs?.length||!rule.outputs?.length||!rule.catalysts?.length)throw Error('Autocatalysis needs inputs, outputs and at least one catalyst');
     return this.runtime.rules.register({...copy(rule),autocatalytic:true});
   },
+  diagnoseMolecularAvailability(options={}) {
+    const radius=Math.max(.01,finite(options.radius,48));
+    const atoms=[...this.store.entities.values()].filter(e=>e.type==='atom'&&e.state==='active'&&!e.parent);
+    const counts={};
+    for(const atom of atoms){const z=Math.floor(finite(atom.properties.atomicNumber));counts[z]=(counts[z]||0)+1}
+    const recipes={
+      glycine:{6:2,1:5,7:1,8:2},ribose:{6:5,1:10,8:5},phosphoricAcid:{15:1,1:3,8:4},
+      adenine:{6:5,1:5,7:5},uracil:{6:4,1:4,7:2,8:2},cytosine:{6:4,1:5,7:3,8:1},guanine:{6:5,1:5,7:5,8:1},
+      fattyAcid:{6:8,1:16,8:2}
+    };
+    const localClusters={};
+    for(const [name,formula] of Object.entries(recipes)) {
+      const anchors=atoms.filter(e=>e.properties.atomicNumber===6||name==='phosphoricAcid'&&e.properties.atomicNumber===15);
+      let viable=0;
+      for(const anchor of anchors) {
+        const nearby=atoms.filter(e=>Math.hypot(finite(e.properties.x)-finite(anchor.properties.x),finite(e.properties.y)-finite(anchor.properties.y))<=radius);
+        const available={};for(const e of nearby){const z=Math.floor(finite(e.properties.atomicNumber));available[z]=(available[z]||0)+1}
+        if(Object.entries(formula).every(([z,n])=>(available[z]||0)>=n)){viable++;break}
+      }
+      localClusters[name]=viable;
+    }
+    return {freeAtomCount:atoms.length,freeAtomsByElement:counts,globallyPossible:Object.fromEntries(Object.entries(recipes).map(([name,formula])=>[name,Object.entries(formula).every(([z,n])=>(counts[z]||0)>=n)])),localClusters,radius};
+  },
   assembleMolecularMatter(options={}) {
     const elements=this.formElements();
     // Specific low-complexity products compete for free atoms before the

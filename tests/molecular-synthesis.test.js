@@ -6,6 +6,20 @@ const html=readFileSync(new URL("../accretion.html",import.meta.url),"utf8");
 const source=html.match(/<script type="module">([\s\S]*?)<\/script>/)[1].split("import('./src/emergence.js')")[0];
 const {createRuntime}=await import("data:text/javascript;base64,"+Buffer.from(source).toString("base64"));
 
+test("molecular availability distinguishes global inventory from local reactant clusters",()=>{
+  const runtime=createRuntime(),biology=new EmergenceProgression(runtime);
+  const recipe=[[6,2],[1,5],[7,1],[8,2]];
+  let index=0;
+  for(const [z,count] of recipe)for(let i=0;i<count;i++)biology.create("atom",{x:index++*100,y:0,atomicNumber:z,mass:z});
+  let report=biology.diagnoseMolecularAvailability({radius:20});
+  assert.equal(report.globallyPossible.glycine,true);
+  assert.equal(report.localClusters.glycine,0);
+  for(const atom of runtime.store.entities.values())if(atom.type==="atom")runtime.store.transact([{op:"set",id:atom.id,key:"x",value:10+(atom.id%3)},{op:"set",id:atom.id,key:"y",value:10+(atom.id%2)}]);
+  report=biology.diagnoseMolecularAvailability({radius:20});
+  assert.equal(report.localClusters.glycine,1);
+  assert.equal(report.freeAtomCount,10);
+});
+
 test("water forms from two hydrogen atoms and one oxygen atom",()=>{
   const runtime=createRuntime(),biology=new EmergenceProgression(runtime);
   const h1=biology.create("atom",{x:20,y:20,atomicNumber:1,mass:1,elementSymbol:"H"}),h2=biology.create("atom",{x:22,y:20,atomicNumber:1,mass:1,elementSymbol:"H"}),o=biology.create("atom",{x:21,y:22,atomicNumber:8,mass:16,elementSymbol:"O"});
