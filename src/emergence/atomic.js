@@ -4,19 +4,26 @@ const ELEMENTS={1:['H','Hydrogen'],2:['He','Helium'],3:['Li','Lithium'],4:['Be',
 
 export const methods={
   formHadrons(options={}) {
-    const quarks=[...this.store.entities.values()].filter(e=>e.type==='quark'&&active(e)&&!e.parent),radius=Math.max(.01,finite(options.radius,12)),index=this.runtime.spatial.rebuild(quarks),used=new Set();
+    const quarks=[...this.store.entities.values()].filter(e=>e.type==='quark'&&active(e)&&!e.parent),gluons=[...this.store.entities.values()].filter(e=>e.type==='gluon'&&active(e)&&!e.parent),radius=Math.max(.01,finite(options.radius,12)),SpatialIndex=this.runtime.spatial.constructor,index=new SpatialIndex(this.runtime.spatial.cell).rebuild(quarks),gluonIndex=new SpatialIndex(this.runtime.spatial.cell).rebuild(gluons),used=new Set();
     let formed=0;
     for(const anchor of quarks) {
       if(used.has(anchor.id)||anchor.parent)continue;
-      const nearby=index.query(anchor.properties.x,anchor.properties.y,radius,[])
-        .filter(q=>q.type==='quark'&&active(q)&&!q.parent&&!used.has(q.id)&&q.id!==anchor.id);
+      const nearby=index.query(anchor.properties.x,anchor.properties.y,radius,[]),anchorColor=anchor.properties.colorCharge;
+      const otherColors=['red','green','blue'].filter(color=>color!==anchorColor),shortlist=new Map(otherColors.map(color=>[color,{up:[],down:[]}]));
+      // Keep only the nearest candidates of each colour/flavour. The old
+      // all-pairs search was quadratic in local density for every anchor.
+      for(const q of nearby){
+        if(q.id===anchor.id||used.has(q.id)||q.parent||!shortlist.has(q.properties.colorCharge))continue;
+        const flavor=q.properties.flavor;if(flavor!=='up'&&flavor!=='down')continue;
+        const list=shortlist.get(q.properties.colorCharge)[flavor],distance=Math.hypot(finite(q.properties.x)-finite(anchor.properties.x),finite(q.properties.y)-finite(anchor.properties.y));
+        let at=list.findIndex(item=>distance<item.distance);if(at<0)at=list.length;
+        if(at<12){list.splice(at,0,{entity:q,distance});if(list.length>12)list.pop()}
+      }
       let best=null,bestScore=Infinity;
-      for(let i=0;i<nearby.length;i++)for(let j=i+1;j<nearby.length;j++) {
-        const triple=[anchor,nearby[i],nearby[j]],colors=new Set(triple.map(q=>q.properties.colorCharge));
-        if(colors.size!==3||!['red','green','blue'].every(color=>colors.has(color)))continue;
-        const up=triple.filter(q=>q.properties.flavor==='up').length,down=triple.filter(q=>q.properties.flavor==='down').length;
-        if(!((up===2&&down===1)||(up===1&&down===2)))continue;
-        const distances=[0,1,2].flatMap(a=>[a+1,a+2].filter(b=>b<3).map(b=>Math.hypot(triple[a].properties.x-triple[b].properties.x,triple[a].properties.y-triple[b].properties.y)));
+      const first=shortlist.get(otherColors[0]),second=shortlist.get(otherColors[1]);
+      for(const a of [...first.up,...first.down])for(const b of [...second.up,...second.down]){
+        if(anchor.properties.flavor===a.entity.properties.flavor&&a.entity.properties.flavor===b.entity.properties.flavor)continue;
+        const triple=[anchor,a.entity,b.entity],distances=[Math.hypot(triple[0].properties.x-triple[1].properties.x,triple[0].properties.y-triple[1].properties.y),Math.hypot(triple[0].properties.x-triple[2].properties.x,triple[0].properties.y-triple[2].properties.y),Math.hypot(triple[1].properties.x-triple[2].properties.x,triple[1].properties.y-triple[2].properties.y)];
         if(Math.max(...distances)>radius)continue;
         const score=distances.reduce((sum,d)=>sum+d*d,0);
         if(score<bestScore){best=triple;bestScore=score}
@@ -25,7 +32,7 @@ export const methods={
       const triple=best,up=triple.filter(q=>q.properties.flavor==='up').length,down=3-up;
       const x=triple.reduce((s,e)=>s+finite(e.properties.x),0)/3,y=triple.reduce((s,e)=>s+finite(e.properties.y),0)/3;
       const type=up===2?'proton':'neutron',charge=up*2/3-down/3,mass=triple.reduce((s,e)=>s+finite(e.properties.mass,1),0);
-      const gluons=[...this.store.entities.values()].filter(e=>e.type==='gluon'&&active(e)&&!e.parent&&Math.hypot(e.properties.x-x,e.properties.y-y)<=radius).slice(0,2);
+      const nearbyGluons=gluonIndex.query(x,y,radius,[]),nearbyGluonIds=[];for(const gluon of nearbyGluons)if(!gluon.parent&&nearbyGluonIds.length<2)nearbyGluonIds.push(gluon);const gluons=nearbyGluonIds;
       const actions=[{op:'create',type,properties:{x,y,mass,charge,quarkCount:3,colorNeutral:true,catalogueId:'protons-neutrons',name:type==='proton'?'Proton':'Neutron',categoryId:'particles',catalogueColor:'#a5b5ce'},energy:0,as:'hadron'},...triple.map(q=>({op:'compose',parent:{ref:'hadron'},child:q.id}))];
       for(const q of triple)if(q.energy>0)actions.push({op:'transfer',from:q.id,to:{ref:'hadron'},amount:q.energy});
       for(const gluon of gluons)actions.push({op:'link',from:{ref:'hadron'},to:gluon.id,type:'exchanges',properties:{interaction:'strong',mediator:true}});
