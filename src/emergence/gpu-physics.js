@@ -4,6 +4,8 @@ struct Params { count: u32, radius: f32, strength: f32, softening: f32, maxAccel
 @group(0) @binding(0) var<storage, read> particles: array<Particle>;
 @group(0) @binding(1) var<storage, read_write> velocities: array<vec2f>;
 @group(0) @binding(2) var<uniform> params: Params;
+@group(0) @binding(3) var<storage, read> offsets: array<u32>;
+@group(0) @binding(4) var<storage, read> neighbours: array<u32>;
 @compute @workgroup_size(64)
 fn main(@builtin(global_invocation_id) gid: vec3u) {
   let i = gid.x;
@@ -11,7 +13,8 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
   let a = particles[i];
   var delta = vec2f(0.0);
   if (abs(a.charge) > 1e-9 && a.mass > 0.0) {
-    for (var j = 0u; j < params.count; j++) {
+    for (var edge = offsets[i]; edge < offsets[i + 1u]; edge++) {
+      let j = neighbours[edge];
       if (j == i) { continue; }
       let b = particles[j];
       let product = a.charge * b.charge;
@@ -53,6 +56,9 @@ export class WebGpuElectrostatics {
     this.device = device;
     this.pipeline = pipeline;
     this.capacity = 0;
+    this.neighbourCapacity = 0;
+    this.offsetBuffer = null;
+    this.neighbourBuffer = null;
     this.particleBuffer = null;
     this.velocityBuffer = null;
     this.uniformBuffer = device.createBuffer({ size: 32, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
@@ -60,16 +66,21 @@ export class WebGpuElectrostatics {
     this.lastDispatchMs = 0;
   }
 
-  ensureCapacity(count) {
+  ensureCapacity(count, neighbourCount) {
     if (count <= this.capacity) return;
     this.particleBuffer?.destroy();
     this.velocityBuffer?.destroy();
     this.capacity = Math.max(256, 2 ** Math.ceil(Math.log2(count)));
     this.particleBuffer = this.device.createBuffer({ size: this.capacity * 32, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
     this.velocityBuffer = this.device.createBuffer({ size: this.capacity * 8, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
+    this.offsetBuffer?.destroy();
+    this.offsetBuffer = this.device.createBuffer({ size: (this.capacity + 1) * 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+    this.neighbourCapacity = Math.max(256, 2 ** Math.ceil(Math.log2(Math.max(1, neighbourCount))));
+    this.neighbourBuffer?.destroy();
+    this.neighbourBuffer = this.device.createBuffer({ size: this.neighbourCapacity * 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
   }
 
-  async apply(entities, options, isActive = entity => entity.state === 'active' || entity.state === 'bound') {
+  async apply(entities, options, spatial, isActive = entity => entity.state === 'active' || entity.state === 'bound') {
     const charged = [];
     for (const entity of entities) {
       if (entity.parent || !isActive(entity)) continue;
@@ -79,7 +90,15 @@ export class WebGpuElectrostatics {
     }
     const count = charged.length;
     if (count < 2) return 0;
-    this.ensureCapacity(count);
+    spatial.rebuild(charged);
+    const offsets = new Uint32Array(count + 1), edges = [];
+    for (let i = 0; i < count; i++) {
+      const nearby = spatial.query(charged[i].properties.x, charged[i].properties.y, options.radius, []);
+      for (const entity of nearby) { const index = charged.indexOf(entity); if (index >= 0 && index !== i) edges.push(index); }
+      offsets[i + 1] = edges.length;
+    }
+    const neighbourCount = edges.length;
+    this.ensureCapacity(count, neighbourCount);
     const input = new Float32Array(count * 8);
     for (let i = 0; i < count; i++) {
       const p = charged[i].properties, k = i * 8;
@@ -95,6 +114,8 @@ export class WebGpuElectrostatics {
     view.setFloat32(16, options.maxAcceleration, true);
     view.setFloat32(20, options.dt, true);
     this.device.queue.writeBuffer(this.particleBuffer, 0, input);
+    this.device.queue.writeBuffer(this.offsetBuffer, 0, offsets);
+    if (neighbourCount) this.device.queue.writeBuffer(this.neighbourBuffer, 0, new Uint32Array(edges));
     this.device.queue.writeBuffer(this.uniformBuffer, 0, uniform);
     const readback = this.device.createBuffer({ size: count * 8, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST });
     const encoder = this.device.createCommandEncoder();
@@ -103,7 +124,9 @@ export class WebGpuElectrostatics {
     pass.setBindGroup(0, this.device.createBindGroup({ layout: this.pipeline.getBindGroupLayout(0), entries: [
       { binding: 0, resource: { buffer: this.particleBuffer } },
       { binding: 1, resource: { buffer: this.velocityBuffer } },
-      { binding: 2, resource: { buffer: this.uniformBuffer } }
+      { binding: 2, resource: { buffer: this.uniformBuffer } },
+      { binding: 3, resource: { buffer: this.offsetBuffer } },
+      { binding: 4, resource: { buffer: this.neighbourBuffer } }
     ] }));
     pass.dispatchWorkgroups(Math.ceil(count / 64));
     pass.end();
@@ -123,7 +146,7 @@ export class WebGpuElectrostatics {
   }
 
   destroy() {
-    this.particleBuffer?.destroy(); this.velocityBuffer?.destroy(); this.uniformBuffer?.destroy();
+    this.particleBuffer?.destroy(); this.velocityBuffer?.destroy(); this.offsetBuffer?.destroy(); this.neighbourBuffer?.destroy(); this.uniformBuffer?.destroy();
     this.device.destroy();
   }
 }
