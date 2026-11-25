@@ -250,14 +250,14 @@ test("fusion channel network can build carbon from helium and beryllium nuclei",
   assert.ok([...runtime.store.entities.values()].some(e=>e.type==='isotope'&&e.properties.atomicNumber===6));
 });
 
-test("fusion channels are prioritised globally so oxygen is not stolen by carbon synthesis",()=>{
+test("fusion channel priority reserves shared reactants so oxygen and carbon can both form",()=>{
   const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
   const make=(x,z)=>{const p={x,y:50,mass:z*2,protonCount:z,neutronCount:z,atomicNumber:z,massNumber:z*2,charge:z,formedAt:0};const n=biology.create('atomic-nucleus',p);const i=biology.create('isotope',p);runtime.store.link(i.id,n.id,'contains')};
-  make(20,2);make(40,4);make(45,4);
+  make(20,2);make(40,4);make(45,4);make(50,4);
   const channels=[{reactants:[4,4],maxPerTick:1},{reactants:[2,4],maxPerTick:1}];
-  assert.equal(biology.fuseIsotopes({fusionRadius:100,maxFusionSpeed:1,maxAtomicNumber:18,fusionProbability:1,fusionChannels:channels}),1);
-  assert.ok([...runtime.store.entities.values()].some(e=>e.type==='isotope'&&e.properties.atomicNumber===8));
-  assert.equal([...runtime.store.entities.values()].filter(e=>e.type==='isotope'&&e.properties.atomicNumber===6).length,0);
+  assert.equal(biology.fuseIsotopes({fusionRadius:100,maxFusionSpeed:1,maxAtomicNumber:18,fusionProbability:1,fusionChannels:channels}),2);
+  assert.equal([...runtime.store.entities.values()].filter(e=>e.type==='isotope'&&e.properties.atomicNumber===8).length,1);
+  assert.equal([...runtime.store.entities.values()].filter(e=>e.type==='isotope'&&e.properties.atomicNumber===6).length,1);
 });
 
 test("fusion channels enforce a deterministic run-wide product ceiling",()=>{

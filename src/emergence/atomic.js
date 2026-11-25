@@ -132,9 +132,14 @@ export const methods={
       // before a later channel gets a chance to build its own products.
       for(let channelIndex=0;channelIndex<channels.length;channelIndex++){
         const channel=channels[channelIndex];let made=0;
+        const [za,zb]=channel.reactants,downstreamReserve=new Map();
+        for(let next=channelIndex+1;next<channels.length;next++)for(const z of channels[next].reactants)downstreamReserve.set(z,(downstreamReserve.get(z)||0)+1);
+        const available=z=>(isotopesByZ.get(z)||[]).reduce((count,e)=>count+(!used.has(e.id)&&young(e)?1:0),0);
         while(made<channel.maxPerTick&&(channelTotals.get(channelIndex)||0)<channel.maxProducts){
+          const requiredA=(za===zb?2:1)+(downstreamReserve.get(za)||0),requiredB=za===zb?0:1+(downstreamReserve.get(zb)||0);
+          if(available(za)<requiredA||zb!==za&&available(zb)<requiredB)break;
           let best=null,bestDistance=Infinity;
-          const [za,zb]=channel.reactants,left=isotopesByZ.get(za)||[],rightIds=new Set((isotopesByZ.get(zb)||[]).map(e=>e.id));
+          const left=isotopesByZ.get(za)||[],rightIds=new Set((isotopesByZ.get(zb)||[]).map(e=>e.id));
           for(const a of left){
             if(used.has(a.id)||!young(a))continue;const na=nucleusOf(a);if(!na)continue;
             for(const b of isotopeIndex.query(a.properties.x,a.properties.y,radius,[])){
