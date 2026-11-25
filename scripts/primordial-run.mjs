@@ -17,12 +17,22 @@ const sampleEvery=Math.max(1,Math.floor(Number(args.sampleEvery??300)));
 const spread=Math.max(.01,Math.min(1,Number(args.spread??1)));
 const fusionProbability=Math.max(0,Math.min(1,Number(args.fusionProbability??.01)));
 const fusionRadius=Math.max(1,Number(args.fusionRadius??80));
+const minFusionAtomicNumber=Math.max(1,Math.floor(Number(args.minFusionAtomicNumber??2)));
 const atomizationDelay=Math.max(0,Number(args.atomizationDelay??180));
+const atomizationRadius=Math.max(1,Number(args.atomizationRadius??420));
 const populationScale=Math.max(.1,Number(args.populationScale??1));
+const physicsEvery=Math.max(1,Math.floor(Number(args.physicsEvery??1)));
+
+const smallNucleusFraction=Math.max(0,Math.min(1,Number(args.smallNucleusFraction??.08)));
+const fusionChannels=[{reactants:[2,2],maxPerTick:Math.max(8,6*populationScale),maxProducts:Math.max(16,Math.round(6*populationScale))},{reactants:[4,4],maxPerTick:Math.max(4,2*populationScale),maxProducts:Math.max(4,Math.round(2*populationScale))},{reactants:[1,2],maxPerTick:Math.max(6,2.5*populationScale),maxProducts:Math.max(8,Math.round(2.5*populationScale))},{reactants:[2,4],maxPerTick:Math.max(4,1.5*populationScale),maxProducts:Math.max(4,Math.round(1.5*populationScale))},{reactants:[3,4],maxPerTick:Math.max(4,.5*populationScale),maxProducts:Math.max(4,Math.round(.5*populationScale))},{reactants:[7,8],maxPerTick:Math.max(2,.2*populationScale),maxProducts:1}];
 const output=args.output||'';
 const W=14700,H=29115,scale=15,distance=n=>n*scale,velocity=n=>n*scale;
 const sim=createRuntime({width:W,height:H,cols:120,rows:68,cellSize:distance(24),constraintIterations:2});
 const biology=new EmergenceProgression(sim,{seed});
+// This experiment invokes every chemistry pathway explicitly. Generic GolfCore
+// and declarative-rule scans are unrelated to primordial synthesis, so omit
+// those phases while retaining scheduler time/tick progression.
+sim.scheduler.phases.length=0;
 sim.fields.add('stimulus',W*.5,H*.5,.8);
 sim.interactions.register({id:'long-range-cohesion',a:'*',b:'*',radius:distance(150),strength:.045,mode:'attract'})
  .register({id:'atomic-condensation',a:'atom',b:'atom',radius:distance(420),strength:.012,mode:'attract'})
@@ -43,24 +53,28 @@ function atomInventory(){
  return{all:counts,free:freeCounts,total:all.length,freeTotal:free.length};
 }
 function pathwaySnapshot(step,atomic={},chemistry={}){
- const types=countTypes(),atoms=atomInventory(),pathway=biology.diagnosePrimordialPathway({radius:distance(48),initialEnergy}),availability=pathway.atoms.availability,atomicFusion=biology.diagnoseAtomicFusion({fusionRadius:distance(fusionRadius),maxFusionSpeed:velocity(3),maxAtomicNumber:18});
+ const types=countTypes(),atoms=atomInventory(),pathway=biology.diagnosePrimordialPathway({radius:distance(48),initialEnergy}),availability=pathway.atoms.availability,atomicFusion=biology.diagnoseAtomicFusion({fusionRadius:distance(fusionRadius),maxFusionSpeed:velocity(3),maxAtomicNumber:18,minFusionAtomicNumber,fusionChannels,atomizationDelay});
  const products=pathway.products;
+ const atomization=biology.diagnoseAtomization({radius:distance(atomizationRadius),atomizationDelay});
  const stage={
   elements:{carbon:atoms.all.C||0,nitrogen:atoms.all.N||0,oxygen:atoms.all.O||0,phosphorus:atoms.all.P||0},
   freeElements:{carbon:atoms.free.C||0,nitrogen:atoms.free.N||0,oxygen:atoms.free.O||0,phosphorus:atoms.free.P||0},
   feedstock:{global:availability.globallyPossible,localClusters:availability.localClusters,freeAtomsByElement:availability.freeAtomsByElement},pathwayDiagnostics:pathway,
-  products,atomicFusion,atomicEvents:atomic,chemistryEvents:chemistry,
+  products,atomicFusion,atomization,atomicEvents:atomic,atomicEventsCumulative:{...atomicEventTotals},chemistryEvents:chemistry,chemistryEventsCumulative:{...chemistryEventTotals},
   blockers:pathway.blockers,
   energy:sim.energy.inventory(sim.store),energyAudit:sim.energy.audit(sim.store,initialEnergy),
   entities:types,metrics:biology.metrics
  };
  return{step,...stage};
 }
-const snapshots=[];
+const snapshots=[],atomicEventTotals={},chemistryEventTotals={};
+const accumulate=(totals,events)=>{for(const [key,value] of Object.entries(events))if(typeof value==='number'&&Number.isFinite(value))totals[key]=(totals[key]||0)+value};
 for(let step=1;step<=steps;step++){
- sim.step(1);
- biology.applyElectrostatics({radius:distance(180),strength:3,softening:8,maxAcceleration:.04,dt:1});
- biology.applyNuclearAttraction({radius:distance(32),range:distance(12),strength:.08,maxAcceleration:.04,dt:1});
+ if(step%physicsEvery===0){
+  sim.step(1);
+  biology.applyElectrostatics({radius:distance(180),strength:3,softening:8,maxAcceleration:.04,dt:1});
+  biology.applyNuclearAttraction({radius:distance(32),range:distance(12),strength:.08,maxAcceleration:.04,dt:1});
+ }else sim.scheduler.step(1,sim);
  if(step%4===0)biology.exchangeThermalEnergy({radius:distance(26),conductance:.025,dt:1});
  let atomic={},chemistry={};
  if(step%2===0){
@@ -72,7 +86,8 @@ for(let step=1;step<=steps;step++){
   biology.formProtocellsFromAssemblies({radius:distance(14)});
   const afterChem=sim.store.entities.size;
   sim.spatial.rebuild(sim.store.entities.values());
-  atomic=biology.assembleAtomicMatter({hadronRadius:distance(24),nuclearRadius:distance(16),atomRadius:distance(90),fusionRadius:distance(fusionRadius),maxFusionSpeed:velocity(3),fusionProbability,maxAtomicNumber:18,atomizationDelay});
+  atomic=biology.assembleAtomicMatter({hadronRadius:distance(24),nuclearRadius:distance(16),atomRadius:distance(atomizationRadius),fusionRadius:distance(fusionRadius),maxFusionSpeed:velocity(3),fusionProbability,maxAtomicNumber:18,minFusionAtomicNumber,fusionChannels,smallNucleusFraction,atomizationDelay});
+  accumulate(chemistryEventTotals,chemistry);accumulate(atomicEventTotals,atomic);
   const afterAtomic=sim.store.entities.size;
   chemistry.entityDelta=afterChem-before;atomic.entityDelta=afterAtomic-afterChem;
  }
@@ -86,5 +101,5 @@ for(let step=1;step<=steps;step++){
  }
  if(step%sampleEvery===0||step===steps){const s=pathwaySnapshot(step,atomic,chemistry);snapshots.push(s);process.stdout.write(JSON.stringify(s)+'\n')}
 }
-const result={seed,steps,sampleEvery,spread,fusionProbability,fusionRadius,atomizationDelay,populationScale,initialEnergy,snapshots,final:snapshots.at(-1)};
+const result={seed,steps,sampleEvery,spread,physicsEvery,fusionProbability,fusionRadius,minFusionAtomicNumber,atomizationDelay,atomizationRadius,populationScale,smallNucleusFraction,fusionChannels,initialEnergy,snapshots,final:snapshots.at(-1)};
 if(output)writeFileSync(output,JSON.stringify(result,null,2)+'\n');

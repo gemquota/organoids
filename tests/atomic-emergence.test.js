@@ -166,6 +166,18 @@ test("mature isotopes atomise before the next fusion pass",()=>{
   assert.equal([...runtime.store.entities.values()].filter(e=>e.type==='atom').length,2);
 });
 
+test("mature isotopes are protected from fusion while waiting for electrons",()=>{
+  const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
+  for(const x of [48,52]){
+    const properties={x,y:50,mass:4,protonCount:2,neutronCount:2,atomicNumber:2,massNumber:4,charge:2,formedAt:0};
+    const nucleus=biology.create('atomic-nucleus',properties,0),isotope=biology.create('isotope',properties,0);
+    runtime.store.link(isotope.id,nucleus.id,'contains');
+  }
+  runtime.scheduler.time=10;
+  assert.equal(biology.fuseIsotopes({fusionRadius:10,maxFusionSpeed:1,maxAtomicNumber:10,fusionProbability:1,atomizationDelay:10}),0);
+  assert.equal([...runtime.store.entities.values()].filter(e=>e.type==='isotope'&&!e.parent).length,2);
+});
+
 test("isotopes remain fusible during the atomisation window",()=>{
   const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
   const makeHelium=(x)=>{
@@ -219,6 +231,59 @@ test("hydrogen can be captured by a heavier isotope without hydrogen-only fusion
 
 
 
+test("primordial seed fraction preserves hydrogen nuclei and unbound neutrons",()=>{
+  const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime,{seed:17});
+  for(let i=0;i<4;i++)biology.create('proton',{x:50+i*.1,y:50,mass:1,charge:1},.1);
+  for(let i=0;i<4;i++)biology.create('neutron',{x:50+i*.1,y:50.2,mass:1,charge:0},.1);
+  assert.equal(biology.formNuclei({radius:10,maxNucleons:4,maxProtons:2,smallNucleusFraction:1}),4);
+  const nuclei=[...runtime.store.entities.values()].filter(e=>e.type==='atomic-nucleus');
+  assert.ok(nuclei.every(e=>e.properties.protonCount===1&&e.properties.neutronCount===0));
+  assert.equal([...runtime.store.entities.values()].filter(e=>e.type==='neutron'&&!e.parent).length,4);
+});
+
+test("fusion channel network can build carbon from helium and beryllium nuclei",()=>{
+  const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
+  const make=(x,z,n)=>{const p={x,y:50,mass:z+n,protonCount:z,neutronCount:n,atomicNumber:z,massNumber:z+n,charge:z,formedAt:0};const nucleus=biology.create('atomic-nucleus',p);const isotope=biology.create('isotope',p);runtime.store.link(isotope.id,nucleus.id,'contains')};
+  make(45,2,2);make(55,4,4);
+  const channels=[{reactants:[2,4],maxPerTick:1}];
+  assert.equal(biology.fuseIsotopes({fusionRadius:20,maxFusionSpeed:1,maxAtomicNumber:18,fusionProbability:1,fusionChannels:channels}),1);
+  assert.ok([...runtime.store.entities.values()].some(e=>e.type==='isotope'&&e.properties.atomicNumber===6));
+});
+
+test("fusion channels are prioritised globally so oxygen is not stolen by carbon synthesis",()=>{
+  const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
+  const make=(x,z)=>{const p={x,y:50,mass:z*2,protonCount:z,neutronCount:z,atomicNumber:z,massNumber:z*2,charge:z,formedAt:0};const n=biology.create('atomic-nucleus',p);const i=biology.create('isotope',p);runtime.store.link(i.id,n.id,'contains')};
+  make(20,2);make(40,4);make(45,4);
+  const channels=[{reactants:[4,4],maxPerTick:1},{reactants:[2,4],maxPerTick:1}];
+  assert.equal(biology.fuseIsotopes({fusionRadius:100,maxFusionSpeed:1,maxAtomicNumber:18,fusionProbability:1,fusionChannels:channels}),1);
+  assert.ok([...runtime.store.entities.values()].some(e=>e.type==='isotope'&&e.properties.atomicNumber===8));
+  assert.equal([...runtime.store.entities.values()].filter(e=>e.type==='isotope'&&e.properties.atomicNumber===6).length,0);
+});
+
+test("fusion channels enforce a deterministic run-wide product ceiling",()=>{
+  const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
+  for(const [x,z] of [[20,7],[30,8],[40,7],[50,8]]){const p={x,y:50,mass:z*2,protonCount:z,neutronCount:z,atomicNumber:z,massNumber:z*2,charge:z,formedAt:0};const n=biology.create('atomic-nucleus',p);const i=biology.create('isotope',p);runtime.store.link(i.id,n.id,'contains')}
+  const channels=[{reactants:[7,8],maxPerTick:4,maxProducts:1}];
+  assert.equal(biology.fuseIsotopes({fusionRadius:100,maxFusionSpeed:1,maxAtomicNumber:18,fusionProbability:1,fusionChannels:channels}),1);
+  assert.equal(biology.fuseIsotopes({fusionRadius:100,maxFusionSpeed:1,maxAtomicNumber:18,fusionProbability:1,fusionChannels:channels}),0);
+  assert.equal([...runtime.store.entities.values()].filter(e=>e.type==='isotope'&&!e.parent&&e.properties.atomicNumber===15).length,1);
+  const report=biology.diagnoseAtomicFusion({fusionRadius:100,maxFusionSpeed:1,minFusionAtomicNumber:2,atomizationDelay:100,fusionChannels:channels});
+  assert.equal(report.channelCapacity['7+8'].remaining,0);
+});
+
+test("atomization diagnostics distinguish mature isotopes with and without nearby electrons",()=>{
+  const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
+  for(const [x,z] of [[20,6],[80,8]]){const p={x,y:50,mass:z*2,protonCount:z,neutronCount:z,atomicNumber:z,massNumber:z*2,charge:z,formedAt:0};const n=biology.create('atomic-nucleus',p);const i=biology.create('isotope',p);runtime.store.link(i.id,n.id,'contains')}
+  biology.create('lepton',{x:20,y:50,leptonKind:'electron',charge:-1,mass:.0005},.05);
+  runtime.scheduler.time=10;
+  const report=biology.diagnoseAtomization({radius:10,atomizationDelay:10});
+  assert.equal(report.matureIsotopes,2);
+  assert.equal(report.atomizableIsotopes,1);
+  assert.equal(report.waitingForElectrons,1);
+  assert.equal(report.readyByElement.C,1);
+  assert.equal(report.waitingByElement.O,1);
+});
+
 test("dense nucleon clouds partition into small proton-bearing seed nuclei",()=>{
   const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
   for(let i=0;i<4;i++)biology.create("proton",{x:50+i*.1,y:50,mass:1,charge:1},.1);
@@ -263,6 +328,10 @@ test("atomic fusion diagnostics distinguish proximity, speed and element-ceiling
   report=biology.diagnoseAtomicFusion({fusionRadius:2,maxFusionSpeed:1,maxAtomicNumber:18});
   assert.equal(report.pairsWithinRadius,0);
   assert.equal(report.nearestDistance,5);
+  report=biology.diagnoseAtomicFusion({fusionRadius:10,maxFusionSpeed:1,maxAtomicNumber:10,minFusionAtomicNumber:2});
+  assert.equal(report.eligibleFusionPairs,1);
+  report=biology.diagnoseAtomicFusion({fusionRadius:10,maxFusionSpeed:1,maxAtomicNumber:10,minFusionAtomicNumber:3});
+  assert.equal(report.eligibleFusionPairs,0);
 });
 
 test("fusion probability zero preserves nearby isotopes",()=>{

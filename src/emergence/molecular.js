@@ -516,17 +516,15 @@ export const methods = {
   },
   assembleMolecularMatter(options={}) {
     const elements=this.formElements();
-    // Specific low-complexity products compete for free atoms before the
-    // general bond pass can lock those atoms into arbitrary aggregates.
-    // Larger organic products claim their atoms before simpler water
-    // association, so water formation cannot starve more complex pathways.
-    const lipids=this.assembleAmphiphiles({radius:finite(options.amphiphileRadius,finite(options.radius,20))});
-    const organic=this.assembleOrganicMolecules({radius:finite(options.organicRadius,finite(options.radius,20))});
+    // Reserve atoms for the requested informational and membrane pathways
+    // before generic organics can consume the same C/H/N/O feedstock.
     const monomers=this.assembleNucleobaseMonomers({radius:finite(options.monomerRadius,finite(options.radius,20))});
     const ribose=this.assembleRibose({radius:finite(options.riboseRadius,finite(options.radius,18))});
     const phosphates=this.assemblePhosphoricAcid({radius:finite(options.phosphateRadius,finite(options.radius,16))});
     const nucleotidePrecursors=this.assembleNucleotidePrecursors({radius:finite(options.nucleotideRadius,finite(options.radius,22))});
     const nucleotides=this.condenseNucleotidePrecursors({radius:finite(options.condensationRadius,finite(options.radius,24)),energyCost:finite(options.condensationEnergyCost,0)});
+    const lipids=this.assembleAmphiphiles({radius:finite(options.amphiphileRadius,finite(options.radius,20))});
+    const organic=this.assembleOrganicMolecules({radius:finite(options.organicRadius,finite(options.radius,20))});
     const phosphodiesterBonds=this.formPhosphodiesterBonds({radius:finite(options.phosphodiesterRadius,16),rate:finite(options.phosphodiesterRate,.25),dt:finite(options.dt,1),energyCost:finite(options.phosphodiesterEnergyCost,.0001)});
     const water=this.assembleWater({radius:finite(options.waterRadius,finite(options.radius,18))});
     const bondDissociations=this.breakChemicalBonds({rate:finite(options.bondBreakRate,.002),dt:finite(options.dt,1),activationEnergy:finite(options.bondBreakActivationEnergy,.004),bondEnergy:finite(options.bondEnergy,.001)});

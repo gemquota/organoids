@@ -22,7 +22,7 @@ test("molecular availability distinguishes global inventory from local reactant 
 
 test("primordial pathway diagnostics identify elemental, intermediate and assembly stalls",()=>{
   const runtime=createRuntime(),biology=new EmergenceProgression(runtime,{seed:29});
-  for(const [z,count] of [[6,5],[1,10],[8,5],[15,1]])for(let i=0;i<count;i++)biology.create("atom",{x:i*100,y:0,atomicNumber:z,mass:z});
+  for(const [z,count] of [[6,5],[1,10],[8,2],[15,1]])for(let i=0;i<count;i++)biology.create("atom",{x:i*100,y:0,atomicNumber:z,mass:z});
   let report=biology.diagnosePrimordialPathway({radius:20,initialEnergy:0});
   assert.equal(report.atoms.allByElement.C,5);
   assert.equal(report.atoms.allByElement.P,1);
@@ -313,4 +313,49 @@ test("phosphodiester-linked ribonucleotides polymerise as translation-eligible R
   assert.equal(rna.properties.translationEligible,true);
   assert.equal(rna.properties.backboneType,"ribose-phosphate");
   assert.equal(rna.properties.polymerClass,"rna");
+});
+
+test("primordial feedstock completes the ribose-to-RNA and lipid-to-membrane chain",()=>{
+  const runtime=createRuntime(),biology=new EmergenceProgression(runtime,{seed:211});
+  const add=(x,y,z,count,mass)=>{for(let i=0;i<count;i++)biology.create("atom",{x:x+(i%5)*.02,y:y+Math.floor(i/5)*.02,atomicNumber:z,elementSymbol:({1:"H",6:"C",7:"N",8:"O",15:"P"})[z],mass},.01)};
+  const groups=[
+    {x:20,base:[[6,5],[1,5],[7,5],[8,0]]},
+    {x:140,base:[[6,4],[1,4],[7,2],[8,2]]},
+    {x:260,base:[[6,5],[1,5],[7,5],[8,1]]}
+  ];
+  for(const group of groups){
+    for(const [z,n] of group.base)add(group.x,20,z,n,z===1?1:z);
+    add(group.x+20,20,6,5,12);add(group.x+20,20,1,10,1);add(group.x+20,20,8,5,16);
+    add(group.x+40,20,15,1,31);add(group.x+40,20,8,4,16);add(group.x+40,20,1,3,1);
+  }
+  add(380,20,6,2,12);add(380,20,1,5,1);add(380,20,7,1,14);add(380,20,8,2,16);
+  for(let lipid=0;lipid<8;lipid++){
+    const x=500+lipid*20;
+    add(x,20,6,8,12);add(x,20,1,16,1);add(x,20,8,2,16);
+  }
+  const chemistry=biology.assembleMolecularMatter({
+    radius:6,amphiphileRadius:6,organicRadius:6,monomerRadius:6,riboseRadius:6,phosphateRadius:6,
+    nucleotideRadius:45,condensationRadius:45,phosphodiesterRadius:150,phosphodiesterRate:1,
+    phosphodiesterEnergyCost:0,bondRadius:1,bondRate:0,polymerEnergyCost:0,dt:1
+  });
+  assert.ok(chemistry.monomers>=3);
+  assert.ok([...runtime.store.entities.values()].filter(e=>e.type==="sugar"&&e.properties.sugarKind==="ribose").length>=3);
+  assert.equal([...runtime.store.entities.values()].filter(e=>e.type==="phosphoric-acid").length,3);
+  assert.equal([...runtime.store.entities.values()].filter(e=>e.type==="nucleotide-precursor").length,0);
+  const ribonucleotides=[...runtime.store.entities.values()].filter(e=>e.type==="monomer"&&e.properties.polymerRole==="ribonucleotide");
+  assert.ok(ribonucleotides.length>=3);
+  for(let i=0;i<4;i++){
+    biology.formPhosphodiesterBonds({radius:150,rate:1,dt:1,energyCost:0});
+    biology.polymerize({monomerTypes:["monomer"],minLength:3,energyCost:0});
+  }
+  const rna=[...runtime.store.entities.values()].find(e=>e.type==="polymer"&&e.properties.translationEligible===true);
+  assert.ok(rna);
+  assert.ok(rna.properties.sequence.length>=3);
+  assert.equal(biology.selfAssembleMembranes({radius:200,minLipids:8}),1);
+  assert.equal(biology.formVesiclesFromMembranes(),1);
+  const report=biology.diagnosePrimordialPathway({radius:100,initialEnergy:runtime.energy.inventory(runtime.store).total});
+  assert.ok(report.products.rna>=1);
+  assert.equal(report.products.membranes,1);
+  assert.equal(report.products.vesicles,1);
+  assert.equal(runtime.energy.audit(runtime.store,runtime.energy.inventory(runtime.store).total).balanced,true);
 });
