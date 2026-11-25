@@ -260,6 +260,21 @@ test("fusion channel priority reserves shared reactants so oxygen and carbon can
   assert.equal([...runtime.store.entities.values()].filter(e=>e.type==='isotope'&&e.properties.atomicNumber===6).length,1);
 });
 
+test("primordial fusion channels preserve enough helium and beryllium to build C, N and P",()=>{
+  const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
+  const make=(x,z)=>{const properties={x,y:50,vx:0,vy:0,mass:z*2,protonCount:z,neutronCount:z,atomicNumber:z,massNumber:z*2,charge:z,formedAt:0};const nucleus=biology.create('atomic-nucleus',properties);const isotope=biology.create('isotope',properties);runtime.store.link(isotope.id,nucleus.id,'contains')};
+  for(let i=0;i<10;i++)make(40+i*.1,2);
+  make(41,1);
+  const channels=[{reactants:[2,2],maxPerTick:10,maxProducts:10},{reactants:[4,4],maxPerTick:10,maxProducts:10},{reactants:[1,2],maxPerTick:10,maxProducts:10},{reactants:[2,4],maxPerTick:10,maxProducts:10},{reactants:[3,4],maxPerTick:10,maxProducts:10},{reactants:[7,8],maxPerTick:10,maxProducts:10}];
+  const options={fusionRadius:100,maxFusionSpeed:1,maxAtomicNumber:18,minFusionAtomicNumber:2,fusionProbability:1,fusionChannels:channels};
+  biology.fuseIsotopes(options);
+  biology.fuseIsotopes(options);
+  biology.fuseIsotopes(options);
+  const products=new Set(biology.lineage.events.filter(e=>e.kind==='nuclear-fusion').map(e=>e.protonCount));
+  for(const z of [3,4,6,7,8,15])assert.ok(products.has(z),'expected fusion product with atomic number '+z);
+  assert.ok([...runtime.store.entities.values()].some(e=>e.type==='isotope'&&!e.parent&&e.properties.atomicNumber===15));
+});
+
 test("fusion channels enforce a deterministic run-wide product ceiling",()=>{
   const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
   for(const [x,z] of [[20,7],[30,8],[40,7],[50,8]]){const p={x,y:50,mass:z*2,protonCount:z,neutronCount:z,atomicNumber:z,massNumber:z*2,charge:z,formedAt:0};const n=biology.create('atomic-nucleus',p);const i=biology.create('isotope',p);runtime.store.link(i.id,n.id,'contains')}
