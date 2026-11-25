@@ -236,15 +236,16 @@ export const methods = {
       {kind:'G',name:'Guanine analogue',formula:'C5H5N5O',counts:{6:5,1:5,7:5,8:1}}
     ];
     const atoms=[...this.store.entities.values()].filter(e=>e.type==='atom'&&e.state==='active'&&!e.parent);
+    const index=this.runtime.spatial.rebuild(atoms),pools=new Map();for(const atom of atoms){const z=atom.properties.atomicNumber;if(!pools.has(z))pools.set(z,[]);pools.get(z).push(atom)}
     const radius=Math.max(.01,finite(options.radius,20)),used=new Set();
-    const available=number=>atoms.filter(e=>!e.parent&&!used.has(e.id)&&e.properties.atomicNumber===number);
-    const nearest=(pool,x,y,count)=>count?pool.slice().sort((a,b)=>Math.hypot(finite(a.properties.x)-x,finite(a.properties.y)-y)-Math.hypot(finite(b.properties.x)-x,finite(b.properties.y)-y)).slice(0,count):[];
+    const available=number=>pools.get(number)||[];
+    const nearest=(z,x,y,count,excludeId)=>count>0?index.query(x,y,radius,[]).filter(e=>e.properties.atomicNumber===z&&!e.parent&&!used.has(e.id)&&e.id!==excludeId).sort((a,b)=>Math.hypot(finite(a.properties.x)-x,finite(a.properties.y)-y)-Math.hypot(finite(b.properties.x)-x,finite(b.properties.y)-y)).slice(0,count):[];
     let formed=0;
     for(const recipe of recipes) {
       for(const anchor of available(6)) {
         if(anchor.parent||used.has(anchor.id))continue;
         const ax=finite(anchor.properties.x),ay=finite(anchor.properties.y),counts=recipe.counts;
-        const members=[anchor,...nearest(available(6).filter(e=>e.id!==anchor.id),ax,ay,counts[6]-1),...nearest(available(1),ax,ay,counts[1]),...nearest(available(7),ax,ay,counts[7]),...nearest(available(8),ax,ay,counts[8])];
+        const members=[anchor,...nearest(6,ax,ay,counts[6]-1,anchor.id),...nearest(1,ax,ay,counts[1]),...nearest(7,ax,ay,counts[7]),...nearest(8,ax,ay,counts[8])];
         if(members.length!==Object.values(counts).reduce((sum,n)=>sum+n,0))continue;
         const x=members.reduce((sum,e)=>sum+finite(e.properties.x),0)/members.length,y=members.reduce((sum,e)=>sum+finite(e.properties.y),0)/members.length;
         if(members.some(e=>Math.hypot(finite(e.properties.x)-x,finite(e.properties.y)-y)>radius))continue;
@@ -275,17 +276,18 @@ export const methods = {
   },
   assembleRibose(options={}) {
     const atoms=[...this.store.entities.values()].filter(e=>e.type==='atom'&&e.state==='active'&&!e.parent);
+    const index=this.runtime.spatial.rebuild(atoms),pools=new Map();for(const atom of atoms){const z=atom.properties.atomicNumber;if(!pools.has(z))pools.set(z,[]);pools.get(z).push(atom)}
     const radius=Math.max(.01,finite(options.radius,18)),used=new Set();
-    const available=number=>atoms.filter(e=>!e.parent&&!used.has(e.id)&&e.properties.atomicNumber===number);
-    const nearest=(pool,x,y,count)=>pool.slice().sort((a,b)=>Math.hypot(finite(a.properties.x)-x,finite(a.properties.y)-y)-Math.hypot(finite(b.properties.x)-x,finite(b.properties.y)-y)).slice(0,count);
+    const available=number=>pools.get(number)||[];
+    const nearest=(z,x,y,count,excludeId)=>count>0?index.query(x,y,radius,[]).filter(e=>e.properties.atomicNumber===z&&!e.parent&&!used.has(e.id)&&e.id!==excludeId).sort((a,b)=>Math.hypot(finite(a.properties.x)-x,finite(a.properties.y)-y)-Math.hypot(finite(b.properties.x)-x,finite(b.properties.y)-y)).slice(0,count):[];
     let formed=0;
     for(const anchor of available(6)) {
       if(anchor.parent||used.has(anchor.id))continue;
       const x0=finite(anchor.properties.x),y0=finite(anchor.properties.y);
-      const carbons=[anchor,...nearest(available(6).filter(e=>e.id!==anchor.id),x0,y0,4)];
+      const carbons=[anchor,...nearest(6,x0,y0,4,anchor.id)];
       if(carbons.length!==5)continue;
       const cx=carbons.reduce((sum,e)=>sum+finite(e.properties.x),0)/5,cy=carbons.reduce((sum,e)=>sum+finite(e.properties.y),0)/5;
-      const oxygens=nearest(available(8),cx,cy,5),hydrogens=nearest(available(1),cx,cy,10);
+      const oxygens=nearest(8,cx,cy,5),hydrogens=nearest(1,cx,cy,10);
       if(oxygens.length!==5||hydrogens.length!==10)continue;
       const members=[...carbons,...oxygens,...hydrogens],x=members.reduce((sum,e)=>sum+finite(e.properties.x),0)/members.length,y=members.reduce((sum,e)=>sum+finite(e.properties.y),0)/members.length;
       if(members.some(e=>Math.hypot(finite(e.properties.x)-x,finite(e.properties.y)-y)>radius))continue;
@@ -300,15 +302,16 @@ export const methods = {
   },
   assemblePhosphoricAcid(options={}) {
     const atoms=[...this.store.entities.values()].filter(e=>e.type==='atom'&&e.state==='active'&&!e.parent);
+    const index=this.runtime.spatial.rebuild(atoms),pools=new Map();for(const atom of atoms){const z=atom.properties.atomicNumber;if(!pools.has(z))pools.set(z,[]);pools.get(z).push(atom)}
     const radius=Math.max(.01,finite(options.radius,16)),used=new Set();
-    const available=number=>atoms.filter(e=>!e.parent&&!used.has(e.id)&&e.properties.atomicNumber===number);
-    const nearest=(pool,x,y,count)=>pool.slice().sort((a,b)=>Math.hypot(finite(a.properties.x)-x,finite(a.properties.y)-y)-Math.hypot(finite(b.properties.x)-x,finite(b.properties.y)-y)).slice(0,count);
+    const available=number=>pools.get(number)||[];
+    const nearest=(z,x,y,count,excludeId)=>count>0?index.query(x,y,radius,[]).filter(e=>e.properties.atomicNumber===z&&!e.parent&&!used.has(e.id)&&e.id!==excludeId).sort((a,b)=>Math.hypot(finite(a.properties.x)-x,finite(a.properties.y)-y)-Math.hypot(finite(b.properties.x)-x,finite(b.properties.y)-y)).slice(0,count):[];
     let formed=0;
     for(const phosphorus of available(15)) {
       if(phosphorus.parent||used.has(phosphorus.id))continue;
-      const x0=finite(phosphorus.properties.x),y0=finite(phosphorus.properties.y),oxygen=nearest(available(8),x0,y0,4);
+      const x0=finite(phosphorus.properties.x),y0=finite(phosphorus.properties.y),oxygen=nearest(8,x0,y0,4);
       if(oxygen.length!==4)continue;
-      const core=[phosphorus,...oxygen],cx=core.reduce((sum,e)=>sum+finite(e.properties.x),0)/5,cy=core.reduce((sum,e)=>sum+finite(e.properties.y),0)/5,hydrogen=nearest(available(1),cx,cy,3);
+      const core=[phosphorus,...oxygen],cx=core.reduce((sum,e)=>sum+finite(e.properties.x),0)/5,cy=core.reduce((sum,e)=>sum+finite(e.properties.y),0)/5,hydrogen=nearest(1,cx,cy,3);
       if(hydrogen.length!==3)continue;
       const members=[...core,...hydrogen],x=members.reduce((sum,e)=>sum+finite(e.properties.x),0)/members.length,y=members.reduce((sum,e)=>sum+finite(e.properties.y),0)/members.length;
       if(members.some(e=>Math.hypot(finite(e.properties.x)-x,finite(e.properties.y)-y)>radius))continue;
@@ -461,7 +464,7 @@ export const methods = {
   diagnoseMolecularAvailability(options={}) {
     const radius=Math.max(.01,finite(options.radius,48));
     const atoms=[...this.store.entities.values()].filter(e=>e.type==='atom'&&e.state==='active'&&!e.parent);
-    const counts={};
+    const counts={},index=this.runtime.spatial.rebuild(atoms);
     for(const atom of atoms){const z=Math.floor(finite(atom.properties.atomicNumber));counts[z]=(counts[z]||0)+1}
     const recipes={
       glycine:{6:2,1:5,7:1,8:2},ribose:{6:5,1:10,8:5},phosphoricAcid:{15:1,1:3,8:4},
@@ -473,7 +476,7 @@ export const methods = {
       const anchors=atoms.filter(e=>e.properties.atomicNumber===6||name==='phosphoricAcid'&&e.properties.atomicNumber===15);
       let viable=0;
       for(const anchor of anchors) {
-        const nearby=atoms.filter(e=>Math.hypot(finite(e.properties.x)-finite(anchor.properties.x),finite(e.properties.y)-finite(anchor.properties.y))<=radius);
+        const nearby=index.query(finite(anchor.properties.x),finite(anchor.properties.y),radius,[]);
         const available={};for(const e of nearby){const z=Math.floor(finite(e.properties.atomicNumber));available[z]=(available[z]||0)+1}
         if(Object.entries(formula).every(([z,n])=>(available[z]||0)>=n)){viable++;break}
       }
