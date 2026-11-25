@@ -481,6 +481,39 @@ export const methods = {
     }
     return {freeAtomCount:atoms.length,freeAtomsByElement:counts,globallyPossible:Object.fromEntries(Object.entries(recipes).map(([name,formula])=>[name,Object.entries(formula).every(([z,n])=>(counts[z]||0)>=n)])),localClusters,radius};
   },
+  diagnosePrimordialPathway(options={}) {
+    const radius=Math.max(.01,finite(options.radius,48));
+    const entities=[...this.store.entities.values()].filter(e=>e.state==='active'||e.state==='bound');
+    const ofType=type=>entities.filter(e=>e.type===type);
+    const atoms=ofType('atom'),freeAtoms=atoms.filter(e=>!e.parent),elementCounts={},freeElementCounts={};
+    for(const atom of atoms){const z=Math.floor(finite(atom.properties.atomicNumber)),symbol=atom.properties.elementSymbol||({1:'H',2:'He',3:'Li',4:'Be',5:'B',6:'C',7:'N',8:'O',15:'P',16:'S'}[z]||String(z));elementCounts[symbol]=(elementCounts[symbol]||0)+1;if(!atom.parent)freeElementCounts[symbol]=(freeElementCounts[symbol]||0)+1}
+    const availability=this.diagnoseMolecularAvailability({radius});
+    const free=type=>ofType(type).filter(e=>!e.parent);
+    const bases=free('monomer').filter(e=>e.properties.polymerRole==='nucleobase-analogue');
+    const sugars=free('sugar').filter(e=>e.properties.sugarKind==='ribose');
+    const phosphates=free('phosphoric-acid'),precursors=free('nucleotide-precursor');
+    const ribonucleotides=free('monomer').filter(e=>e.properties.polymerRole==='ribonucleotide');
+    const distance=(a,b)=>Math.hypot(finite(a.properties.x)-finite(b.properties.x),finite(a.properties.y)-finite(b.properties.y));
+    let precursorTriples=0;
+    for(const base of bases)if(sugars.some(sugar=>phosphates.some(phosphate=>{const parts=[base,sugar,phosphate],x=parts.reduce((n,e)=>n+finite(e.properties.x),0)/3,y=parts.reduce((n,e)=>n+finite(e.properties.y),0)/3;return parts.every(e=>Math.hypot(finite(e.properties.x)-x,finite(e.properties.y)-y)<=radius)})))precursorTriples++;
+    const lipidGroups=[];const lipids=free('lipid'),seen=new Set();
+    for(const lipid of lipids){if(seen.has(lipid.id))continue;const group=[],stack=[lipid];seen.add(lipid.id);while(stack.length){const current=stack.pop();group.push(current);for(const candidate of lipids)if(!seen.has(candidate.id)&&distance(current,candidate)<=radius){seen.add(candidate.id);stack.push(candidate)}}lipidGroups.push(group.length)}
+    const polymers=ofType('polymer'),membranes=ofType('membrane'),vesicles=ofType('vesicle');
+    const stageCounts={carbon:elementCounts.C||0,nitrogen:elementCounts.N||0,oxygen:elementCounts.O||0,phosphorus:elementCounts.P||0};
+    const products={nucleobaseAnalogues:bases.length,ribose:sugars.length,phosphoricAcid:phosphates.length,nucleotidePrecursors:precursors.length,ribonucleotides:ribonucleotides.length,rna:polymers.filter(e=>e.properties.translationEligible!==false).length,lipids:lipids.length,membranes:membranes.length,vesicles:vesicles.length,protocells:ofType('protocell').length};
+    const blockers=[];
+    for(const [element,count] of Object.entries(stageCounts))if(!count)blockers.push({stage:'elemental-feedstock',target:element,reason:'No atoms of this element have accumulated'});
+    if(!products.nucleobaseAnalogues)blockers.push({stage:'nucleobase-synthesis',reason:['adenine','uracil','cytosine','guanine'].some(name=>availability.globallyPossible[name])?'Global base-forming inventory exists but no local nucleobase recipe cluster is viable':'Insufficient global C/H/N inventory for any nucleobase analogue'});
+    if(!products.ribose)blockers.push({stage:'ribose-synthesis',reason:availability.globallyPossible.ribose?'Global C/H/O inventory exists but no local ribose cluster is viable':'Insufficient global C/H/O inventory'});
+    if(!products.phosphoricAcid)blockers.push({stage:'phosphate-synthesis',reason:availability.globallyPossible.phosphoricAcid?'Global P/H/O inventory exists but no local phosphate cluster is viable':'Insufficient global P/H/O inventory'});
+    if(!products.nucleotidePrecursors){const missing=[];if(!bases.length)missing.push('nucleobase analogue');if(!sugars.length)missing.push('ribose');if(!phosphates.length)missing.push('phosphoric acid');blockers.push({stage:'precursor-association',reason:missing.length?'Missing required intermediate(s): '+missing.join(', '):precursorTriples?'Compatible components exist but precursor association failed':'Base, ribose and phosphate exist but are not co-located within the reaction radius',viableTriples:precursorTriples})}
+    if(!products.ribonucleotides&&products.nucleotidePrecursors)blockers.push({stage:'nucleotide-condensation',reason:'Uncondensed nucleotide precursors remain; inspect required atom topology, retained/released atom accounting and condensation geometry',precursorCount:precursors.length});
+    if(!products.rna&&!products.ribonucleotides)blockers.push({stage:'rna-polymerisation',reason:'No condensed ribonucleotide monomers available'});
+    else if(!products.rna)blockers.push({stage:'rna-polymerisation',reason:'Ribonucleotides exist but lack a connected phosphodiester chain of length at least three',ribonucleotideCount:ribonucleotides.length});
+    if(!products.lipids)blockers.push({stage:'lipid-synthesis',reason:availability.globallyPossible.fattyAcid?'Global fatty-acid inventory exists but no local amphiphile recipe cluster is viable':'Insufficient global C/H/O inventory for fatty-acid amphiphiles'});
+    else if(!products.membranes)blockers.push({stage:'membrane-assembly',reason:'No connected lipid cluster meets the minimum of eight amphiphiles',largestCluster:Math.max(0,...lipidGroups)});
+    return {radius,atoms:{total:atoms.length,free:freeAtoms.length,allByElement:elementCounts,freeByElement:freeElementCounts,availability},products,intermediates:{freeNucleobases:bases.length,freeRibose:sugars.length,freePhosphates:phosphates.length,freePrecursors:precursors.length,freeRibonucleotides:ribonucleotides.length,viablePrecursorTriples:precursorTriples,maxConnectedLipidCluster:Math.max(0,...lipidGroups),lipidClusterSizes:lipidGroups},blockers,energy:this.energy.inventory(this.store),energyAudit:this.energy.audit(this.store,finite(options.initialEnergy,30.4))};
+  },
   assembleMolecularMatter(options={}) {
     const elements=this.formElements();
     // Specific low-complexity products compete for free atoms before the

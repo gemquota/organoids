@@ -38,12 +38,22 @@ export const methods={
     return formed;
   },
   formNuclei(options={}) {
-    const nucleons=[...this.store.entities.values()].filter(e=>(e.type==='proton'||e.type==='neutron')&&active(e)&&!e.parent),radius=Math.max(.01,finite(options.radius,18)),index=this.runtime.spatial.rebuild(nucleons),adj=new Map(nucleons.map(e=>[e.id,[]]));
-    for(const a of nucleons)for(const b of index.query(a.properties.x,a.properties.y,radius,[]))if(b.id>a.id&&Math.hypot(a.properties.x-b.properties.x,a.properties.y-b.properties.y)<=radius){adj.get(a.id).push(b.id);adj.get(b.id).push(a.id)}
-    const seen=new Set();let formed=0;
-    for(const nucleon of nucleons){if(seen.has(nucleon.id))continue;const group=[],stack=[nucleon.id];seen.add(nucleon.id);while(stack.length){const id=stack.pop();group.push(this.store.get(id));for(const next of adj.get(id)||[])if(!seen.has(next)){seen.add(next);stack.push(next)}}
-      if(!group.some(e=>e.type==='proton'))continue;
-      const protons=group.filter(e=>e.type==='proton').length,neutrons=group.length-protons,x=group.reduce((s,e)=>s+e.properties.x,0)/group.length,y=group.reduce((s,e)=>s+e.properties.y,0)/group.length,mass=group.reduce((s,e)=>s+finite(e.properties.mass,1),0);
+    const nucleons=[...this.store.entities.values()].filter(e=>(e.type==='proton'||e.type==='neutron')&&active(e)&&!e.parent),radius=Math.max(.01,finite(options.radius,18));
+    const maxNucleons=Math.max(1,Math.floor(finite(options.maxNucleons,4))),maxProtons=Math.max(1,Math.min(maxNucleons,Math.floor(finite(options.maxProtons,2)))),maxNeutrons=Math.max(0,maxNucleons-maxProtons);
+    const remaining=new Map(nucleons.map(e=>[e.id,e]));let formed=0;
+    const nearest=(pool,anchor,count)=>pool.filter(e=>e.id!==anchor.id&&remaining.has(e.id)&&Math.hypot(finite(e.properties.x)-finite(anchor.properties.x),finite(e.properties.y)-finite(anchor.properties.y))<=radius)
+      .sort((a,b)=>Math.hypot(finite(a.properties.x)-finite(anchor.properties.x),finite(a.properties.y)-finite(anchor.properties.y))-Math.hypot(finite(b.properties.x)-finite(anchor.properties.x),finite(b.properties.y)-finite(anchor.properties.y))).slice(0,count);
+    while(true) {
+      const seed=nucleons.find(e=>remaining.has(e.id)&&e.type==='proton');if(!seed)break;
+      const group=[seed];remaining.delete(seed.id);
+      const add=(pool,count)=>{for(const e of nearest(pool,seed,count)){group.push(e);remaining.delete(e.id)}};
+      // Build small, proton-bearing seed nuclei. Large connected clouds are
+      // partitioned instead of being mistaken for one giant element.
+      add(nucleons.filter(e=>e.type==='neutron'),maxNeutrons);
+      add(nucleons.filter(e=>e.type==='proton'),maxProtons-1);
+      if(group.length<maxNucleons)add(nucleons.filter(e=>e.type==='neutron'),maxNucleons-group.length);
+      const protons=group.filter(e=>e.type==='proton').length,neutrons=group.length-protons;
+      const mass=group.reduce((sum,e)=>sum+finite(e.properties.mass,1),0),x=group.reduce((sum,e)=>sum+finite(e.properties.x)*finite(e.properties.mass,1),0)/Math.max(.001,mass),y=group.reduce((sum,e)=>sum+finite(e.properties.y)*finite(e.properties.mass,1),0)/Math.max(.001,mass);
       const actions=[{op:'create',type:'atomic-nucleus',properties:{x,y,mass,protonCount:protons,neutronCount:neutrons,atomicNumber:protons,massNumber:group.length,charge:protons,catalogueId:'atomic-nuclei',name:'Atomic nucleus',categoryId:'particles',catalogueColor:'#a5b5ce'},energy:0,as:'nucleus'},...group.map(e=>({op:'compose',parent:{ref:'nucleus'},child:e.id}))];
       for(const e of group)if(e.energy>0)actions.push({op:'transfer',from:e.id,to:{ref:'nucleus'},amount:e.energy});
       const result=this.store.transact(actions,{energy:this.energy,fields:this.energy.fields});if(!result.ok)throw result.error;
@@ -54,14 +64,14 @@ export const methods={
   },
 
   accreteNucleons(options={}) {
-    const radius=Math.max(.01,finite(options.accretionRadius,finite(options.radius,18)*.65));
+    const radius=Math.max(.01,finite(options.accretionRadius,finite(options.radius,18)*.65)),maxAtomicNumber=Math.max(1,Math.floor(finite(options.maxAtomicNumber,Infinity))),maxMassNumber=Math.max(1,Math.floor(finite(options.maxMassNumber,Infinity)));
     const isotopes=[...this.store.entities.values()].filter(e=>e.type==='isotope'&&active(e)&&!e.parent);
     const free=[...this.store.entities.values()].filter(e=>(e.type==='proton'||e.type==='neutron')&&active(e)&&!e.parent);
     let accreted=0;
     for(const isotope of isotopes) {
       const nucleus=this.store.outgoing(isotope.id,'contains').map(id=>this.store.get(id)).find(e=>e?.type==='atomic-nucleus');
       if(!nucleus)continue;
-      const candidate=free.filter(e=>!e.parent&&Math.hypot(e.properties.x-isotope.properties.x,e.properties.y-isotope.properties.y)<=radius)
+      const candidate=free.filter(e=>!e.parent&&(e.type!=='proton'||finite(nucleus.properties.protonCount)+(e.type==='proton'?1:0)<=maxAtomicNumber)&&finite(nucleus.properties.massNumber,finite(nucleus.properties.protonCount)+finite(nucleus.properties.neutronCount))+1<=maxMassNumber&&Math.hypot(e.properties.x-isotope.properties.x,e.properties.y-isotope.properties.y)<=radius)
         .sort((a,b)=>Math.hypot(a.properties.x-isotope.properties.x,a.properties.y-isotope.properties.y)-Math.hypot(b.properties.x-isotope.properties.x,b.properties.y-isotope.properties.y))[0];
       if(!candidate)continue;
       const protonCount=finite(nucleus.properties.protonCount)+(candidate.type==='proton'?1:0);
@@ -89,22 +99,24 @@ export const methods={
     const maxAtomicNumber=Number.isFinite(options.maxAtomicNumber)?Math.max(1,Math.floor(options.maxAtomicNumber)):Infinity;
     const minFusionAtomicNumber=Number.isFinite(options.minFusionAtomicNumber)?Math.max(1,Math.floor(options.minFusionAtomicNumber)):1;
     const fusionProbability=Math.max(0,Math.min(1,finite(options.fusionProbability,1)));
-    const isotopes=[...this.store.entities.values()].filter(e=>e.type==='isotope'&&active(e)&&!e.parent);
+    const isotopes=[...this.store.entities.values()].filter(e=>e.type==='isotope'&&active(e)&&!e.parent).sort((a,b)=>finite(a.properties.protonCount)-finite(b.properties.protonCount)||finite(a.properties.massNumber)-finite(b.properties.massNumber)||a.id-b.id);
     const used=new Set();let fused=0;
     for(let i=0;i<isotopes.length;i++) {
       const a=isotopes[i];if(used.has(a.id))continue;
       const nucleusA=this.store.outgoing(a.id,'contains').map(id=>this.store.get(id)).find(e=>e?.type==='atomic-nucleus');
       if(!nucleusA)continue;
-      let best=null,bestDistance=Infinity,bestNucleus=null;
+      let best=null,bestDistance=Infinity,bestNucleus=null,bestProductZ=Infinity;
       for(let j=i+1;j<isotopes.length;j++) {
         const b=isotopes[j];if(used.has(b.id))continue;
         const nucleusB=this.store.outgoing(b.id,'contains').map(id=>this.store.get(id)).find(e=>e?.type==='atomic-nucleus');
         if(!nucleusB)continue;
+        const combinedProtons=finite(nucleusA.properties.protonCount)+finite(nucleusB.properties.protonCount);
         if(finite(nucleusA.properties.protonCount,1)<minFusionAtomicNumber&&finite(nucleusB.properties.protonCount,1)<minFusionAtomicNumber)continue;
+        if(combinedProtons>maxAtomicNumber)continue;
         const dx=finite(b.properties.x)-finite(a.properties.x),dy=finite(b.properties.y)-finite(a.properties.y),d=Math.hypot(dx,dy);
         const relativeSpeed=Math.hypot(finite(b.properties.vx)-finite(a.properties.vx),finite(b.properties.vy)-finite(a.properties.vy));
-        if(d>radius||relativeSpeed>maxSpeed||d>=bestDistance)continue;
-        best=b;bestNucleus=nucleusB;bestDistance=d;
+        if(d>radius||relativeSpeed>maxSpeed||combinedProtons>bestProductZ||combinedProtons===bestProductZ&&d>=bestDistance)continue;
+        best=b;bestNucleus=nucleusB;bestDistance=d;bestProductZ=combinedProtons;
       }
       if(!best)continue;
       const nucleusB=bestNucleus,protonCount=finite(nucleusA.properties.protonCount)+finite(nucleusB.properties.protonCount);
@@ -199,8 +211,21 @@ export const methods={
     return formed;
   },
 
+  diagnoseAtomicFusion(options={}) {
+    const radius=Math.max(.01,finite(options.fusionRadius,18)),maxSpeed=Math.max(0,finite(options.maxFusionSpeed,1.5)),maxAtomicNumber=Math.max(1,Math.floor(finite(options.maxAtomicNumber,18)));
+    const isotopes=[...this.store.entities.values()].filter(e=>e.type==='isotope'&&active(e)&&!e.parent),nuclei=isotopes.map(e=>({isotope:e,nucleus:this.store.outgoing(e.id,'contains').map(id=>this.store.get(id)).find(n=>n?.type==='atomic-nucleus')})).filter(x=>x.nucleus);
+    let nearestDistance=Infinity,withinRadius=0,withinSpeed=0,eligible=0,nearestPair=null;
+    for(let i=0;i<nuclei.length;i++)for(let j=i+1;j<nuclei.length;j++){
+      const a=nuclei[i].isotope,b=nuclei[j].isotope,na=nuclei[i].nucleus,nb=nuclei[j].nucleus,distance=Math.hypot(finite(a.properties.x)-finite(b.properties.x),finite(a.properties.y)-finite(b.properties.y)),speed=Math.hypot(finite(a.properties.vx)-finite(b.properties.vx),finite(a.properties.vy)-finite(b.properties.vy));
+      if(distance<nearestDistance){nearestDistance=distance;nearestPair={a:a.id,b:b.id,distance,speed,atomicNumbers:[finite(na.properties.protonCount),finite(nb.properties.protonCount)]}}
+      if(distance<=radius){withinRadius++;if(speed<=maxSpeed){withinSpeed++;const z=finite(na.properties.protonCount)+finite(nb.properties.protonCount);if(z<=maxAtomicNumber)eligible++}}
+    }
+    const isotopeElements={};for(const {nucleus} of nuclei){const z=finite(nucleus.properties.protonCount);isotopeElements[z]=(isotopeElements[z]||0)+1}
+    const freeNucleons=[...this.store.entities.values()].filter(e=>active(e)&&!e.parent&&(e.type==='proton'||e.type==='neutron'));
+    return{isotopesByAtomicNumber:isotopeElements,isotopeCount:isotopes.length,nucleusCount:nuclei.length,nearestPair,nearestDistance:Number.isFinite(nearestDistance)?nearestDistance:null,searchRadius:radius,maxRelativeSpeed:maxSpeed,pairsWithinRadius:withinRadius,pairsWithinSpeed:withinSpeed,eligibleFusionPairs:eligible,freeProtons:freeNucleons.filter(e=>e.type==='proton').length,freeNeutrons:freeNucleons.filter(e=>e.type==='neutron').length,maxAtomicNumber};
+  },
   assembleAtomicMatter(options={}) {
-    const hadrons=this.formHadrons({...options,radius:finite(options.hadronRadius,finite(options.radius,12))}),nuclei=this.formNuclei({...options,radius:finite(options.nuclearRadius,finite(options.radius,18))}),isotopes=this.formIsotopes(),accretions=this.accreteNucleons({...options,radius:finite(options.nuclearRadius,finite(options.radius,18))}),fusions=this.fuseIsotopes(options),atoms=this.formAtoms({...options,radius:finite(options.atomRadius,finite(options.radius,24))}),elements=this.formElements();
+    const hadrons=this.formHadrons({...options,radius:finite(options.hadronRadius,finite(options.radius,12))}),nuclei=this.formNuclei({...options,radius:finite(options.nuclearRadius,finite(options.radius,18)),maxNucleons:finite(options.maxNucleons,4),maxProtons:finite(options.maxProtons,2)}),isotopes=this.formIsotopes(),accretions=this.accreteNucleons({...options,radius:finite(options.nuclearRadius,finite(options.radius,18)),maxAtomicNumber:finite(options.maxAccretionAtomicNumber,2),maxMassNumber:finite(options.maxAccretionMassNumber,4)}),atoms=this.formAtoms({...options,radius:finite(options.atomRadius,finite(options.radius,24))}),fusions=this.fuseIsotopes(options),elements=this.formElements();
     return{hadrons,nuclei,isotopes,accretions,fusions,atoms,elements};
   }
 };

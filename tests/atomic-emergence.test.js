@@ -154,6 +154,18 @@ test("an isolated proton can become a neutral hydrogen atom",()=>{
 });
 
 
+test("mature isotopes atomise before the next fusion pass",()=>{
+  const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
+  const make=(x,z)=>{const p={x,y:50,mass:z*2,protonCount:z,neutronCount:z,atomicNumber:z,massNumber:z*2,charge:z,formedAt:0};const nucleus=biology.create('atomic-nucleus',p);const isotope=biology.create('isotope',p);runtime.store.link(isotope.id,nucleus.id,'contains')};
+  make(48,1);make(52,2);
+  for(let i=0;i<3;i++)biology.create('lepton',{x:50+i*.1,y:50,leptonKind:'electron',charge:-1,mass:.0005},.05);
+  runtime.scheduler.time=10;
+  const result=biology.assembleAtomicMatter({nuclearRadius:10,atomRadius:10,fusionRadius:10,maxFusionSpeed:1,maxAtomicNumber:18,fusionProbability:1,atomizationDelay:10});
+  assert.equal(result.atoms,2);
+  assert.equal(result.fusions,0);
+  assert.equal([...runtime.store.entities.values()].filter(e=>e.type==='atom').length,2);
+});
+
 test("isotopes remain fusible during the atomisation window",()=>{
   const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
   const makeHelium=(x)=>{
@@ -207,6 +219,52 @@ test("hydrogen can be captured by a heavier isotope without hydrogen-only fusion
 
 
 
+test("dense nucleon clouds partition into small proton-bearing seed nuclei",()=>{
+  const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
+  for(let i=0;i<4;i++)biology.create("proton",{x:50+i*.1,y:50,mass:1,charge:1},.1);
+  for(let i=0;i<4;i++)biology.create("neutron",{x:50+i*.1,y:50.2,mass:1,charge:0},.1);
+  assert.equal(biology.formNuclei({radius:10,maxNucleons:4,maxProtons:2}),2);
+  const nuclei=[...runtime.store.entities.values()].filter(e=>e.type==='atomic-nucleus');
+  assert.ok(nuclei.every(e=>e.properties.protonCount===2&&e.properties.neutronCount===2));
+});
+
+test("fusion skips an over-ceiling nearest isotope and chooses an eligible partner",()=>{
+  const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
+  const make=(x,z)=>{const p={x,y:50,vx:0,vy:0,mass:z*2,protonCount:z,neutronCount:z,atomicNumber:z,massNumber:z*2,charge:z};const n=biology.create('atomic-nucleus',p);const i=biology.create('isotope',p);runtime.store.link(i.id,n.id,'contains');return i};
+  const ten=make(40,10),twelve=make(41,12),two=make(52,2);
+  assert.equal(biology.fuseIsotopes({fusionRadius:20,maxFusionSpeed:1,maxAtomicNumber:18,fusionProbability:1}),1);
+  const fused=[...runtime.store.entities.values()].find(e=>e.type==='isotope'&&!e.parent);
+  assert.equal(fused.properties.atomicNumber,12);
+  assert.ok(runtime.store.get(twelve.id));
+  assert.ok(!runtime.store.get(ten.id));
+  assert.ok(!runtime.store.get(two.id));
+});
+
+test("fusion selection builds the lowest-Z eligible product before using distance",()=>{
+  const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
+  const make=(x,z)=>{const p={x,y:50,vx:0,vy:0,mass:z*2,protonCount:z,neutronCount:z,atomicNumber:z,massNumber:z*2,charge:z};const n=biology.create('atomic-nucleus',p);const i=biology.create('isotope',p);runtime.store.link(i.id,n.id,'contains');return i};
+  const hydrogen=make(40,1),heavy=make(41,5),helium=make(60,2);
+  assert.equal(biology.fuseIsotopes({fusionRadius:30,maxFusionSpeed:1,maxAtomicNumber:10,fusionProbability:1}),1);
+  const product=[...runtime.store.entities.values()].find(e=>e.type==='isotope'&&e.properties.atomicNumber===3);
+  assert.ok(product);
+  assert.ok(runtime.store.get(heavy.id));
+  assert.ok(!runtime.store.get(hydrogen.id));
+  assert.ok(!runtime.store.get(helium.id));
+});
+
+test("atomic fusion diagnostics distinguish proximity, speed and element-ceiling blockers",()=>{
+  const runtime=createRuntime(),biology=new EmergenceProgression(runtime,{seed:17});
+  const makeIsotope=(x,z)=>{const nucleus=biology.create("atomic-nucleus",{x,y:0,protonCount:z,neutronCount:z,mass:z*2,atomicNumber:z,massNumber:z*2});const isotope=biology.create("isotope",{x,y:0,protonCount:z,neutronCount:z,mass:z*2,atomicNumber:z,massNumber:z*2});runtime.store.link(isotope.id,nucleus.id,"contains");return isotope};
+  makeIsotope(0,2);makeIsotope(5,2);
+  let report=biology.diagnoseAtomicFusion({fusionRadius:10,maxFusionSpeed:1,maxAtomicNumber:3});
+  assert.equal(report.isotopeCount,2);
+  assert.equal(report.pairsWithinRadius,1);
+  assert.equal(report.eligibleFusionPairs,0);
+  report=biology.diagnoseAtomicFusion({fusionRadius:2,maxFusionSpeed:1,maxAtomicNumber:18});
+  assert.equal(report.pairsWithinRadius,0);
+  assert.equal(report.nearestDistance,5);
+});
+
 test("fusion probability zero preserves nearby isotopes",()=>{
   const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
   for(const x of [48,52]){
@@ -247,6 +305,17 @@ test("nuclear fusion respects the supported element ceiling",()=>{
   assert.equal([...runtime.store.entities.values()].filter(e=>e.type==="isotope"&&!e.parent).length,2);
 });
 
+
+test("simulation accretion keeps primordial seed nuclei below the configured element and mass caps",()=>{
+  const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
+  const properties={x:50,y:50,mass:4,protonCount:2,neutronCount:2,atomicNumber:2,massNumber:4,charge:2};
+  const nucleus=biology.create('atomic-nucleus',properties),isotope=biology.create('isotope',properties);runtime.store.link(isotope.id,nucleus.id,'contains');
+  biology.create('proton',{x:51,y:50,mass:1,charge:1},.1);
+  biology.create('neutron',{x:52,y:50,mass:1,charge:0},.1);
+  assert.equal(biology.accreteNucleons({accretionRadius:10,maxAtomicNumber:2,maxMassNumber:4}),0);
+  assert.equal(nucleus.properties.protonCount,2);
+  assert.equal(nucleus.properties.neutronCount,2);
+});
 
 test("unatomized nuclei accrete nearby free nucleons without losing constituents",()=>{
   const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);

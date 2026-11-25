@@ -20,6 +20,25 @@ test("molecular availability distinguishes global inventory from local reactant 
   assert.equal(report.freeAtomCount,10);
 });
 
+test("primordial pathway diagnostics identify elemental, intermediate and assembly stalls",()=>{
+  const runtime=createRuntime(),biology=new EmergenceProgression(runtime,{seed:29});
+  for(const [z,count] of [[6,5],[1,10],[8,5],[15,1]])for(let i=0;i<count;i++)biology.create("atom",{x:i*100,y:0,atomicNumber:z,mass:z});
+  let report=biology.diagnosePrimordialPathway({radius:20,initialEnergy:0});
+  assert.equal(report.atoms.allByElement.C,5);
+  assert.equal(report.atoms.allByElement.P,1);
+  assert.equal(report.products.ribose,0);
+  assert.ok(report.blockers.some(x=>x.stage==='ribose-synthesis'));
+  assert.ok(report.blockers.some(x=>x.stage==='phosphate-synthesis'));
+  assert.equal(report.intermediates.viablePrecursorTriples,0);
+  assert.equal(report.energyAudit.balanced,true);
+  const lipid=biology.create("lipid",{x:10,y:10,headPolarity:.9,tailHydrophobicity:.9});
+  report=biology.diagnosePrimordialPathway({radius:20,initialEnergy:0});
+  assert.equal(report.products.lipids,1);
+  assert.equal(report.intermediates.maxConnectedLipidCluster,1);
+  assert.ok(report.blockers.some(x=>x.stage==='membrane-assembly'));
+  assert.equal(runtime.store.get(lipid.id).type,'lipid');
+});
+
 test("water forms from two hydrogen atoms and one oxygen atom",()=>{
   const runtime=createRuntime(),biology=new EmergenceProgression(runtime);
   const h1=biology.create("atom",{x:20,y:20,atomicNumber:1,mass:1,elementSymbol:"H"}),h2=biology.create("atom",{x:22,y:20,atomicNumber:1,mass:1,elementSymbol:"H"}),o=biology.create("atom",{x:21,y:22,atomicNumber:8,mass:16,elementSymbol:"O"});
