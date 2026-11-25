@@ -4,7 +4,16 @@ const ELEMENTS={1:['H','Hydrogen'],2:['He','Helium'],3:['Li','Lithium'],4:['Be',
 
 export const methods={
   formHadrons(options={}) {
-    const quarks=[...this.store.entities.values()].filter(e=>e.type==='quark'&&active(e)&&!e.parent),gluons=[...this.store.entities.values()].filter(e=>e.type==='gluon'&&active(e)&&!e.parent),radius=Math.max(.01,finite(options.radius,12)),SpatialIndex=this.runtime.spatial.constructor,index=new SpatialIndex(this.runtime.spatial.cell).rebuild(quarks),gluonIndex=new SpatialIndex(this.runtime.spatial.cell).rebuild(gluons),used=new Set();
+    const quarks=[...this.store.entities.values()].filter(e=>e.type==='quark'&&active(e)&&!e.parent),gluons=[...this.store.entities.values()].filter(e=>e.type==='gluon'&&active(e)&&!e.parent),radius=Math.max(.01,finite(options.radius,12)),quantum=Math.max(1,radius*.05);
+    // Quarks usually remain in the same local binding neighbourhood for many
+    // ticks. Skip repeated dense-cloud searches until their coarse positions
+    // or composition change.
+    let signature=2166136261;const mix=value=>{signature=Math.imul(signature^value,16777619)};
+    mix(Math.round(radius*100));
+    for(const q of quarks){mix(q.id);mix(Math.floor(finite(q.properties.x)/quantum));mix(Math.floor(finite(q.properties.y)/quantum));mix(q.properties.flavor==='up'?1:2);mix(q.properties.colorCharge==='red'?1:q.properties.colorCharge==='green'?2:3)}
+    if(signature===this._hadronStateHash)return 0;
+    this._hadronStateHash=signature;
+    const SpatialIndex=this.runtime.spatial.constructor,index=new SpatialIndex(this.runtime.spatial.cell).rebuild(quarks),gluonIndex=new SpatialIndex(this.runtime.spatial.cell).rebuild(gluons),used=new Set();
     let formed=0;
     for(const anchor of quarks) {
       if(used.has(anchor.id)||anchor.parent)continue;

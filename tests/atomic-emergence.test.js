@@ -68,6 +68,20 @@ test("closed-shell noble gases do not form covalent bonds",()=>{
   assert.equal(biology.formChemicalBonds({types:["atom"],radius:5,rate:10,dt:10,energyCost:0,activationEnergy:0}),0);
 });
 
+test("hadronisation retries only when the local quark configuration changes",()=>{
+  const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
+  biology.create('quark',{x:20,y:20,flavor:'up',colorCharge:'red',mass:1});
+  const remaining=biology.create('quark',{x:21,y:20,flavor:'up',colorCharge:'red',mass:1});
+  biology.create('quark',{x:22,y:20,flavor:'down',colorCharge:'red',mass:1});
+  assert.equal(biology.formHadrons({radius:10}),0);
+  assert.equal(biology.formHadrons({radius:10}),0);
+  biology.create('quark',{x:20,y:21,flavor:'down',colorCharge:'green',mass:1});
+  biology.create('quark',{x:20,y:22,flavor:'up',colorCharge:'blue',mass:1});
+  assert.equal(biology.formHadrons({radius:10}),1);
+  remaining.properties.x+=20;
+  assert.equal(biology.formHadrons({radius:10}),0);
+});
+
 test("nucleons bind into nuclei, isotopes capture electrons and elements are classified",()=>{
   const runtime=createRuntime(),biology=new EmergenceProgression(runtime);
   seedHelium(biology);
