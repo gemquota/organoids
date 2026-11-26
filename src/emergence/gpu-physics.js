@@ -1,36 +1,62 @@
 const SHADER = /* wgsl */ `
 struct Particle { position: vec2f, velocity: vec2f, charge: f32, mass: f32, flags: vec2f };
-struct Params { count: u32, radius: f32, strength: f32, softening: f32, maxAcceleration: f32, dt: f32, nuclearStrength: f32, nuclearRange: f32, nuclearMaxForce: f32, pad0: f32, pad1: f32, pad2: f32 };
+struct Params { count: u32, gridCols: u32, gridRows: u32, pad0: u32, cellSize: f32, radius: f32, strength: f32, softening: f32, maxAcceleration: f32, dt: f32, nuclearStrength: f32, nuclearRange: f32, nuclearMaxForce: f32, pad1: f32, pad2: f32, pad3: f32 };
 @group(0) @binding(0) var<storage, read> particles: array<Particle>;
 @group(0) @binding(1) var<storage, read_write> velocities: array<vec2f>;
 @group(0) @binding(2) var<uniform> params: Params;
-@group(0) @binding(3) var<storage, read> offsets: array<u32>;
-@group(0) @binding(4) var<storage, read> neighbours: array<u32>;
+@group(0) @binding(3) var<storage, read_write> heads: array<atomic<u32>>;
+@group(0) @binding(4) var<storage, read_write> nextParticle: array<u32>;
+@compute @workgroup_size(256)
+fn clear_heads(@builtin(global_invocation_id) gid: vec3u) {
+  let i = gid.x;
+  if (i < params.gridCols * params.gridRows) { atomicStore(&heads[i], 0xffffffffu); }
+}
 @compute @workgroup_size(64)
-fn main(@builtin(global_invocation_id) gid: vec3u) {
+fn build_grid(@builtin(global_invocation_id) gid: vec3u) {
+  let i = gid.x;
+  if (i >= params.count) { return; }
+  let p = particles[i].position;
+  let cell = vec2u(clamp(floor(p / params.cellSize), vec2f(0.0), vec2f(f32(params.gridCols - 1u), f32(params.gridRows - 1u))));
+  let index = cell.y * params.gridCols + cell.x;
+  nextParticle[i] = atomicExchange(&heads[index], i);
+}
+@compute @workgroup_size(64)
+fn solve(@builtin(global_invocation_id) gid: vec3u) {
   let i = gid.x;
   if (i >= params.count) { return; }
   let a = particles[i];
+  let cell = vec2i(clamp(floor(a.position / params.cellSize), vec2f(0.0), vec2f(f32(params.gridCols - 1u), f32(params.gridRows - 1u))));
   var delta = vec2f(0.0);
-  for (var edge = offsets[i]; edge < offsets[i + 1u]; edge++) {
-    let j = neighbours[edge];
-    if (j == i) { continue; }
-    let b = particles[j];
-    let offset = b.position - a.position;
-    let d2 = dot(offset, offset);
-    if (d2 > params.radius * params.radius || d2 <= 1e-12) { continue; }
-    let d = sqrt(d2);
-    let direction = select(offset, -offset, i < j);
-    if (abs(a.charge) > 1e-9 && abs(b.charge) > 1e-9) {
-      let product = a.charge * b.charge;
-      let magnitude = params.strength * product / (d2 + params.softening * params.softening);
-      let capMass = select(a.mass, b.mass, j < i);
-      let force = sign(magnitude) * min(params.maxAcceleration * capMass, abs(magnitude));
-      delta += direction / d * (force / a.mass) * params.dt;
-    }
-    if (a.flags.x > 0.5 && b.flags.x > 0.5 && params.nuclearStrength > 0.0 && d <= params.nuclearRange) {
-      let force = min(params.nuclearMaxForce * min(a.mass, b.mass), params.nuclearStrength * exp(-d / params.nuclearRange));
-      delta -= direction / d * (force / a.mass) * params.dt;
+  for (var oy = -1; oy <= 1; oy++) {
+    for (var ox = -1; ox <= 1; ox++) {
+      let neighbourCell = cell + vec2i(ox, oy);
+      if (neighbourCell.x < 0 || neighbourCell.y < 0 || neighbourCell.x >= i32(params.gridCols) || neighbourCell.y >= i32(params.gridRows)) { continue; }
+      let bucket = u32(neighbourCell.y) * params.gridCols + u32(neighbourCell.x);
+      var j = atomicLoad(&heads[bucket]);
+      loop {
+        if (j == 0xffffffffu) { break; }
+        if (j != i) {
+          let b = particles[j];
+          let offset = b.position - a.position;
+          let d2 = dot(offset, offset);
+          if (d2 <= params.radius * params.radius && d2 > 1e-12) {
+            let d = sqrt(d2);
+            let direction = select(offset, -offset, i < j);
+            if (abs(a.charge) > 1e-9 && abs(b.charge) > 1e-9) {
+              let product = a.charge * b.charge;
+              let magnitude = params.strength * product / (d2 + params.softening * params.softening);
+              let capMass = select(a.mass, b.mass, j < i);
+              let force = sign(magnitude) * min(params.maxAcceleration * capMass, abs(magnitude));
+              delta += direction / d * (force / a.mass) * params.dt;
+            }
+            if (a.flags.x > 0.5 && b.flags.x > 0.5 && params.nuclearStrength > 0.0 && d <= params.nuclearRange) {
+              let force = min(params.nuclearMaxForce * min(a.mass, b.mass), params.nuclearStrength * exp(-d / params.nuclearRange));
+              delta -= direction / d * (force / a.mass) * params.dt;
+            }
+          }
+        }
+        j = nextParticle[j];
+      }
     }
   }
   velocities[i] = a.velocity + delta;
@@ -45,10 +71,11 @@ export class WebGpuElectrostatics {
       if (!adapter) return null;
       const device = await adapter.requestDevice();
       const module = device.createShaderModule({ code: SHADER });
-      const pipeline = await device.createComputePipelineAsync({
-        layout: 'auto', compute: { module, entryPoint: 'main' }
-      });
-      return new WebGpuElectrostatics(device, pipeline);
+      const pipelines = {};
+      for (const entryPoint of ['clear_heads', 'build_grid', 'solve']) {
+        pipelines[entryPoint] = await device.createComputePipelineAsync({ layout: 'auto', compute: { module, entryPoint } });
+      }
+      return new WebGpuElectrostatics(device, pipelines);
     } catch (error) {
       console.warn('[Organoids] WebGPU electrostatics unavailable; using CPU', error);
       return null;
@@ -57,32 +84,30 @@ export class WebGpuElectrostatics {
 
   constructor(device, pipeline) {
     this.device = device;
-    this.pipeline = pipeline;
+    this.pipelines = pipeline;
     this.capacity = 0;
-    this.neighbourCapacity = 0;
-    this.offsetBuffer = null;
-    this.neighbourBuffer = null;
+    this.gridCapacity = 0;
+    this.headBuffer = null;
+    this.nextBuffer = null;
     this.particleBuffer = null;
     this.velocityBuffer = null;
-    this.uniformBuffer = device.createBuffer({ size: 48, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+    this.uniformBuffer = device.createBuffer({ size: 64, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
     this.dispatchCount = 0;
     this.lastDispatchMs = 0;
   }
 
-  ensureCapacity(count, neighbourCount) {
+  ensureCapacity(count, gridCells) {
     if (count > this.capacity) {
-      this.particleBuffer?.destroy();
-      this.velocityBuffer?.destroy();
-      this.offsetBuffer?.destroy();
+      this.particleBuffer?.destroy(); this.velocityBuffer?.destroy(); this.nextBuffer?.destroy();
       this.capacity = Math.max(256, 2 ** Math.ceil(Math.log2(count)));
       this.particleBuffer = this.device.createBuffer({ size: this.capacity * 32, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
       this.velocityBuffer = this.device.createBuffer({ size: this.capacity * 8, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
-      this.offsetBuffer = this.device.createBuffer({ size: (this.capacity + 1) * 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+      this.nextBuffer = this.device.createBuffer({ size: this.capacity * 4, usage: GPUBufferUsage.STORAGE });
     }
-    if (!this.neighbourBuffer || neighbourCount > this.neighbourCapacity) {
-      this.neighbourBuffer?.destroy();
-      this.neighbourCapacity = Math.max(256, 2 ** Math.ceil(Math.log2(neighbourCount)));
-      this.neighbourBuffer = this.device.createBuffer({ size: this.neighbourCapacity * 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+    if (!this.headBuffer || gridCells > this.gridCapacity) {
+      this.headBuffer?.destroy();
+      this.gridCapacity = Math.max(256, 2 ** Math.ceil(Math.log2(gridCells)));
+      this.headBuffer = this.device.createBuffer({ size: this.gridCapacity * 4, usage: GPUBufferUsage.STORAGE });
     }
   }
 
@@ -97,15 +122,13 @@ export class WebGpuElectrostatics {
     }
     const count = charged.length;
     if (count < 2) return 0;
-    spatial.rebuild(charged);
-    const offsets = new Uint32Array(count + 1), edges = [], entityIndices = new Map(charged.map((entity, index) => [entity, index]));
-    for (let i = 0; i < count; i++) {
-      const nearby = spatial.query(charged[i].properties.x, charged[i].properties.y, options.radius, []);
-      for (const entity of nearby) { const index = entityIndices.get(entity); if (index !== undefined && index !== i) edges.push(index); }
-      offsets[i + 1] = edges.length;
-    }
-    const neighbourCount = edges.length;
-    this.ensureCapacity(count, neighbourCount);
+    const cellSize = Math.max(1, Number(options.radius) || 1);
+    let maxX = cellSize, maxY = cellSize;
+    if (!options.worldWidth || !options.worldHeight) for (const entity of charged) { maxX = Math.max(maxX, entity.properties.x); maxY = Math.max(maxY, entity.properties.y); }
+    const gridCols = Math.max(1, Math.ceil((Number(options.worldWidth) || maxX + cellSize) / cellSize));
+    const gridRows = Math.max(1, Math.ceil((Number(options.worldHeight) || maxY + cellSize) / cellSize));
+    const gridCells = gridCols * gridRows;
+    this.ensureCapacity(count, gridCells);
     const input = new Float32Array(count * 8);
     for (let i = 0; i < count; i++) {
       const p = charged[i].properties, k = i * 8;
@@ -114,33 +137,35 @@ export class WebGpuElectrostatics {
       input[k + 4] = Number(p.charge) || 0; input[k + 5] = Math.max(.001, Number(p.mass) || 1);
       input[k + 6] = ['proton', 'neutron', 'isotope'].includes(charged[i].type) ? 1 : 0;
     }
-    const uniform = new ArrayBuffer(48), view = new DataView(uniform);
-    view.setUint32(0, count, true);
-    view.setFloat32(4, options.radius, true);
-    view.setFloat32(8, options.strength, true);
-    view.setFloat32(12, options.softening, true);
-    view.setFloat32(16, options.maxAcceleration, true);
-    view.setFloat32(20, options.dt, true);
-    view.setFloat32(24, Math.max(0, Number(options.nuclearStrength) || 0), true);
-    view.setFloat32(28, Math.max(.001, Number(options.nuclearRange) || options.radius * .4), true);
-    view.setFloat32(32, Math.max(0, Number(options.nuclearMaxForce) || 0), true);
+    const uniform = new ArrayBuffer(64), view = new DataView(uniform);
+    view.setUint32(0, count, true); view.setUint32(4, gridCols, true); view.setUint32(8, gridRows, true);
+    view.setFloat32(16, cellSize, true); view.setFloat32(20, options.radius, true);
+    view.setFloat32(24, options.strength, true); view.setFloat32(28, options.softening, true);
+    view.setFloat32(32, options.maxAcceleration, true); view.setFloat32(36, options.dt, true);
+    view.setFloat32(40, Math.max(0, Number(options.nuclearStrength) || 0), true);
+    view.setFloat32(44, Math.max(.001, Number(options.nuclearRange) || options.radius * .4), true);
+    view.setFloat32(48, Math.max(0, Number(options.nuclearMaxForce) || 0), true);
     this.device.queue.writeBuffer(this.particleBuffer, 0, input);
-    this.device.queue.writeBuffer(this.offsetBuffer, 0, offsets);
-    if (neighbourCount) this.device.queue.writeBuffer(this.neighbourBuffer, 0, new Uint32Array(edges));
     this.device.queue.writeBuffer(this.uniformBuffer, 0, uniform);
     const readback = this.device.createBuffer({ size: count * 8, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST });
     const encoder = this.device.createCommandEncoder();
-    const pass = encoder.beginComputePass();
-    pass.setPipeline(this.pipeline);
-    pass.setBindGroup(0, this.device.createBindGroup({ layout: this.pipeline.getBindGroupLayout(0), entries: [
+    const entries = [
       { binding: 0, resource: { buffer: this.particleBuffer } },
       { binding: 1, resource: { buffer: this.velocityBuffer } },
       { binding: 2, resource: { buffer: this.uniformBuffer } },
-      { binding: 3, resource: { buffer: this.offsetBuffer } },
-      { binding: 4, resource: { buffer: this.neighbourBuffer } }
-    ] }));
-    pass.dispatchWorkgroups(Math.ceil(count / 64));
-    pass.end();
+      { binding: 3, resource: { buffer: this.headBuffer } },
+      { binding: 4, resource: { buffer: this.nextBuffer } }
+    ];
+    const dispatch = (name, groups) => {
+      const pass = encoder.beginComputePass();
+      pass.setPipeline(this.pipelines[name]);
+      const required = name === 'clear_heads' ? [2, 3] : name === 'build_grid' ? [0, 2, 3, 4] : [0, 1, 2, 3, 4];
+      pass.setBindGroup(0, this.device.createBindGroup({ layout: this.pipelines[name].getBindGroupLayout(0), entries: entries.filter(entry => required.includes(entry.binding)) }));
+      pass.dispatchWorkgroups(groups); pass.end();
+    };
+    dispatch('clear_heads', Math.ceil(gridCells / 256));
+    dispatch('build_grid', Math.ceil(count / 64));
+    dispatch('solve', Math.ceil(count / 64));
     encoder.copyBufferToBuffer(this.velocityBuffer, 0, readback, 0, count * 8);
     const started = performance.now();
     this.device.queue.submit([encoder.finish()]);
@@ -157,7 +182,7 @@ export class WebGpuElectrostatics {
   }
 
   destroy() {
-    this.particleBuffer?.destroy(); this.velocityBuffer?.destroy(); this.offsetBuffer?.destroy(); this.neighbourBuffer?.destroy(); this.uniformBuffer?.destroy();
+    this.particleBuffer?.destroy(); this.velocityBuffer?.destroy(); this.nextBuffer?.destroy(); this.headBuffer?.destroy(); this.uniformBuffer?.destroy();
     this.device.destroy();
   }
 }
