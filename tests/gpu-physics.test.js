@@ -24,3 +24,26 @@ test('WebGPU force pass builds and traverses a GPU-resident atomic spatial grid'
   assert.match(source, /atomicLoad\(&heads\[bucket\]\)/);
   assert.doesNotMatch(source, /spatial\.query/);
 });
+
+test('TypeGPU schemas match the raw WebGPU particle and uniform memory layouts', async () => {
+  const {d} = await import('typegpu');
+  const {createTypeGPUSchemas} = await import('../src/emergence/gpu-physics.js');
+  const schemas = createTypeGPUSchemas(d);
+  assert.equal(d.sizeOf(schemas.particle), 32);
+  assert.equal(d.sizeOf(schemas.params), 64);
+  assert.equal(d.sizeOf(d.arrayOf(schemas.particle, 256)), 8192);
+  assert.equal(d.sizeOf(d.arrayOf(schemas.vec2, 256)), 2048);
+  assert.equal(d.sizeOf(d.arrayOf(schemas.atomicU32, 256)), 1024);
+});
+
+test('GPU physics uses TypeGPU typed layouts and named resource schemas', async () => {
+  const {readFileSync} = await import('node:fs');
+  const source = readFileSync(new URL('../src/emergence/gpu-physics.js', import.meta.url), 'utf8');
+  assert.match(source, /typegpu@0\.12\.11/);
+  assert.match(source, /tgpu\.initFromDevice\(\{ device \}\)/);
+  assert.match(source, /tgpu\.bindGroupLayout\(/);
+  assert.match(source, /typedParticles/);
+  assert.match(source, /typedVelocities/);
+  assert.match(source, /typedHeads/);
+  assert.match(source, /createPipelineLayout\(\{ bindGroupLayouts: \[rawLayout\] \}\)/);
+});

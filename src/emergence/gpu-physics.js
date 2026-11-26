@@ -62,6 +62,13 @@ fn solve(@builtin(global_invocation_id) gid: vec3u) {
   velocities[i] = a.velocity + delta;
 }`;
 
+
+export function createTypeGPUSchemas(d) {
+  const particle = d.struct({ position: d.vec2f, velocity: d.vec2f, charge: d.f32, mass: d.f32, flags: d.vec2f });
+  const params = d.struct({ count: d.u32, gridCols: d.u32, gridRows: d.u32, pad0: d.u32, cellSize: d.f32, radius: d.f32, strength: d.f32, softening: d.f32, maxAcceleration: d.f32, dt: d.f32, nuclearStrength: d.f32, nuclearRange: d.f32, nuclearMaxForce: d.f32, pad1: d.f32, pad2: d.f32, pad3: d.f32 });
+  return { particle, params, vec2: d.vec2f, u32: d.u32, atomicU32: d.atomic(d.u32) };
+}
+
 /** GPU implementation of the independent per-particle electrostatic force sum. */
 export class WebGpuElectrostatics {
   static async create() {
@@ -70,21 +77,40 @@ export class WebGpuElectrostatics {
       const adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
       if (!adapter) return null;
       const device = await adapter.requestDevice();
+      // TypeGPU supplies typed resource schemas and a stable, named bind layout.
+      // Shader code remains WGSL during this incremental migration.
+      const { tgpu, d } = await import('https://esm.sh/typegpu@0.12.11');
+      const root = tgpu.initFromDevice({ device });
+      const schemas = createTypeGPUSchemas(d);
+      const layout = tgpu.bindGroupLayout({
+        particles: { storage: d.arrayOf(schemas.particle), access: 'readonly' },
+        velocities: { storage: d.arrayOf(d.vec2f), access: 'mutable' },
+        params: { uniform: schemas.params },
+        heads: { storage: d.arrayOf(d.atomic(d.u32)), access: 'mutable' },
+        nextParticle: { storage: d.arrayOf(d.u32), access: 'mutable' },
+      }).$idx(0);
+      const rawLayout = root.unwrap(layout);
+      const pipelineLayout = device.createPipelineLayout({ bindGroupLayouts: [rawLayout] });
       const module = device.createShaderModule({ code: SHADER });
       const pipelines = {};
       for (const entryPoint of ['clear_heads', 'build_grid', 'solve']) {
-        pipelines[entryPoint] = await device.createComputePipelineAsync({ layout: 'auto', compute: { module, entryPoint } });
+        pipelines[entryPoint] = await device.createComputePipelineAsync({ layout: pipelineLayout, compute: { module, entryPoint } });
       }
-      return new WebGpuElectrostatics(device, pipelines);
+      return new WebGpuElectrostatics(device, pipelines, root, d, schemas, layout, rawLayout);
     } catch (error) {
       console.warn('[Organoids] WebGPU electrostatics unavailable; using CPU', error);
       return null;
     }
   }
 
-  constructor(device, pipeline) {
+  constructor(device, pipeline, typegpuRoot, typegpuData, schemas, typedLayout, rawLayout) {
     this.device = device;
     this.pipelines = pipeline;
+    this.typegpuRoot = typegpuRoot;
+    this.typegpuData = typegpuData;
+    this.schemas = schemas;
+    this.typedLayout = typedLayout;
+    this.rawLayout = rawLayout;
     this.capacity = 0;
     this.gridCapacity = 0;
     this.headBuffer = null;
@@ -92,6 +118,7 @@ export class WebGpuElectrostatics {
     this.particleBuffer = null;
     this.velocityBuffer = null;
     this.uniformBuffer = device.createBuffer({ size: 64, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+    this.typedParams = this.typegpuRoot.createBuffer(this.schemas.params, this.uniformBuffer);
     this.dispatchCount = 0;
     this.lastDispatchMs = 0;
   }
@@ -103,12 +130,20 @@ export class WebGpuElectrostatics {
       this.particleBuffer = this.device.createBuffer({ size: this.capacity * 32, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
       this.velocityBuffer = this.device.createBuffer({ size: this.capacity * 8, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
       this.nextBuffer = this.device.createBuffer({ size: this.capacity * 4, usage: GPUBufferUsage.STORAGE });
+      this.typedParticles = this.typegpuRoot.createBuffer(this.typegpuArray(this.schemas.particle, this.capacity), this.particleBuffer);
+      this.typedVelocities = this.typegpuRoot.createBuffer(this.typegpuArray(this.schemas.vec2, this.capacity), this.velocityBuffer);
+      this.typedNext = this.typegpuRoot.createBuffer(this.typegpuArray(this.schemas.u32, this.capacity), this.nextBuffer);
     }
     if (!this.headBuffer || gridCells > this.gridCapacity) {
       this.headBuffer?.destroy();
       this.gridCapacity = Math.max(256, 2 ** Math.ceil(Math.log2(gridCells)));
       this.headBuffer = this.device.createBuffer({ size: this.gridCapacity * 4, usage: GPUBufferUsage.STORAGE });
+      this.typedHeads = this.typegpuRoot.createBuffer(this.typegpuArray(this.schemas.atomicU32, this.gridCapacity), this.headBuffer);
     }
+  }
+
+  typegpuArray(schema, length) {
+    return this.typegpuData.arrayOf(schema, length);
   }
 
   async apply(entities, options, spatial, isActive = entity => entity.state === 'active' || entity.state === 'bound') {
@@ -129,6 +164,8 @@ export class WebGpuElectrostatics {
     const gridRows = Math.max(1, Math.ceil((Number(options.worldHeight) || maxY + cellSize) / cellSize));
     const gridCells = gridCols * gridRows;
     this.ensureCapacity(count, gridCells);
+    // TypeGPU wrappers enforce resource schemas; raw buffers are unwrapped for
+    // the existing WGSL pass while preserving a migration path to typed passes.
     const input = new Float32Array(count * 8);
     for (let i = 0; i < count; i++) {
       const p = charged[i].properties, k = i * 8;
@@ -159,8 +196,7 @@ export class WebGpuElectrostatics {
     const dispatch = (name, groups) => {
       const pass = encoder.beginComputePass();
       pass.setPipeline(this.pipelines[name]);
-      const required = name === 'clear_heads' ? [2, 3] : name === 'build_grid' ? [0, 2, 3, 4] : [0, 1, 2, 3, 4];
-      pass.setBindGroup(0, this.device.createBindGroup({ layout: this.pipelines[name].getBindGroupLayout(0), entries: entries.filter(entry => required.includes(entry.binding)) }));
+      pass.setBindGroup(0, this.device.createBindGroup({ layout: this.rawLayout, entries }));
       pass.dispatchWorkgroups(groups); pass.end();
     };
     dispatch('clear_heads', Math.ceil(gridCells / 256));
@@ -183,6 +219,7 @@ export class WebGpuElectrostatics {
 
   destroy() {
     this.particleBuffer?.destroy(); this.velocityBuffer?.destroy(); this.nextBuffer?.destroy(); this.headBuffer?.destroy(); this.uniformBuffer?.destroy();
+    this.typegpuRoot?.destroy();
     this.device.destroy();
   }
 }

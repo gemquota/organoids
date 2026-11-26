@@ -5,5 +5,8 @@
   "scripts": {
     "test": "node --test",
     "experiment:primordial": "node scripts/primordial-run.mjs"
+  },
+  "dependencies": {
+    "typegpu": "^0.12.11"
   }
 }
