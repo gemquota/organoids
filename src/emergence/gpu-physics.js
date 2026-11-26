@@ -1,6 +1,6 @@
 const SHADER = /* wgsl */ `
-struct Particle { position: vec2f, velocity: vec2f, charge: f32, mass: f32, padding: vec2f };
-struct Params { count: u32, radius: f32, strength: f32, softening: f32, maxAcceleration: f32, dt: f32, pad0: f32, pad1: f32 };
+struct Particle { position: vec2f, velocity: vec2f, charge: f32, mass: f32, flags: vec2f };
+struct Params { count: u32, radius: f32, strength: f32, softening: f32, maxAcceleration: f32, dt: f32, nuclearStrength: f32, nuclearRange: f32, nuclearMaxForce: f32, pad0: f32, pad1: f32, pad2: f32 };
 @group(0) @binding(0) var<storage, read> particles: array<Particle>;
 @group(0) @binding(1) var<storage, read_write> velocities: array<vec2f>;
 @group(0) @binding(2) var<uniform> params: Params;
@@ -12,22 +12,25 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
   if (i >= params.count) { return; }
   let a = particles[i];
   var delta = vec2f(0.0);
-  if (abs(a.charge) > 1e-9 && a.mass > 0.0) {
-    for (var edge = offsets[i]; edge < offsets[i + 1u]; edge++) {
-      let j = neighbours[edge];
-      if (j == i) { continue; }
-      let b = particles[j];
+  for (var edge = offsets[i]; edge < offsets[i + 1u]; edge++) {
+    let j = neighbours[edge];
+    if (j == i) { continue; }
+    let b = particles[j];
+    let offset = b.position - a.position;
+    let d2 = dot(offset, offset);
+    if (d2 > params.radius * params.radius || d2 <= 1e-12) { continue; }
+    let d = sqrt(d2);
+    let direction = select(offset, -offset, i < j);
+    if (abs(a.charge) > 1e-9 && abs(b.charge) > 1e-9) {
       let product = a.charge * b.charge;
-      if (abs(product) < 1e-9) { continue; }
-      let offset = b.position - a.position;
-      let d2 = dot(offset, offset);
-      if (d2 > params.radius * params.radius) { continue; }
-      let d = select(params.softening, sqrt(d2), d2 > 0.0);
       let magnitude = params.strength * product / (d2 + params.softening * params.softening);
       let capMass = select(a.mass, b.mass, j < i);
       let force = sign(magnitude) * min(params.maxAcceleration * capMass, abs(magnitude));
-      let direction = select(offset, -offset, i < j);
       delta += direction / d * (force / a.mass) * params.dt;
+    }
+    if (a.flags.x > 0.5 && b.flags.x > 0.5 && params.nuclearStrength > 0.0 && d <= params.nuclearRange) {
+      let force = min(params.nuclearMaxForce * min(a.mass, b.mass), params.nuclearStrength * exp(-d / params.nuclearRange));
+      delta -= direction / d * (force / a.mass) * params.dt;
     }
   }
   velocities[i] = a.velocity + delta;
@@ -61,7 +64,7 @@ export class WebGpuElectrostatics {
     this.neighbourBuffer = null;
     this.particleBuffer = null;
     this.velocityBuffer = null;
-    this.uniformBuffer = device.createBuffer({ size: 32, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+    this.uniformBuffer = device.createBuffer({ size: 48, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
     this.dispatchCount = 0;
     this.lastDispatchMs = 0;
   }
@@ -88,7 +91,8 @@ export class WebGpuElectrostatics {
     for (const entity of entities) {
       if (entity.parent || !isActive(entity)) continue;
       const p = entity.properties;
-      if (!Number.isFinite(p.x) || !Number.isFinite(p.y) || Math.abs(Number(p.charge) || 0) < 1e-9) continue;
+      const nucleon = entity.type === 'proton' || entity.type === 'neutron' || entity.type === 'isotope';
+      if (!Number.isFinite(p.x) || !Number.isFinite(p.y) || (!nucleon && Math.abs(Number(p.charge) || 0) < 1e-9)) continue;
       charged.push(entity);
     }
     const count = charged.length;
@@ -108,14 +112,18 @@ export class WebGpuElectrostatics {
       input[k] = p.x; input[k + 1] = p.y;
       input[k + 2] = Number(p.vx) || 0; input[k + 3] = Number(p.vy) || 0;
       input[k + 4] = Number(p.charge) || 0; input[k + 5] = Math.max(.001, Number(p.mass) || 1);
+      input[k + 6] = ['proton', 'neutron', 'isotope'].includes(charged[i].type) ? 1 : 0;
     }
-    const uniform = new ArrayBuffer(32), view = new DataView(uniform);
+    const uniform = new ArrayBuffer(48), view = new DataView(uniform);
     view.setUint32(0, count, true);
     view.setFloat32(4, options.radius, true);
     view.setFloat32(8, options.strength, true);
     view.setFloat32(12, options.softening, true);
     view.setFloat32(16, options.maxAcceleration, true);
     view.setFloat32(20, options.dt, true);
+    view.setFloat32(24, Math.max(0, Number(options.nuclearStrength) || 0), true);
+    view.setFloat32(28, Math.max(.001, Number(options.nuclearRange) || options.radius * .4), true);
+    view.setFloat32(32, Math.max(0, Number(options.nuclearMaxForce) || 0), true);
     this.device.queue.writeBuffer(this.particleBuffer, 0, input);
     this.device.queue.writeBuffer(this.offsetBuffer, 0, offsets);
     if (neighbourCount) this.device.queue.writeBuffer(this.neighbourBuffer, 0, new Uint32Array(edges));
