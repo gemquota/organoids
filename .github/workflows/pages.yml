@@ -31,6 +31,8 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
+      - name: Install test dependencies
+        run: npm ci
       - name: Run automated checks
         run: |
           npm test
