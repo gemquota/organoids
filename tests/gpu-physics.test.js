@@ -57,3 +57,11 @@ test('GPU dispatch reuses bind groups and readback storage between capacity chan
   assert.doesNotMatch(source, /const readback = this\.device\.createBuffer/);
   assert.doesNotMatch(source, /createBindGroup\(\{ layout: this\.rawLayout, entries \}\)/);
 });
+
+test('GPU force signs match physical repulsion and nuclear attraction conventions', async () => {
+  const {readFileSync} = await import('node:fs');
+  const source = readFileSync(new URL('../src/emergence/gpu-physics.js', import.meta.url), 'utf8');
+  assert.match(source, /delta -= offset \/ d \* \(force \/ a\.mass\)/);
+  assert.match(source, /delta \+= offset \/ d \* \(force \/ a\.mass\)/);
+  assert.doesNotMatch(source, /select\(offset, -offset, i < j\)/);
+});

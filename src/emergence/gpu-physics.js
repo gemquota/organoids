@@ -41,17 +41,16 @@ fn solve(@builtin(global_invocation_id) gid: vec3u) {
           let d2 = dot(offset, offset);
           if (d2 <= params.radius * params.radius && d2 > 1e-12) {
             let d = sqrt(d2);
-            let direction = select(offset, -offset, i < j);
             if (abs(a.charge) > 1e-9 && abs(b.charge) > 1e-9) {
               let product = a.charge * b.charge;
               let magnitude = params.strength * product / (d2 + params.softening * params.softening);
-              let capMass = select(a.mass, b.mass, j < i);
+              let capMass = min(a.mass, b.mass);
               let force = sign(magnitude) * min(params.maxAcceleration * capMass, abs(magnitude));
-              delta += direction / d * (force / a.mass) * params.dt;
+              delta -= offset / d * (force / a.mass) * params.dt;
             }
             if (a.flags.x > 0.5 && b.flags.x > 0.5 && params.nuclearStrength > 0.0 && d <= params.nuclearRange) {
               let force = min(params.nuclearMaxForce * min(a.mass, b.mass), params.nuclearStrength * exp(-d / params.nuclearRange));
-              delta -= direction / d * (force / a.mass) * params.dt;
+              delta += offset / d * (force / a.mass) * params.dt;
             }
           }
         }
