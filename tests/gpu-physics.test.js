@@ -79,3 +79,15 @@ test('GPU compute now includes position integration and returns full particle st
   const html = readFileSync(new URL('../accretion.html', import.meta.url), 'utf8');
   assert.match(html, /gpuForceInterval\+=dt\*60/);
 });
+
+
+test('GPU collision stage computes mass-weighted overlap correction and inelastic impulse', async () => {
+  const {readFileSync} = await import('node:fs');
+  const source = readFileSync(new URL('../src/emergence/gpu-physics.js', import.meta.url), 'utf8');
+  assert.match(source, /fn collide_gpu/);
+  assert.match(source, /invMassA \/ \(invMassA \+ invMassB\)/);
+  assert.match(source, /let impulse = \(1\.0 \+ params\.restitution\) \* normalVelocity/);
+  assert.match(source, /positionDelta \*= params\.maxCorrection \/ correctionLength/);
+  assert.match(source, /dispatch\('collide_gpu'/);
+  assert.match(source, /collisionRadius: f32, restitution: f32, maxCorrection: f32/);
+});

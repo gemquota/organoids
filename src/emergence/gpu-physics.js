@@ -1,6 +1,6 @@
 const SHADER = /* wgsl */ `
 struct Particle { position: vec2f, velocity: vec2f, charge: f32, mass: f32, flags: vec2f };
-struct Params { count: u32, gridCols: u32, gridRows: u32, pad0: u32, cellSize: f32, radius: f32, strength: f32, softening: f32, maxAcceleration: f32, dt: f32, nuclearStrength: f32, nuclearRange: f32, nuclearMaxForce: f32, pad1: f32, pad2: f32, pad3: f32 };
+struct Params { count: u32, gridCols: u32, gridRows: u32, pad0: u32, cellSize: f32, radius: f32, strength: f32, softening: f32, maxAcceleration: f32, dt: f32, nuclearStrength: f32, nuclearRange: f32, nuclearMaxForce: f32, pad1: f32, pad2: f32, pad3: f32, collisionRadius: f32, restitution: f32, maxCorrection: f32, pad4: f32 };
 @group(0) @binding(0) var<storage, read_write> particles: array<Particle>;
 @group(0) @binding(1) var<storage, read_write> velocities: array<vec2f>;
 @group(0) @binding(2) var<uniform> params: Params;
@@ -70,6 +70,53 @@ fn integrate_gpu(@builtin(global_invocation_id) gid: vec3u) {
   // GPU-computed velocity correction across the accumulated force interval.
   particles[i].position += (newVelocity - oldVelocity) * params.dt;
   particles[i].velocity = newVelocity;
+}
+@compute @workgroup_size(64)
+fn collide_gpu(@builtin(global_invocation_id) gid: vec3u) {
+  let i = gid.x;
+  if (i >= params.count) { return; }
+  let a = particles[i];
+  let ra = params.collisionRadius * sqrt(max(0.01, a.mass));
+  let cell = vec2i(clamp(floor(a.position / params.cellSize), vec2f(0.0), vec2f(f32(params.gridCols - 1u), f32(params.gridRows - 1u))));
+  var velocityDelta = vec2f(0.0);
+  var positionDelta = vec2f(0.0);
+  for (var oy = -1; oy <= 1; oy++) {
+    for (var ox = -1; ox <= 1; ox++) {
+      let nc = cell + vec2i(ox, oy);
+      if (nc.x < 0 || nc.y < 0 || nc.x >= i32(params.gridCols) || nc.y >= i32(params.gridRows)) { continue; }
+      var j = atomicLoad(&heads[u32(nc.y) * params.gridCols + u32(nc.x)]);
+      loop {
+        if (j == 0xffffffffu) { break; }
+        if (j != i) {
+          let b = particles[j];
+          let offset = b.position - a.position;
+          let distanceSquared = dot(offset, offset);
+          let rb = params.collisionRadius * sqrt(max(0.01, b.mass));
+          let target = ra + rb;
+          if (distanceSquared < target * target) {
+            let distance = max(1e-6, sqrt(distanceSquared));
+            let normal = offset / distance;
+            let overlap = target - distance;
+            let invMassA = 1.0 / max(0.001, a.mass);
+            let invMassB = 1.0 / max(0.001, b.mass);
+            let shareA = invMassA / (invMassA + invMassB);
+            positionDelta -= normal * min(params.maxCorrection, overlap * shareA * 0.5);
+            let relativeVelocity = b.velocity - a.velocity;
+            let normalVelocity = dot(relativeVelocity, normal);
+            if normalVelocity < 0.0 {
+              let impulse = (1.0 + params.restitution) * normalVelocity / (invMassA + invMassB);
+              velocityDelta += normal * impulse * invMassA;
+            }
+          }
+        }
+        j = nextParticle[j];
+      }
+    }
+  }
+  let correctionLength = length(positionDelta);
+  if (correctionLength > params.maxCorrection) { positionDelta *= params.maxCorrection / correctionLength; }
+  particles[i].position += positionDelta;
+  particles[i].velocity += velocityDelta;
 }`;
 
 
@@ -103,7 +150,7 @@ export class WebGpuElectrostatics {
       const pipelineLayout = device.createPipelineLayout({ bindGroupLayouts: [rawLayout] });
       const module = device.createShaderModule({ code: SHADER });
       const pipelines = {};
-      for (const entryPoint of ['clear_heads', 'build_grid', 'solve', 'integrate_gpu']) {
+      for (const entryPoint of ['clear_heads', 'build_grid', 'solve', 'integrate_gpu', 'collide_gpu']) {
         pipelines[entryPoint] = await device.createComputePipelineAsync({ layout: pipelineLayout, compute: { module, entryPoint } });
       }
       return new WebGpuElectrostatics(device, pipelines, root, d, schemas, layout, rawLayout);
@@ -127,7 +174,7 @@ export class WebGpuElectrostatics {
     this.nextBuffer = null;
     this.particleBuffer = null;
     this.velocityBuffer = null;
-    this.uniformBuffer = device.createBuffer({ size: 64, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+    this.uniformBuffer = device.createBuffer({ size: 80, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
     this.readbackBuffer = null;
     this.bindGroup = null;
     this.typedParams = this.typegpuRoot.createBuffer(this.schemas.params, this.uniformBuffer);
@@ -205,6 +252,9 @@ export class WebGpuElectrostatics {
     view.setFloat32(40, Math.max(0, Number(options.nuclearStrength) || 0), true);
     view.setFloat32(44, Math.max(.001, Number(options.nuclearRange) || options.radius * .4), true);
     view.setFloat32(48, Math.max(0, Number(options.nuclearMaxForce) || 0), true);
+    view.setFloat32(64, Math.max(0.01, Number(options.collisionRadius) || 1.2), true);
+    view.setFloat32(68, Math.max(0, Math.min(1, Number(options.restitution) || 0.15)), true);
+    view.setFloat32(72, Math.max(0.01, Number(options.maxCorrection) || 1.5), true);
     this.device.queue.writeBuffer(this.particleBuffer, 0, input);
     this.device.queue.writeBuffer(this.uniformBuffer, 0, uniform);
     const encoder = this.device.createCommandEncoder();
@@ -218,6 +268,7 @@ export class WebGpuElectrostatics {
     dispatch('build_grid', Math.ceil(count / 64));
     dispatch('solve', Math.ceil(count / 64));
     dispatch('integrate_gpu', Math.ceil(count / 64));
+    dispatch('collide_gpu', Math.ceil(count / 64));
     encoder.copyBufferToBuffer(this.particleBuffer, 0, this.readbackBuffer, 0, count * 32);
     const started = performance.now();
     this.device.queue.submit([encoder.finish()]);
