@@ -43,6 +43,7 @@ test('GPU physics uses TypeGPU typed layouts and named resource schemas', async 
   assert.match(source, /tgpu\.initFromDevice\(\{ device \}\)/);
   assert.match(source, /tgpu\.bindGroupLayout\(/);
   assert.match(source, /typedParticles/);
+  assert.match(source, /particles: \{ storage: d\.arrayOf\(schemas\.particle\), access: 'mutable' \}/);
   assert.match(source, /typedVelocities/);
   assert.match(source, /typedHeads/);
   assert.match(source, /createPipelineLayout\(\{ bindGroupLayouts: \[rawLayout\] \}\)/);
@@ -64,4 +65,17 @@ test('GPU force signs match physical repulsion and nuclear attraction convention
   assert.match(source, /delta -= offset \/ d \* \(force \/ a\.mass\)/);
   assert.match(source, /delta \+= offset \/ d \* \(force \/ a\.mass\)/);
   assert.doesNotMatch(source, /select\(offset, -offset, i < j\)/);
+});
+
+
+test('GPU compute now includes position integration and returns full particle state', async () => {
+  const {readFileSync} = await import('node:fs');
+  const source = readFileSync(new URL('../src/emergence/gpu-physics.js', import.meta.url), 'utf8');
+  assert.match(source, /fn integrate_gpu/);
+  assert.match(source, /particles\[i\]\.position \+= \(newVelocity - oldVelocity\) \* params\.dt/);
+  assert.match(source, /dispatch\('integrate_gpu'/);
+  assert.match(source, /copyBufferToBuffer\(this\.particleBuffer/);
+  assert.match(source, /p\.x = output\[k\]; p\.y = output\[k \+ 1\]/);
+  const html = readFileSync(new URL('../accretion.html', import.meta.url), 'utf8');
+  assert.match(html, /gpuForceInterval\+=dt\*60/);
 });

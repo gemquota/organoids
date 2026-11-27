@@ -1,7 +1,7 @@
 const SHADER = /* wgsl */ `
 struct Particle { position: vec2f, velocity: vec2f, charge: f32, mass: f32, flags: vec2f };
 struct Params { count: u32, gridCols: u32, gridRows: u32, pad0: u32, cellSize: f32, radius: f32, strength: f32, softening: f32, maxAcceleration: f32, dt: f32, nuclearStrength: f32, nuclearRange: f32, nuclearMaxForce: f32, pad1: f32, pad2: f32, pad3: f32 };
-@group(0) @binding(0) var<storage, read> particles: array<Particle>;
+@group(0) @binding(0) var<storage, read_write> particles: array<Particle>;
 @group(0) @binding(1) var<storage, read_write> velocities: array<vec2f>;
 @group(0) @binding(2) var<uniform> params: Params;
 @group(0) @binding(3) var<storage, read_write> heads: array<atomic<u32>>;
@@ -59,6 +59,17 @@ fn solve(@builtin(global_invocation_id) gid: vec3u) {
     }
   }
   velocities[i] = a.velocity + delta;
+}
+@compute @workgroup_size(64)
+fn integrate_gpu(@builtin(global_invocation_id) gid: vec3u) {
+  let i = gid.x;
+  if (i >= params.count) { return; }
+  let oldVelocity = particles[i].velocity;
+  let newVelocity = velocities[i];
+  // The host already integrated the previous velocity. Apply only the
+  // GPU-computed velocity correction across the accumulated force interval.
+  particles[i].position += (newVelocity - oldVelocity) * params.dt;
+  particles[i].velocity = newVelocity;
 }`;
 
 
@@ -82,7 +93,7 @@ export class WebGpuElectrostatics {
       const root = tgpu.initFromDevice({ device });
       const schemas = createTypeGPUSchemas(d);
       const layout = tgpu.bindGroupLayout({
-        particles: { storage: d.arrayOf(schemas.particle), access: 'readonly' },
+        particles: { storage: d.arrayOf(schemas.particle), access: 'mutable' },
         velocities: { storage: d.arrayOf(d.vec2f), access: 'mutable' },
         params: { uniform: schemas.params },
         heads: { storage: d.arrayOf(d.atomic(d.u32)), access: 'mutable' },
@@ -92,7 +103,7 @@ export class WebGpuElectrostatics {
       const pipelineLayout = device.createPipelineLayout({ bindGroupLayouts: [rawLayout] });
       const module = device.createShaderModule({ code: SHADER });
       const pipelines = {};
-      for (const entryPoint of ['clear_heads', 'build_grid', 'solve']) {
+      for (const entryPoint of ['clear_heads', 'build_grid', 'solve', 'integrate_gpu']) {
         pipelines[entryPoint] = await device.createComputePipelineAsync({ layout: pipelineLayout, compute: { module, entryPoint } });
       }
       return new WebGpuElectrostatics(device, pipelines, root, d, schemas, layout, rawLayout);
@@ -128,11 +139,11 @@ export class WebGpuElectrostatics {
     if (count > this.capacity) {
       this.particleBuffer?.destroy(); this.velocityBuffer?.destroy(); this.nextBuffer?.destroy();
       this.capacity = Math.max(256, 2 ** Math.ceil(Math.log2(count)));
-      this.particleBuffer = this.device.createBuffer({ size: this.capacity * 32, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+      this.particleBuffer = this.device.createBuffer({ size: this.capacity * 32, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC });
       this.velocityBuffer = this.device.createBuffer({ size: this.capacity * 8, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
       this.nextBuffer = this.device.createBuffer({ size: this.capacity * 4, usage: GPUBufferUsage.STORAGE });
       this.readbackBuffer?.destroy();
-      this.readbackBuffer = this.device.createBuffer({ size: this.capacity * 8, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST });
+      this.readbackBuffer = this.device.createBuffer({ size: this.capacity * 32, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST });
       this.bindGroup = null;
       this.typedParticles = this.typegpuRoot.createBuffer(this.typegpuArray(this.schemas.particle, this.capacity), this.particleBuffer);
       this.typedVelocities = this.typegpuRoot.createBuffer(this.typegpuArray(this.schemas.vec2, this.capacity), this.velocityBuffer);
@@ -206,15 +217,17 @@ export class WebGpuElectrostatics {
     dispatch('clear_heads', Math.ceil(gridCells / 256));
     dispatch('build_grid', Math.ceil(count / 64));
     dispatch('solve', Math.ceil(count / 64));
-    encoder.copyBufferToBuffer(this.velocityBuffer, 0, this.readbackBuffer, 0, count * 8);
+    dispatch('integrate_gpu', Math.ceil(count / 64));
+    encoder.copyBufferToBuffer(this.particleBuffer, 0, this.readbackBuffer, 0, count * 32);
     const started = performance.now();
     this.device.queue.submit([encoder.finish()]);
-    await this.readbackBuffer.mapAsync(GPUMapMode.READ, 0, count * 8);
-    const output = new Float32Array(this.readbackBuffer.getMappedRange(0, count * 8).slice(0));
+    await this.readbackBuffer.mapAsync(GPUMapMode.READ, 0, count * 32);
+    const output = new Float32Array(this.readbackBuffer.getMappedRange(0, count * 32).slice(0));
     this.readbackBuffer.unmap();
     for (let i = 0; i < count; i++) {
-      charged[i].properties.vx = output[i * 2];
-      charged[i].properties.vy = output[i * 2 + 1];
+      const k = i * 8, p = charged[i].properties;
+      p.x = output[k]; p.y = output[k + 1];
+      p.vx = output[k + 2]; p.vy = output[k + 3];
     }
     this.dispatchCount++;
     this.lastDispatchMs = performance.now() - started;
