@@ -176,6 +176,10 @@ export class WebGpuElectrostatics {
     this.velocityBuffer = null;
     this.uniformBuffer = device.createBuffer({ size: 80, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
     this.readbackBuffer = null;
+    this.inputData = new Float32Array(0);
+    this.outputData = new Float32Array(0);
+    this.uniformData = new ArrayBuffer(80);
+    this.uniformView = new DataView(this.uniformData);
     this.bindGroup = null;
     this.typedParams = this.typegpuRoot.createBuffer(this.schemas.params, this.uniformBuffer);
     this.dispatchCount = 0;
@@ -191,6 +195,8 @@ export class WebGpuElectrostatics {
       this.nextBuffer = this.device.createBuffer({ size: this.capacity * 4, usage: GPUBufferUsage.STORAGE });
       this.readbackBuffer?.destroy();
       this.readbackBuffer = this.device.createBuffer({ size: this.capacity * 32, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST });
+      this.inputData = new Float32Array(this.capacity * 8);
+      this.outputData = new Float32Array(this.capacity * 8);
       this.bindGroup = null;
       this.typedParticles = this.typegpuRoot.createBuffer(this.typegpuArray(this.schemas.particle, this.capacity), this.particleBuffer);
       this.typedVelocities = this.typegpuRoot.createBuffer(this.typegpuArray(this.schemas.vec2, this.capacity), this.velocityBuffer);
@@ -236,7 +242,7 @@ export class WebGpuElectrostatics {
     this.ensureCapacity(count, gridCells);
     // TypeGPU wrappers enforce resource schemas; raw buffers are unwrapped for
     // the existing WGSL pass while preserving a migration path to typed passes.
-    const input = new Float32Array(count * 8);
+    const input = this.inputData;
     for (let i = 0; i < count; i++) {
       const p = charged[i].properties, k = i * 8;
       input[k] = p.x; input[k + 1] = p.y;
@@ -255,8 +261,8 @@ export class WebGpuElectrostatics {
     view.setFloat32(64, Math.max(0.01, Number(options.collisionRadius) || 1.2), true);
     view.setFloat32(68, Math.max(0, Math.min(1, Number(options.restitution) || 0.15)), true);
     view.setFloat32(72, Math.max(0.01, Number(options.maxCorrection) || 1.5), true);
-    this.device.queue.writeBuffer(this.particleBuffer, 0, input);
-    this.device.queue.writeBuffer(this.uniformBuffer, 0, uniform);
+    this.device.queue.writeBuffer(this.particleBuffer, 0, input, 0, count * 8);
+    this.device.queue.writeBuffer(this.uniformBuffer, 0, this.uniformData);
     const encoder = this.device.createCommandEncoder();
     const dispatch = (name, groups) => {
       const pass = encoder.beginComputePass();
@@ -273,8 +279,10 @@ export class WebGpuElectrostatics {
     const started = performance.now();
     this.device.queue.submit([encoder.finish()]);
     await this.readbackBuffer.mapAsync(GPUMapMode.READ, 0, count * 32);
-    const output = new Float32Array(this.readbackBuffer.getMappedRange(0, count * 32).slice(0));
+    const mapped = new Float32Array(this.readbackBuffer.getMappedRange(0, count * 32));
+    this.outputData.set(mapped.subarray(0, count * 8), 0);
     this.readbackBuffer.unmap();
+    const output = this.outputData;
     for (let i = 0; i < count; i++) {
       const k = i * 8, p = charged[i].properties;
       p.x = output[k]; p.y = output[k + 1];

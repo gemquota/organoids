@@ -91,3 +91,14 @@ test('GPU collision stage computes mass-weighted overlap correction and inelasti
   assert.match(source, /dispatch\('collide_gpu'/);
   assert.match(source, /collisionRadius: f32, restitution: f32, maxCorrection: f32/);
 });
+
+test('GPU dispatch reuses host staging arrays and its uniform memory', async () => {
+  const {readFileSync} = await import('node:fs');
+  const source = readFileSync(new URL('../src/emergence/gpu-physics.js', import.meta.url), 'utf8');
+  assert.match(source, /this\.inputData = new Float32Array\(this\.capacity \* 8\)/);
+  assert.match(source, /this\.outputData = new Float32Array\(this\.capacity \* 8\)/);
+  assert.match(source, /this\.uniformData = new ArrayBuffer\(80\)/);
+  assert.match(source, /this\.device\.queue\.writeBuffer\(this\.particleBuffer, 0, input, 0, count \* 8\)/);
+  assert.doesNotMatch(source, /const input = new Float32Array\(count \* 8\)/);
+  assert.doesNotMatch(source, /const uniform = new ArrayBuffer\(80\)/);
+});
