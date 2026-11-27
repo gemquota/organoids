@@ -118,6 +118,8 @@ export class WebGpuElectrostatics {
     this.particleBuffer = null;
     this.velocityBuffer = null;
     this.uniformBuffer = device.createBuffer({ size: 64, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+    this.readbackBuffer = null;
+    this.bindGroup = null;
     this.typedParams = this.typegpuRoot.createBuffer(this.schemas.params, this.uniformBuffer);
     this.dispatchCount = 0;
     this.lastDispatchMs = 0;
@@ -130,6 +132,9 @@ export class WebGpuElectrostatics {
       this.particleBuffer = this.device.createBuffer({ size: this.capacity * 32, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
       this.velocityBuffer = this.device.createBuffer({ size: this.capacity * 8, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
       this.nextBuffer = this.device.createBuffer({ size: this.capacity * 4, usage: GPUBufferUsage.STORAGE });
+      this.readbackBuffer?.destroy();
+      this.readbackBuffer = this.device.createBuffer({ size: this.capacity * 8, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST });
+      this.bindGroup = null;
       this.typedParticles = this.typegpuRoot.createBuffer(this.typegpuArray(this.schemas.particle, this.capacity), this.particleBuffer);
       this.typedVelocities = this.typegpuRoot.createBuffer(this.typegpuArray(this.schemas.vec2, this.capacity), this.velocityBuffer);
       this.typedNext = this.typegpuRoot.createBuffer(this.typegpuArray(this.schemas.u32, this.capacity), this.nextBuffer);
@@ -139,7 +144,15 @@ export class WebGpuElectrostatics {
       this.gridCapacity = Math.max(256, 2 ** Math.ceil(Math.log2(gridCells)));
       this.headBuffer = this.device.createBuffer({ size: this.gridCapacity * 4, usage: GPUBufferUsage.STORAGE });
       this.typedHeads = this.typegpuRoot.createBuffer(this.typegpuArray(this.schemas.atomicU32, this.gridCapacity), this.headBuffer);
+      this.bindGroup = null;
     }
+    if (!this.bindGroup) this.bindGroup = this.device.createBindGroup({ layout: this.rawLayout, entries: [
+      { binding: 0, resource: { buffer: this.particleBuffer } },
+      { binding: 1, resource: { buffer: this.velocityBuffer } },
+      { binding: 2, resource: { buffer: this.uniformBuffer } },
+      { binding: 3, resource: { buffer: this.headBuffer } },
+      { binding: 4, resource: { buffer: this.nextBuffer } }
+    ] });
   }
 
   typegpuArray(schema, length) {
@@ -184,30 +197,22 @@ export class WebGpuElectrostatics {
     view.setFloat32(48, Math.max(0, Number(options.nuclearMaxForce) || 0), true);
     this.device.queue.writeBuffer(this.particleBuffer, 0, input);
     this.device.queue.writeBuffer(this.uniformBuffer, 0, uniform);
-    const readback = this.device.createBuffer({ size: count * 8, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST });
     const encoder = this.device.createCommandEncoder();
-    const entries = [
-      { binding: 0, resource: { buffer: this.particleBuffer } },
-      { binding: 1, resource: { buffer: this.velocityBuffer } },
-      { binding: 2, resource: { buffer: this.uniformBuffer } },
-      { binding: 3, resource: { buffer: this.headBuffer } },
-      { binding: 4, resource: { buffer: this.nextBuffer } }
-    ];
     const dispatch = (name, groups) => {
       const pass = encoder.beginComputePass();
       pass.setPipeline(this.pipelines[name]);
-      pass.setBindGroup(0, this.device.createBindGroup({ layout: this.rawLayout, entries }));
+      pass.setBindGroup(0, this.bindGroup);
       pass.dispatchWorkgroups(groups); pass.end();
     };
     dispatch('clear_heads', Math.ceil(gridCells / 256));
     dispatch('build_grid', Math.ceil(count / 64));
     dispatch('solve', Math.ceil(count / 64));
-    encoder.copyBufferToBuffer(this.velocityBuffer, 0, readback, 0, count * 8);
+    encoder.copyBufferToBuffer(this.velocityBuffer, 0, this.readbackBuffer, 0, count * 8);
     const started = performance.now();
     this.device.queue.submit([encoder.finish()]);
-    await readback.mapAsync(GPUMapMode.READ);
-    const output = new Float32Array(readback.getMappedRange().slice(0));
-    readback.unmap(); readback.destroy();
+    await this.readbackBuffer.mapAsync(GPUMapMode.READ, 0, count * 8);
+    const output = new Float32Array(this.readbackBuffer.getMappedRange(0, count * 8).slice(0));
+    this.readbackBuffer.unmap();
     for (let i = 0; i < count; i++) {
       charged[i].properties.vx = output[i * 2];
       charged[i].properties.vy = output[i * 2 + 1];
@@ -218,7 +223,7 @@ export class WebGpuElectrostatics {
   }
 
   destroy() {
-    this.particleBuffer?.destroy(); this.velocityBuffer?.destroy(); this.nextBuffer?.destroy(); this.headBuffer?.destroy(); this.uniformBuffer?.destroy();
+    this.particleBuffer?.destroy(); this.velocityBuffer?.destroy(); this.nextBuffer?.destroy(); this.headBuffer?.destroy(); this.uniformBuffer?.destroy(); this.readbackBuffer?.destroy();
     this.typegpuRoot?.destroy();
     this.device.destroy();
   }

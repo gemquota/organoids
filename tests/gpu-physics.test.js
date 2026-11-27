@@ -47,3 +47,13 @@ test('GPU physics uses TypeGPU typed layouts and named resource schemas', async 
   assert.match(source, /typedHeads/);
   assert.match(source, /createPipelineLayout\(\{ bindGroupLayouts: \[rawLayout\] \}\)/);
 });
+
+test('GPU dispatch reuses bind groups and readback storage between capacity changes', async () => {
+  const {readFileSync} = await import('node:fs');
+  const source = readFileSync(new URL('../src/emergence/gpu-physics.js', import.meta.url), 'utf8');
+  assert.match(source, /this\.readbackBuffer = null/);
+  assert.match(source, /this\.readbackBuffer = this\.device\.createBuffer/);
+  assert.match(source, /if \(!this\.bindGroup\) this\.bindGroup = this\.device\.createBindGroup/);
+  assert.doesNotMatch(source, /const readback = this\.device\.createBuffer/);
+  assert.doesNotMatch(source, /createBindGroup\(\{ layout: this\.rawLayout, entries \}\)/);
+});
