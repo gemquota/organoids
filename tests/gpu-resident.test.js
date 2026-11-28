@@ -18,7 +18,7 @@ test('resident packing accepts EntityStore wrappers and missing velocities',()=>
  const wrapper={entities:new Map([[1,{id:1,state:'active',properties:{x:8,y:9,charge:2,mass:1}}]])};const p=packResidentParticles(wrapper,active);assert.equal(p.count,1);assert.deepEqual(Array.from(p.data.slice(0,4)),[8,9,0,0]);
 });
 test('resident WGSL keeps position and velocity on-device and shares a linked-cell grid',()=>{
- for(const token of ['clearCells','insertParticles','integrateCharged','atomicExchange','atomicLoad','particles[i].velocity=v','particles[i].position=pos'])assert.ok(RESIDENT_PHYSICS_WGSL.includes(token),`missing ${token}`);
+ for(const token of ['clearCells','insertParticles','integrateCharged','atomicExchange','atomicLoad','var result=p','nextState[i]=result'])assert.ok(RESIDENT_PHYSICS_WGSL.includes(token),`missing ${token}`);
 });
 
 test('resident packer reuses caller storage while returning a compact active view',()=>{
@@ -65,6 +65,12 @@ test('resident CPU reference preserves finite bounded state',async()=>{
  const result=stepResidentReference([{x:0.1,y:99.9,vx:-100,vy:100,charge:1,mass:1}],{radius:10,worldWidth:100,worldHeight:100},1);
  assert.ok(result[0].x>=0&&result[0].x<=100&&result[0].y>=0&&result[0].y<=100);
  assert.ok([result[0].x,result[0].y,result[0].vx,result[0].vy].every(Number.isFinite));
+});
+
+test('resident compute reads one state buffer and writes a distinct ping-pong buffer',()=>{
+ assert.match(RESIDENT_PHYSICS_WGSL,/@binding\(0\) var<storage, read>/);
+ assert.match(RESIDENT_PHYSICS_WGSL,/@binding\(4\) var<storage, read_write> nextState/);
+ assert.doesNotMatch(RESIDENT_PHYSICS_WGSL,/particles\[i\]\.position=/);
 });
 
 test('resident compute continues while an asynchronous snapshot is pending',()=>{

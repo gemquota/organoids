@@ -56,3 +56,19 @@ test('GPU readback-heavy stages are dispatched on bounded cadences',()=>{
  assert.match(html,/gpuConstraints&&frame%3===0/);
  assert.match(html,/gpuThermal&&frame%4===0/);
 });
+
+test('live runtime assigns charged-particle integration to the resident GPU engine',()=>{
+ const html=readFileSync(new URL('../accretion.html',import.meta.url),'utf8');
+ assert.match(html,/createGpuResidentPhysics\(gpuRenderer\.device/);
+ assert.match(html,/gpuResident\.upload\(sim\.store,active\)/);
+ assert.match(html,/gpuResident\.step\(dt\*60/);
+ assert.match(html,/skipGpuParticles:gpuResident\?isGpuOwnedParticle:null/);
+ assert.match(html,/if\(gpuPhysics&&!gpuResident\)/);
+});
+
+test('runtime excludes GPU-owned charged particles from CPU forces, integration and damping',()=>{
+ const html=readFileSync(new URL('../accretion.html',import.meta.url),'utf8');
+ assert.match(html,/interactions\.apply\(store,spatial,dt,stepOptions\.skipGpuParticles\)/);
+ assert.match(html,/this\.candidates\(store,index,r,skip\)/);
+ assert.match(html,/gpuResident&&isGpuOwnedParticle\(e\)\)continue/);
+});
