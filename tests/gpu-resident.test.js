@@ -39,3 +39,14 @@ test('resident physics options normalize dimensions and reject invalid grids',as
  assert.deepEqual([p.gridCols,p.gridRows,p.gridCount,p.softening,p.maxAcceleration,p.dt],[11,6,66,0.001,0,0.25]);
  const fallback=normalizeResidentPhysicsOptions({radius:0,worldWidth:Infinity,worldHeight:NaN});assert.deepEqual([fallback.radius,fallback.worldWidth,fallback.worldHeight],[0.001,0.001,0.001]);
 });
+
+test('resident snapshots apply only to live root entities with finite state',async()=>{
+ const {applyResidentSnapshot}=await import('../src/gpu/resident.js');
+ const store=new Map([[1,{id:1,state:'active',properties:{}}],[2,{id:2,state:'inactive',properties:{}}],[3,{id:3,state:'active',parent:1,properties:{}}],[4,{id:4,state:'active',properties:{}}]]);
+ const ids=[1,2,3,4],data=new Float32Array(32);for(let i=0;i<4;i++){data[i*8]=i+10;data[i*8+1]=i+20;data[i*8+2]=i+30;data[i*8+3]=i+40;}data[24]=NaN;
+ const result=applyResidentSnapshot(store,ids,data,4,active);assert.deepEqual(result,{applied:1,stale:3});assert.deepEqual([store.get(1).properties.x,store.get(1).properties.y,store.get(1).properties.vx,store.get(1).properties.vy],[10,20,30,40]);
+});
+
+test('resident snapshot application rejects malformed payloads',async()=>{
+ const {applyResidentSnapshot}=await import('../src/gpu/resident.js');assert.throws(()=>applyResidentSnapshot(new Map(),[1],new Float32Array(2),1,active),/shape is invalid/);
+});
