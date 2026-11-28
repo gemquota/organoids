@@ -23,3 +23,12 @@ test('resident WGSL keeps position and velocity on-device and shares a linked-ce
 test('resident packer reuses caller storage while returning a compact active view',()=>{
  const first=packResidentParticles(entities,active);const second=packResidentParticles(entities,active,first);assert.equal(second.storage,first.storage);assert.equal(second.count,first.count);assert.equal(second.data.length,second.count*RESIDENT_PARTICLE_STRIDE);assert.deepEqual(second.ids,first.ids);
 });
+
+test('resident packer grows safely for large generic iterables',()=>{
+ const generated=(function*(){for(let i=0;i<130;i++)yield {id:i,state:'active',properties:{x:i,y:i,charge:1,mass:1}}})();
+ const p=packResidentParticles(generated,active);assert.equal(p.count,130);assert.equal(p.ids[129],129);assert.equal(p.data.length,130*RESIDENT_PARTICLE_STRIDE);
+});
+
+test('resident packer rejects a missing activity predicate',()=>{
+ assert.throws(()=>packResidentParticles([],null),/isActive must be a function/);
+});
