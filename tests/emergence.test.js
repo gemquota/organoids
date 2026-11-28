@@ -36,3 +36,23 @@ test('link event journal compacts tombstones without changing active edges',()=>
 test('transaction rollback restores shallow property dictionaries and structure',()=>{const s=new EntityStore(),e=s.create('cell'),nested={value:1};e.properties.nested=nested;const result=s.transact([{op:'set',id:e.id,key:'nested',value:{value:2}},{op:'remove',id:999}],{});assert.equal(result.ok,false);assert.strictEqual(e.properties.nested,nested);assert.equal(e.properties.nested.value,1);});
 
 test('GolfCore evaluator footprint is measured and remains minimal',()=>{const start=source.indexOf('export class GolfCore'),end=source.indexOf('export class SpatialIndex',start),core=source.slice(start,end).trim();assert.equal(Buffer.byteLength(core,'utf8'),552);assert.equal(core.replace(/\s/g,'').length,538);assert.ok(Buffer.byteLength(core,'utf8')<=700)});
+
+test('runtime diagnostics distinguish stored energy from cumulative energy output',()=>{
+ const html=readFileSync(new URL('../accretion.html',import.meta.url),'utf8');
+ assert.match(html,/energy:sim\.energy\.inventory\(sim\.store\)/);
+ assert.match(html,/stored energy '\+sim\.energy\.inventory\(sim\.store\)\.total/);
+ assert.match(html,/energyFlux:sim\.energy\.ledger/);
+});
+
+test('population diagnostics count primordial particles separately from composite entities',()=>{
+ const html=readFileSync(new URL('../accretion.html',import.meta.url),'utf8');
+ assert.match(html,/\['quark','gluon','lepton'\]\.includes\(e\.type\).*totalEntities/s);
+});
+
+test('GPU readback-heavy stages are dispatched on bounded cadences',()=>{
+ const html=readFileSync(new URL('../accretion.html',import.meta.url),'utf8');
+ assert.match(html,/gpuPhysics\.dispatch\(sim\.store,active,\{radius:180[^}]*dt:dt\*180/);
+ assert.match(html,/gpuMolecular&&frame%6===0/);
+ assert.match(html,/gpuConstraints&&frame%3===0/);
+ assert.match(html,/gpuThermal&&frame%4===0/);
+});

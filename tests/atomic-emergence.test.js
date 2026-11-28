@@ -95,3 +95,19 @@ test("nucleons bind into nuclei, isotopes capture electrons and elements are cla
   assert.equal(biology.metrics.atoms,1);
   assert.equal(biology.metrics.elements,1);
 });
+
+test('default primordial cloud has enough local density to initiate atomic assembly',()=>{
+  const width=8880,height=17580,cloud=Math.min(width,height)*.012;
+  const runtime=createRuntime({width,height,cols:120,rows:68,cellSize:24});
+  const biology=new EmergenceProgression(runtime,{seed:20261115});
+  const spawn=(type,properties,energy)=>biology.create(type,{x:width/2+(biology.rng.next()-.5)*2*cloud,y:height/2+(biology.rng.next()-.5)*2*cloud,...properties},energy);
+  for(let i=0;i<120;i++)spawn('quark',{flavor:'up',colorCharge:['red','green','blue'][i%3],charge:2/3,mass:1},.1);
+  for(let i=0;i<120;i++)spawn('quark',{flavor:'down',colorCharge:['red','green','blue'][i%3],charge:-1/3,mass:1},.1);
+  for(let i=0;i<240;i++)spawn('gluon',{colorCharge:['red-antigreen','red-antiblue','green-antired','green-antiblue','blue-antired','blue-antigreen'][i%6],mass:.1},.01);
+  for(let i=0;i<80;i++)spawn('lepton',{leptonKind:'electron',charge:-1,mass:.0005},.05);
+  runtime.spatial.rebuild(runtime.store.entities.values());
+  const result=biology.assembleAtomicMatter({radius:16});
+  assert.ok(result.hadrons>0,JSON.stringify(result));
+  assert.ok(result.nuclei>0,JSON.stringify(result));
+  assert.ok(result.atoms>0,JSON.stringify(result));
+});

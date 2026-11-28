@@ -1,3 +1,4 @@
+import {readFileSync} from 'node:fs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {packResidentParticles,RESIDENT_PARTICLE_STRIDE,RESIDENT_PARTICLE_BYTES,RESIDENT_PHYSICS_WGSL} from '../src/gpu/resident.js';
@@ -64,4 +65,11 @@ test('resident CPU reference preserves finite bounded state',async()=>{
  const result=stepResidentReference([{x:0.1,y:99.9,vx:-100,vy:100,charge:1,mass:1}],{radius:10,worldWidth:100,worldHeight:100},1);
  assert.ok(result[0].x>=0&&result[0].x<=100&&result[0].y>=0&&result[0].y<=100);
  assert.ok([result[0].x,result[0].y,result[0].vx,result[0].vy].every(Number.isFinite));
+});
+
+test('resident compute continues while an asynchronous snapshot is pending',()=>{
+ const source=readFileSync(new URL('../src/gpu/resident.js',import.meta.url),'utf8');
+ const step=source.slice(source.indexOf('function step(dt'),source.indexOf('async function requestSnapshot'));
+ assert.doesNotMatch(step,/if\s*\(inFlight\s*\|\|\s*pending\)\s*return\s*false/);
+ assert.match(step,/queue\.submit\(\[encoder\.finish\(\)\]\)/);
 });
