@@ -19,3 +19,7 @@ test('resident packing accepts EntityStore wrappers and missing velocities',()=>
 test('resident WGSL keeps position and velocity on-device and shares a linked-cell grid',()=>{
  for(const token of ['clearCells','insertParticles','integrateCharged','atomicExchange','atomicLoad','particles[i].velocity=v','particles[i].position=pos'])assert.ok(RESIDENT_PHYSICS_WGSL.includes(token),`missing ${token}`);
 });
+
+test('resident packer reuses caller storage while returning a compact active view',()=>{
+ const first=packResidentParticles(entities,active);const second=packResidentParticles(entities,active,first);assert.equal(second.storage,first.storage);assert.equal(second.count,first.count);assert.equal(second.data.length,second.count*RESIDENT_PARTICLE_STRIDE);assert.deepEqual(second.ids,first.ids);
+});
