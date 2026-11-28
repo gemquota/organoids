@@ -72,3 +72,18 @@ test("thermal GPU candidate list can suppress false broadphase pairs",()=>{
   assert.equal(biology.exchangeThermalEnergy({radius:20,conductance:.5,dt:1,candidatePairs:[],candidateEntities:[hot,cold]}),0);
   assert.equal(hot.energy,10);assert.equal(cold.energy,0);
 });
+
+test("GPU broadphase candidates are accepted by molecular bond formation",()=>{
+  const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
+  const a=biology.create("monomer",{x:40,y:50,valence:2,monomerKind:"A",bondAffinity:1},1);
+  const b=biology.create("monomer",{x:45,y:50,valence:2,monomerKind:"U",bondAffinity:1},1);
+  assert.equal(biology.formChemicalBonds({types:["monomer"],radius:10,rate:100,dt:1,energyCost:0,candidatePairs:[[0,1]],candidateEntities:[a,b]}),1);
+  assert.equal(runtime.store.neighbours(a.id,"bond").includes(b.id),true);
+});
+
+test("GPU broadphase candidates can be consumed by contact aggregation",()=>{
+  const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
+  const a=biology.create("particle",{x:40,y:50},0),b=biology.create("particle",{x:45,y:50},0);
+  assert.equal(biology.aggregateContacts({radius:10,types:["particle"],candidatePairs:[[0,1]],candidateEntities:[a,b]}),1);
+  assert.equal(runtime.store.neighbours(a.id,"bond").includes(b.id),true);
+});

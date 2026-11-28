@@ -29,9 +29,9 @@ test('TypeGPU schemas match the raw WebGPU particle and uniform memory layouts',
   const {d} = await import('typegpu');
   const {createTypeGPUSchemas} = await import('../src/emergence/gpu-physics.js');
   const schemas = createTypeGPUSchemas(d);
-  assert.equal(d.sizeOf(schemas.particle), 40);
-  assert.equal(d.sizeOf(schemas.params), 80);
-  assert.equal(d.sizeOf(d.arrayOf(schemas.particle, 256)), 10240);
+  assert.equal(d.sizeOf(schemas.particle), 32);
+  assert.equal(d.sizeOf(schemas.params), 96);
+  assert.equal(d.sizeOf(d.arrayOf(schemas.particle, 256)), 8192);
   assert.equal(d.sizeOf(d.arrayOf(schemas.vec2, 256)), 2048);
   assert.equal(d.sizeOf(d.arrayOf(schemas.atomicU32, 256)), 1024);
 });
@@ -75,7 +75,7 @@ test('GPU compute now includes position integration and returns full particle st
   assert.match(source, /particles\[i\]\.position \+= \(newVelocity - oldVelocity\) \* params\.dt/);
   assert.match(source, /dispatch\('integrate_gpu'/);
   assert.match(source, /copyBufferToBuffer\(this\.particleBuffer/);
-  assert.match(source, /const k = i \* 10, p = charged\[i\]\.properties/);
+  assert.match(source, /const k = i \* 4, p = charged\[i\]\.properties/);
   assert.match(source, /p\.x = output\[k\]; p\.y = output\[k \+ 1\]/);
   const html = readFileSync(new URL('../accretion.html', import.meta.url), 'utf8');
   assert.match(html, /gpuForceInterval\+=dt\*60/);
@@ -96,10 +96,10 @@ test('GPU collision stage computes mass-weighted overlap correction and inelasti
 test('GPU dispatch reuses host staging arrays and its uniform memory', async () => {
   const {readFileSync} = await import('node:fs');
   const source = readFileSync(new URL('../src/emergence/gpu-physics.js', import.meta.url), 'utf8');
-  assert.match(source, /this\.inputData = new Float32Array\(this\.capacity \* 10\)/);
-  assert.match(source, /this\.outputData = new Float32Array\(this\.capacity \* 10\)/);
-  assert.match(source, /this\.uniformData = new ArrayBuffer\(80\)/);
-  assert.match(source, /this\.device\.queue\.writeBuffer\(this\.particleBuffer, 0, input, 0, count \* 40\)/);
+  assert.match(source, /this\.inputData = new Float32Array\(this\.capacity \* 8\)/);
+  assert.match(source, /this\.outputData = new Float32Array\(this\.capacity \* 4\)/);
+  assert.match(source, /this\.uniformData = new ArrayBuffer\(96\)/);
+  assert.match(source, /this\.device\.queue\.writeBuffer\(this\.particleBuffer, 0, input, 0, count \* 32\)/);
   assert.doesNotMatch(source, /const input = new Float32Array\(count \* 8\)/);
   assert.doesNotMatch(source, /const uniform = new ArrayBuffer\(80\)/);
 });
@@ -110,7 +110,7 @@ test('GPU broadphase produces bounded thermal candidate pairs for CPU energy-led
   const source=readFileSync(new URL('../src/emergence/gpu-physics.js',import.meta.url),'utf8');
   assert.match(source,/fn generate_thermal_pairs/);
   assert.match(source,/atomicAdd\(&thermalPairCount, 1u\)/);
-  assert.match(source,/slot < params\.count \* 32u/);
+  assert.match(source,/slot < params\.count \* 8u/);
   assert.match(source,/lastThermalPairs = rawPairCount > this\.thermalPairsCapacity \? null/);
   const physics=readFileSync(new URL('../src/emergence/physics.js',import.meta.url),'utf8');
   assert.match(physics,/candidatePairs.*candidateEntities/);
@@ -120,8 +120,8 @@ test('GPU TypeGPU layouts use aligned particle thermal fields and expanded param
   const {d}=await import('typegpu');
   const {createTypeGPUSchemas}=await import('../src/emergence/gpu-physics.js');
   const s=createTypeGPUSchemas(d);
-  assert.equal(d.sizeOf(s.particle),40);
-  assert.equal(d.sizeOf(s.params),80);
+  assert.equal(d.sizeOf(s.particle),32);
+  assert.equal(d.sizeOf(s.params),96);
 });
 
 test('GPU collision pass reads a stable snapshot and thermal broadphase is included', async()=>{
@@ -133,4 +133,12 @@ test('GPU collision pass reads a stable snapshot and thermal broadphase is inclu
   assert.match(s,/fn generate_thermal_pairs/);
   assert.ok(s.includes("lastThermalPairs = rawPairCount > this.thermalPairsCapacity ? null"));
   assert.ok(s.includes("thermalPairReadback.mapAsync"));
+});
+
+
+test('GPU readback packs only position and velocity, reducing synchronization bytes',async()=>{
+ const {readFileSync}=await import('node:fs');const s=readFileSync(new URL('../src/emergence/gpu-physics.js',import.meta.url),'utf8');
+ assert.match(s,/fn pack_state/);assert.match(s,/packedState\[i\] = vec4f\(particles\[i\]\.position, particles\[i\]\.velocity\)/);
+ assert.ok(s.includes('copyBufferToBuffer(this.packedStateBuffer, 0, this.readbackBuffer, 0, count * 16)'));
+ assert.ok(s.includes('new Float32Array(this.capacity * 4)'));
 });
