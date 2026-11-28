@@ -32,3 +32,10 @@ test('resident packer grows safely for large generic iterables',()=>{
 test('resident packer rejects a missing activity predicate',()=>{
  assert.throws(()=>packResidentParticles([],null),/isActive must be a function/);
 });
+
+test('resident physics options normalize dimensions and reject invalid grids',async()=>{
+ const {normalizeResidentPhysicsOptions}=await import('../src/gpu/resident.js');
+ const p=normalizeResidentPhysicsOptions({radius:10,worldWidth:101,worldHeight:51,softening:0,maxAcceleration:-1},0.25);
+ assert.deepEqual([p.gridCols,p.gridRows,p.gridCount,p.softening,p.maxAcceleration,p.dt],[11,6,66,0.001,0,0.25]);
+ const fallback=normalizeResidentPhysicsOptions({radius:0,worldWidth:Infinity,worldHeight:NaN});assert.deepEqual([fallback.radius,fallback.worldWidth,fallback.worldHeight],[0.001,0.001,0.001]);
+});
