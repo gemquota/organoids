@@ -52,3 +52,23 @@ test("short-range nuclear attraction binds free nucleons with conserved pair mom
   assert.equal(bound.properties.vx,0);
   assert.ok(Math.abs(a.properties.vx*a.properties.mass+b.properties.vx*b.properties.mass)<1e-10);
 });
+
+
+test("thermal exchange accepts GPU-generated candidate pairs while preserving exact energy flux",()=>{
+  const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
+  const hot=biology.create("particle",{x:40,y:50,heatCapacity:1},10);
+  const cold=biology.create("particle",{x:45,y:50,heatCapacity:2},0);
+  const entities=[hot,cold],before=hot.energy+cold.energy;
+  assert.equal(biology.exchangeThermalEnergy({radius:20,conductance:.5,dt:1,candidatePairs:[[0,1]],candidateEntities:entities}),1);
+  assert.ok(hot.energy<10&&cold.energy>0);
+  assert.ok(Math.abs(hot.energy+cold.energy-before)<1e-10);
+  assert.equal(runtime.energy.audit(runtime.store,before).balanced,true);
+});
+
+test("thermal GPU candidate list can suppress false broadphase pairs",()=>{
+  const runtime=createRuntime({width:100,height:100,cols:10,rows:10}),biology=new EmergenceProgression(runtime);
+  const hot=biology.create("particle",{x:40,y:50,heatCapacity:1},10);
+  const cold=biology.create("particle",{x:45,y:50,heatCapacity:2},0);
+  assert.equal(biology.exchangeThermalEnergy({radius:20,conductance:.5,dt:1,candidatePairs:[],candidateEntities:[hot,cold]}),0);
+  assert.equal(hot.energy,10);assert.equal(cold.energy,0);
+});

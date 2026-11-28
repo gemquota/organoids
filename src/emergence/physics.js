@@ -65,19 +65,18 @@ export const methods = {
     const entities=[...this.store.entities.values()].filter(e=>active(e)&&!e.parent&&Number.isFinite(e.properties.x)&&Number.isFinite(e.properties.y)&&finite(e.properties.heatCapacity)>0);
     const index=this.runtime.spatial.rebuild(entities);
     let transfers=0;
-    for(const a of entities) {
-      const ca=Math.max(.001,finite(a.properties.heatCapacity,1));
-      for(const b of index.query(a.properties.x,a.properties.y,radius,[])) {
-        if(b.id<=a.id||!active(b)||b.parent)continue;
-        const cb=Math.max(.001,finite(b.properties.heatCapacity,1));
-        const ta=a.energy/ca,tb=b.energy/cb,distance=Math.hypot(b.properties.x-a.properties.x,b.properties.y-a.properties.y);
-        if(distance>radius||Math.abs(ta-tb)<1e-9)continue;
-        const hot=ta>tb?a:b,cold=hot===a?b:a;
-        const hotCapacity=hot===a?ca:cb,coldCapacity=hot===a?cb:ca;
-        const equilibrium=Math.abs(ta-tb)*(hotCapacity*coldCapacity/(hotCapacity+coldCapacity));
-        const amount=Math.min(hot.energy,equilibrium*clamp(conductance*dt));
-        if(amount>1e-10){this.energy.transfer(hot,cold,amount);transfers++}
-      }
+    const entitySet=new Set(entities);
+    const candidatePairs=Array.isArray(options.candidatePairs)&&Array.isArray(options.candidateEntities)?options.candidatePairs.map(([i,j])=>[options.candidateEntities[i],options.candidateEntities[j]]).filter(([a,b])=>a&&b):null;
+    const pairs=candidatePairs||entities.flatMap(a=>index.query(a.properties.x,a.properties.y,radius,[]).filter(b=>b.id>a.id).map(b=>[a,b]));
+    for(const[a,b]of pairs) {
+      if(!a||!b||a===b||!active(a)||!active(b)||a.parent||b.parent||!entitySet.has(a)||!entitySet.has(b))continue;
+      const ca=Math.max(.001,finite(a.properties.heatCapacity,1)),cb=Math.max(.001,finite(b.properties.heatCapacity,1));
+      const ta=a.energy/ca,tb=b.energy/cb,distance=Math.hypot(b.properties.x-a.properties.x,b.properties.y-a.properties.y);
+      if(distance>radius||Math.abs(ta-tb)<1e-9)continue;
+      const hot=ta>tb?a:b,cold=hot===a?b:a,hotCapacity=hot===a?ca:cb,coldCapacity=hot===a?cb:ca;
+      const equilibrium=Math.abs(ta-tb)*(hotCapacity*coldCapacity/(hotCapacity+coldCapacity));
+      const amount=Math.min(hot.energy,equilibrium*clamp(conductance*dt));
+      if(amount>1e-10){this.energy.transfer(hot,cold,amount);transfers++}
     }
     return transfers;
   }
