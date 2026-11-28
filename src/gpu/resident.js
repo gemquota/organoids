@@ -58,6 +58,31 @@ export function normalizeResidentPhysicsOptions(options = {}, dt = options.dt ??
     maxAcceleration:Math.max(0,finite(options.maxAcceleration,0.08)),dt:Math.max(0,finite(dt,1))};
 }
 
+export function stepResidentReference(particles, options = {}, dt = options.dt ?? 1) {
+  const cfg = normalizeResidentPhysicsOptions(options, dt);
+  const source = Array.from(particles, p => ({...p}));
+  const output = source.map(p => ({...p}));
+  const radiusSquared = cfg.radius * cfg.radius, softeningSquared = cfg.softening * cfg.softening;
+  for (let i=0;i<source.length;i++) {
+    const a=source[i]; let ax=0,ay=0;
+    for(let j=0;j<source.length;j++) {
+      if(i===j)continue; const b=source[j],product=a.charge*b.charge;
+      if(Math.abs(product)<1e-9)continue;
+      const dx=b.x-a.x,dy=b.y-a.y,r2=dx*dx+dy*dy;
+      if(r2>radiusSquared)continue;
+      const distance=Math.sqrt(r2),magnitude=cfg.strength*product/(r2+softeningSquared);
+      const force=Math.sign(magnitude)*Math.min(cfg.maxAcceleration*a.mass,Math.abs(magnitude));
+      const safeDistance=Math.max(distance,cfg.softening);
+      ax-=dx/safeDistance*(force/a.mass); ay-=dy/safeDistance*(force/a.mass);
+    }
+    const p=output[i];p.vx=(a.vx+ax*cfg.dt)*0.994;p.vy=(a.vy+ay*cfg.dt)*0.994;
+    p.x=Math.max(0,Math.min(cfg.worldWidth,a.x+p.vx*cfg.dt));p.y=Math.max(0,Math.min(cfg.worldHeight,a.y+p.vy*cfg.dt));
+    if(p.x===0||p.x===cfg.worldWidth)p.vx*=-0.8;
+    if(p.y===0||p.y===cfg.worldHeight)p.vy*=-0.8;
+  }
+  return output;
+}
+
 export function applyResidentSnapshot(store, ids, data, count, isActive) {
   if (typeof isActive !== 'function') throw new TypeError('isActive must be a function');
   if (!store || !data || !Array.isArray(ids) || !Number.isInteger(count) || count < 0 || ids.length < count || data.length < count * RESIDENT_PARTICLE_STRIDE) {

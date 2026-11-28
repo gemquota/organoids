@@ -27,3 +27,13 @@
 - No live runtime integration, no device validation, and no CPU-vs-GPU parity benchmark yet.
 - The prototype models charged particles only; it does not represent chemistry, energy accounting or topology.
 - GPU compute must not be enabled concurrently with the existing CPU integrator for the same entities.
+
+## Five follow-up engineering passes (2026-11-28)
+
+1. **Input correctness:** generic iterables now grow packing storage safely; activity predicates are validated; ID and packed-state views are kept distinct. Added iterable-overflow tests.
+2. **Parameter consistency:** upload and step share one normalizer for radius, world dimensions, grid dimensions, softening, acceleration cap and timestep. Added normalization tests.
+3. **Synchronization correctness:** CPU snapshot application validates payload shape, finite values, active/root entity status and stale IDs. Device-loss and snapshot telemetry are recorded.
+4. **Lifecycle hardening:** snapshot mapping is protected against teardown races; destruction is idempotent; empty uploads clear the entity mapping. Added guarded async teardown handling.
+5. **Numerical reference and finalization:** added a CPU reference step for the resident kernel's force/integration contract and tests for like-charge repulsion, opposite-charge attraction and bounded finite state. This is a reference oracle, not a substitute for actual WGSL/device parity testing.
+
+Latest automated suite after these passes: 215 tests passing. Real WebGPU shader execution, numerical GPU-vs-reference parity and hardware performance remain explicit release gates. The resident path remains opt-in and disconnected from the live runtime.

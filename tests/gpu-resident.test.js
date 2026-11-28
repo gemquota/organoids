@@ -50,3 +50,18 @@ test('resident snapshots apply only to live root entities with finite state',asy
 test('resident snapshot application rejects malformed payloads',async()=>{
  const {applyResidentSnapshot}=await import('../src/gpu/resident.js');assert.throws(()=>applyResidentSnapshot(new Map(),[1],new Float32Array(2),1,active),/shape is invalid/);
 });
+
+test('resident CPU reference repels like charges and attracts opposite charges',async()=>{
+ const {stepResidentReference}=await import('../src/gpu/resident.js');
+ const options={radius:100,worldWidth:200,worldHeight:100,strength:1,softening:1,maxAcceleration:100};
+ const like=stepResidentReference([{x:40,y:50,vx:0,vy:0,charge:1,mass:1},{x:60,y:50,vx:0,vy:0,charge:1,mass:1}],options,1);
+ const unlike=stepResidentReference([{x:40,y:50,vx:0,vy:0,charge:1,mass:1},{x:60,y:50,vx:0,vy:0,charge:-1,mass:1}],options,1);
+ assert.ok(like[0].vx<0&&like[1].vx>0);assert.ok(unlike[0].vx>0&&unlike[1].vx<0);
+});
+
+test('resident CPU reference preserves finite bounded state',async()=>{
+ const {stepResidentReference}=await import('../src/gpu/resident.js');
+ const result=stepResidentReference([{x:0.1,y:99.9,vx:-100,vy:100,charge:1,mass:1}],{radius:10,worldWidth:100,worldHeight:100},1);
+ assert.ok(result[0].x>=0&&result[0].x<=100&&result[0].y>=0&&result[0].y<=100);
+ assert.ok([result[0].x,result[0].y,result[0].vx,result[0].vy].every(Number.isFinite));
+});
